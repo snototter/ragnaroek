@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 """
 Telegram bot helheimr - controlling and querying our heating system.
+
+Commands (for @botfather):
+status - Report heater status.
+on - Turn on heating.
+off - Turn off heating.
+help - List all commands.
 """
 
 # import argparse
@@ -9,6 +15,9 @@ Telegram bot helheimr - controlling and querying our heating system.
 
 #TODOs:
 #TODO use logging
+#TODO altmannschalter aktivieren fuer tepidarium (geht das via requests?)
+#TODO deconz poll (timer + bei /status bzw nach /on, /off)
+#TODO reminder alle config minuten, falls heizung laeuft (zB 12h)
 
 import helheimr_utils as hu
 import helheimr_deconz as hd
@@ -46,6 +55,12 @@ class HelheimrBot:
         status_handler = CommandHandler('status', self.cmd_status, self.user_filter)
         self.dispatcher.add_handler(status_handler)
 
+        on_handler = CommandHandler('on', self.cmd_on, self.user_filter)
+        self.dispatcher.add_handler(on_handler)
+
+        off_handler = CommandHandler('off', self.cmd_off, self.user_filter)
+        self.dispatcher.add_handler(off_handler)
+
         unknown_handler = MessageHandler(Filters.command, self.cmd_unknown, self.user_filter)
         self.dispatcher.add_handler(unknown_handler)
 
@@ -77,10 +92,19 @@ class HelheimrBot:
 
     def cmd_status(self, update, context):
         status = self.deconz_wrapper.query_heating()
-        print('RECEIVED ZIGBEE STAT:', status)
         txt = "*Heating:*\n" + '\n'.join(map(str, status))
         context.bot.send_message(chat_id=update.message.chat_id, text=txt,
             parse_mode=telegram.ParseMode.MARKDOWN)
+
+
+    def cmd_on(self, update, context):
+        self.deconz_wrapper.turn_on()
+        self.cmd_status(update, context)
+
+
+    def cmd_off(self, update, context):
+        self.deconz_wrapper.turn_off()
+        self.cmd_status(update, context)
 
 
     def cmd_unknown(self, update, context):

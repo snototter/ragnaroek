@@ -47,6 +47,20 @@ class DeconzWrapper:
             logger.info(state)
             #TODO return, create string/message or something
         return status
+
+    def switch_light(self, light_id, turn_on):
+        r = requests.put(self._api_url() + '/lights/' + light_id + '/state', data='{:s}'.format('{"on":true}' if turn_on else '{"on":false}'))
+        #TODO log request status!
+
+    def turn_on(self):
+        # Only need to turn on the first plug (there's an or-relais)
+        _, plug_id = next(iter(self.heater_plug_mapping.items()))
+        self.switch_light(plug_id, True)
+
+    def turn_off(self):
+        # Since this is an or-relais, we need to turn off all heating plugs
+        for _, plug_id in self.heater_plug_mapping.items():
+            self.switch_light(plug_id, False)
             
 
     def _api_url(self):
