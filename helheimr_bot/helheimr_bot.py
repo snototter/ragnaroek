@@ -6,92 +6,106 @@ Telegram bot helheimr - controlling and querying our heating system.
 # import argparse
 # import os
 # import sys
-import json
-import libconf
-import requests
-import time
 
 #TODOs:
 #TODO use logging
 
+import helheimr_utils as hu
+import helheimr_deconz as hd
 
-#######################################################################
-# Utilities
-def slurp_stripped_lines(filename):
-    with open(filename) as f:
-        return [s.strip() for s in f.readlines()]
+from emoji import emojize
+import logging
+import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
-def load_api_token(filename='.api-token'):
-    return slurp_stripped_lines(filename)
-    #with open(filename) as f:
-        #f.read().strip()
-        #return [s.strip() for s in f.readlines()] 
-
-
-def load_authorized_user_ids(filename='.authorized-ids'):
-    return slurp_stripped_lines(filename)
-
-
-def load_configuration(filename='helheimr.cfg'):
-    with open(filename) as f:
-        return libconf.load(f)
-
-
-#######################################################################
-# Communication with the zigbee/raspbee (deconz REST API) gateway
-class RaspBeeWrapper:
-    def __init__(self, token, config):
-        self.gateway = config['raspbee']['gateway']
-        self.token = token
-
-        # Currently I don't want a generic approach but rather know 
-        # exactly (hardcoded) which plugs I control programatically
-        self.heater_plug_mapping = dict()
-        self._map_plugs(self.heater_plug_mapping, [
-            config['heater_plug_mappings']['tepidarium'],
-            config['heater_plug_mappings']['flat']
-            ])
-
-    def _map_plugs(self, plug_mapping, plug_names):
-        # Currently, I'm only using smart plugs which are linked to
-        # the zigbee gateway as "lights"
-        r = requests.get(self._api_url() + '/lights')
-        lights = json.loads(r.content)
-        for raspbee_id, light in lights.items():
-            if light['name'] in plug_names:
-                print('Mapping {:s} to RaspBee id {}'.format(light['name'], raspbee_id))
-                plug_mapping[light['name']] = raspbee_id
-
-    def query_heating(self):
-        status = list()
-        for plug_name, plug_id in self.heater_plug_mapping.items():
-            r = requests.get(self._api_url() + '/lights/' + plug_id)
-            light = json.loads(r.content)
-            is_on = light['state']['on']
-            is_reachable = light['state']['reachable']
-            print('Plug {:s} is reachable ({}), is on ({})'.format(plug_name, is_reachable, is_on))
-
-    def _api_url(self):
-        return 'http://' + self.gateway + '/api/' + self.token
 
 
 #######################################################################
 # Main bot workflow
+class HelheimrBot:
+    def __init__(self, api_token, authorized_ids, deconz_wrapper):
+        self.api_token = api_token
+        self.deconz_wrapper = deconz_wrapper
+        # TODO check tulip, hibiscus, etc. https://k3a.me/telegram-emoji-list-codes-descriptions/
+
+        self.bot = telegram.Bot(token=self.api_token)
+        logging.getLogger().info(self.bot.get_me())
+
+        self.updater = Updater(token=api_token, use_context=True)
+        self.dispatcher = self.updater.dispatcher
+        self.authorized_ids = authorized_ids
+        self.user_filter = Filters.user(user_id=authorized_ids)
+
+        
+        start_handler = CommandHandler('start', self.cmd_start, self.user_filter)
+        self.dispatcher.add_handler(start_handler)
+
+        help_handler = CommandHandler('help', self.cmd_help, self.user_filter)
+        self.dispatcher.add_handler(help_handler)
+
+        status_handler = CommandHandler('status', self.cmd_status, self.user_filter)
+        self.dispatcher.add_handler(status_handler)
+
+        unknown_handler = MessageHandler(Filters.command, self.cmd_unknown, self.user_filter)
+        self.dispatcher.add_handler(unknown_handler)
+
+        unknown_handler = MessageHandler(Filters.text, self.cmd_unknown, self.user_filter)
+        self.dispatcher.add_handler(unknown_handler)
+
+
+    def start(self):
+        self.updater.start_polling()
+        for chat_id in self.authorized_ids:
+            # Send startup message to all authorized users
+            self.bot.send_message(chat_id=chat_id, text=emojize("I'm online. :sunflower:", use_aliases=True))
+            
+
+    def idle(self):
+        self.updater.idle()
+
+
+    def cmd_help(self, update, context):
+        context.bot.send_message(chat_id=update.message.chat_id, text="*The following commands are known:*\n\n"
+            "/status - Report heater status.\n"
+            "/help - Show this help message.",
+            parse_mode=telegram.ParseMode.MARKDOWN)
+
+    
+    def cmd_start(self, update, context):
+        context.bot.send_message(chat_id=update.message.chat_id, text=emojize("I'm online. :blossom:", use_aliases=True))
+
+
+    def cmd_status(self, update, context):
+        status = self.deconz_wrapper.query_heating()
+        print('RECEIVED ZIGBEE STAT:', status)
+        txt = "*Heating:*\n" + '\n'.join(map(str, status))
+        context.bot.send_message(chat_id=update.message.chat_id, text=txt,
+            parse_mode=telegram.ParseMode.MARKDOWN)
+
+
+    def cmd_unknown(self, update, context):
+        if update.message.chat_id in self.authorized_ids:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, I didn't understand that command.")
+        else:
+            logging.getLogger().warn('Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
+            context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, {} ({}) you're not authorized.".format(update.message.chat.first_name, update.message.chat_id))
+
 
 def main():
-    api_token_telegram, api_token_raspbee = load_api_token()
-    authorized_ids = load_authorized_user_ids()
-    config = load_configuration()
+    logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    api_token_telegram, api_token_deconz = hu.load_api_token()
+    authorized_ids = hu.load_authorized_user_ids()
+    config = hu.load_configuration()
 
-    #print(api_token_telegram)
-    #print(api_token_raspbee)
-    print(authorized_ids)
-    print(config)
-    raspbee = RaspBeeWrapper(api_token_raspbee, config)
+    logger = logging.getLogger()
+    logger.info('Authorized chat IDs: {}'.format(authorized_ids))
+    logger.debug(config)
+    deconz_wrapper = hd.DeconzWrapper(api_token_deconz, config)
 
-    for i in range(3):
-        raspbee.query_heating()
-        time.sleep(3)
+    bot = HelheimrBot(api_token_telegram, authorized_ids, deconz_wrapper)
+    bot.start()
+    bot.idle()
 
     
 

@@ -1,3 +1,4 @@
 libconf
 python-telegram-bot
 requests
+emoji

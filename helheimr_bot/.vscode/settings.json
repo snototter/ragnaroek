@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "/home/snototter/workspace/python-projects/ragnaroek/heimdallr_bot/.venv3/bin/python3"
+    "python.pythonPath": ".venv3/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }
