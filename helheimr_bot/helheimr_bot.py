@@ -18,6 +18,7 @@ help - List all commands.
 #TODO altmannschalter aktivieren fuer tepidarium (geht das via requests?)
 #TODO deconz poll (timer + bei /status bzw nach /on, /off)
 #TODO reminder alle config minuten, falls heizung laeuft (zB 12h)
+#TODO plug mapping: tepidarium: (HTepidarium, human-readable Tepidarium), flat: (HWohnung, Wohnung)
 
 import helheimr_utils as hu
 import helheimr_deconz as hd
