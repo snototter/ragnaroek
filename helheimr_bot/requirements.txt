@@ -1,0 +1,3 @@
+libconf
+python-telegram-bot
+requests
