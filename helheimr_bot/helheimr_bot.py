@@ -2,11 +2,11 @@
 """
 Telegram bot helheimr - controlling and querying our heating system.
 
-Commands (for @botfather):
-status - Report heater status.
-on - Turn on heating.
-off - Turn off heating.
-help - List all commands.
+Commands (formating for @botfather):
+status - Statusabfrage.
+on - :sunny: Heizung einschalten.
+off - :snowflake: Heizung ausschalten.
+help - Liste verfügbarer Befehle.
 """
 
 # import argparse
