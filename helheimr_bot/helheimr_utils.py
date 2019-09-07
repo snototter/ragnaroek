@@ -17,6 +17,6 @@ def load_authorized_user_ids(filename='.authorized-ids'):
     return [int(id) for id in slurp_stripped_lines(filename)]
 
 
-def load_configuration(filename='helheimr.cfg'):
+def load_configuration(filename):
     with open(filename) as f:
         return libconf.load(f)

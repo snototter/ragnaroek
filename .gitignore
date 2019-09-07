@@ -1,6 +1,7 @@
 **/.venv*
 *_bot/.api-token
 *_bot/.authorized-ids
+*_bot/*.cfg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
