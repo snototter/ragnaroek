@@ -2,6 +2,8 @@ import json
 import logging
 import requests
 
+#TODO https://stackoverflow.com/questions/373335/how-do-i-get-a-cron-like-scheduler-in-python
+
 class PlugState:
     def __init__(self, display_name, deconz_plug):
         self.display_name = display_name

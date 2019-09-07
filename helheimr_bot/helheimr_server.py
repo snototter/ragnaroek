@@ -1,7 +1,7 @@
 import http.server
 import socketserver
 import json
-
+#https://gist.github.com/nitaku/10d0662536f37a087e1b
 class HelheimrServer(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super(HelheimrServer, self).__init__(*args, **kwargs)
