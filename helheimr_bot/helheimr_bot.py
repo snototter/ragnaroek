@@ -18,6 +18,11 @@ import traceback
 
 #TODOs:
 #TODO use logging
+#TODO als service einrichten (python venv?)
+#TODO forecast icons (w.get_weather_code(), weather condition codes, check emoji, make mapping)
+#TODO update1: wird erledigt ... (...), sleep, update2  Status
+#TODO temperature mapping < 8, 8-18, 18-28, 28+
+#TODO pair temperature sensor
 #TODO sicher j/n
 #TODO laeuft schon...
 #TODO altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
