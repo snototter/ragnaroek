@@ -11,6 +11,44 @@ def degrees_to_compass(deg):
     # lookup = ["N","NNO","NO","ONO","O","OSO", "SO", "SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"]
     # return lookup[(val % 16)]
 
+#emoji list, supported by py-emoji. https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
+# https://stackoverflow.com/questions/4770297/convert-utc-datetime-string-to-local-datetime
+def localize_utc_time(dt_object):
+    from_zone = tz.gettz('UTC') # or tz.tzutc()
+    to_zone = tz.gettz('Europe/Vienna') # or tz.tzlocal()
+    utc = dt_object.replace(tzinfo=from_zone)
+    current = utc.astimezone(to_zone)
+
+def weather_code_emoji(code):
+    # Clear sky
+    # Few clouds partly_sunny
+    # Scattered clouds :cloud:
+    # Broken clouds :cloud:
+    # Shower rain (drizzle)
+    # Rain >= 500, < 600 (except for 511, freezing rain: snow + rain icon!)
+    # Thunderstorm code >= 200 and code < 300
+    # Snow
+    # Mist
+
+    emojis = [':cloud_with_lightning:', 
+        ':partly_sunny:', ':sunny:',
+        ':cloud:',
+        ':cloud_with_lightning_and_rain:', 
+        ':cloud_with_rain:', 
+        ':cloud_with_snow:', 
+        ':sun_behind_cloud:', 
+        ':sun_behind_large_cloud:', 
+        ':sun_behind_rain_cloud:', 
+        ':sun_behind_small_cloud:',
+        ':sunrise:',
+        ':sunrise_over_mountains:',
+        ':sunset:',
+        ':thunder_cloud_and_rain:',
+        ':fog:',
+        ':foggy:',':hot_face:',':sweat:',':cold_face:']
+    # for em in emojis:
+    #     print(em, e(em, use_aliases=True))
+
 class WeatherForecastOwm:
     def __init__(self, config):
         self.owm = OWM(API_key=config['openweathermap']['api_token'],
