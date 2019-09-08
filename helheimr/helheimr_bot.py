@@ -154,6 +154,10 @@ class HelheimrBot:
     def query_status(self, chat_id):
         is_heating, status = self.deconz_wrapper.query_heating()
         txt = "*Heizung* ist {:s}\n".format('ein :sunny:' if is_heating else 'aus :snowman:') + '\n'.join(map(str, status))
+
+        status = self.deconz_wrapper.query_temperature()
+        txt += '\n\n*Aktuelle Temperatur:*\n' + '\n'.join(map(str, status))
+
         if chat_id is None:
             return txt
         else:
