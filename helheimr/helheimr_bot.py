@@ -61,7 +61,7 @@ def _rand_flower():
 class HelheimrBot:
     WAIT_TIME_HEATING_TOGGLE = 3
 
-    CALLBACK_CANCEL = '0'
+    CALLBACK_TURN_ON_OFF_CANCEL = '0'
     CALLBACK_TURN_ON_CONFIRM = '2'
     CALLBACK_TURN_OFF_CONFIRM = '4'
 
@@ -166,6 +166,13 @@ class HelheimrBot:
 
 
     def cmd_on(self, update, context):
+        # Check if another user is currently sending an on/off command:
+        if self.is_modifying_heating:
+            self.bot.send_message(chat_id=update.message.chat_id, 
+                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
+                parse_mode=telegram.ParseMode.MARKDOWN)
+            return
+
         # Check if already heating
         is_heating, status = self.deconz_wrapper.query_heating()
 
@@ -175,14 +182,21 @@ class HelheimrBot:
                 parse_mode=telegram.ParseMode.MARKDOWN)
         else:
             # If not, ask for confirmation
+            self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_ON_CONFIRM),
-                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_CANCEL)]]
+                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
             update.message.reply_text('Heizung wirklich einschalten?', reply_markup=reply_markup)
 
 
     def cmd_off(self, update, context):
+        # Check if another user is currently sending an on/off command:
+        if self.is_modifying_heating:
+            self.bot.send_message(chat_id=update.message.chat_id, 
+                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
+                parse_mode=telegram.ParseMode.MARKDOWN)
+            return
         # Check if already off
         is_heating, status = self.deconz_wrapper.query_heating()
         if not is_heating:
@@ -190,17 +204,9 @@ class HelheimrBot:
                 text=hu.emo('Heizung ist schon *aus* :snowman:\n' + '\n'.join(map(str, status))),
                 parse_mode=telegram.ParseMode.MARKDOWN)
         else:
-            # success, txt = self.deconz_wrapper.turn_off()
-            # if not success:
-            #     context.bot.send_message(chat_id=update.message.chat_id, text=txt)
-            # else:
-            #     context.bot.send_message(chat_id=update.message.chat_id, text='Wird erledigt.')
-            #     context.bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.TYPING)
-            #     time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
-            # self.cmd_status(update, context)
-            # If not, ask for confirmation
+            self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_ON_CONFIRM),
-                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_CANCEL)]]
+                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
             update.message.reply_text('Heizung wirklich ausschalten?', reply_markup=reply_markup)
@@ -208,33 +214,33 @@ class HelheimrBot:
 
     def callback_handler(self, update, context):
         query = update.callback_query
-        if query.data == type(self).CALLBACK_CANCEL:
+        if query.data == type(self).CALLBACK_TURN_ON_OFF_CANCEL:
             query.edit_message_text(text='Ok, dann ein andermal.')
+            self.is_modifying_heating = False
 
         elif query.data == type(self).CALLBACK_TURN_ON_CONFIRM:
             success, txt = self.deconz_wrapper.turn_on()
             if not success:
-                # context.bot.send_message(chat_id=update.message.chat_id, text=txt)
                 query.edit_message_text(text='Fehler, konnte Heizung nicht einschalten:\n\n' + txt)
             else:
-                query.edit_message_text(text='Wird erledigt')
+                query.edit_message_text(text='Wird erledigt...')
                 context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
                 status_txt = self.query_status(None)
                 query.edit_message_text(text=status_txt, parse_mode=telegram.ParseMode.MARKDOWN)
-            # self.query_status(query.from_user.id) # TODO query.edit_message again instead of new message!
+            self.is_modifying_heating = False
 
         elif query.data == type(self).CALLBACK_TURN_OFF_CONFIRM:
             success, txt = self.deconz_wrapper.turn_off()
             if not success:
                 query.edit_message_text(text='Fehler, konnte Heizung nicht ausschalten:\n\n' + txt)
             else:
-                query.edit_message_text(text='Wird erledigt')
+                query.edit_message_text(text='Wird erledigt...')
                 context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
                 status_txt = self.query_status(None)
                 query.edit_message_text(text=status_txt, parse_mode=telegram.ParseMode.MARKDOWN)
-                # self.query_status(query.from_user.id)
+            self.is_modifying_heating = False
 
 
     def cmd_forecast(self, update, context):
