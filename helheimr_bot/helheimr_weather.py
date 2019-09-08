@@ -1,5 +1,5 @@
 from datetime import datetime
-from pytz import timezone
+from dateutil import tz
 import logging
 from pyowm import OWM
 
@@ -17,37 +17,77 @@ def localize_utc_time(dt_object):
     from_zone = tz.gettz('UTC') # or tz.tzutc()
     to_zone = tz.gettz('Europe/Vienna') # or tz.tzlocal()
     utc = dt_object.replace(tzinfo=from_zone)
-    current = utc.astimezone(to_zone)
+    return utc.astimezone(to_zone)
+
 
 def weather_code_emoji(code):
-    # Clear sky
-    # Few clouds partly_sunny
-    # Scattered clouds :cloud:
-    # Broken clouds :cloud:
-    # Shower rain (drizzle)
-    # Rain >= 500, < 600 (except for 511, freezing rain: snow + rain icon!)
-    # Thunderstorm code >= 200 and code < 300
-    # Snow
-    # Mist
+    # if True:
+    #     return ':cloud_with_lightning_and_rain: :cloud_with_lightning: :sun_behind_rain_cloud: :cloud_with_rain: :snowflake: :fog: :sunny: :partly_sunny: :sun_behind_small_cloud: :sun_behind_large_cloud: :cloud:'
+    if code >= 200 and code < 300:
+        # Thunderstorm
+        return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:'
+    elif code >= 300 and code < 400:
+        # Drizzle
+        return ':sun_behind_rain_cloud:'
+    elif code >= 500 and code < 600:
+        # Rain
+        if code == 511:
+            # Freezing rain
+            return ':cloud_with_rain: :snowflake:'
+        return ':cloud_with_rain:'
+    elif code >= 600 and code < 700:
+        # Snow
+        return ':snowflake:'
+    elif code >= 700 and code < 800:
+        # Atmospheric stuff (fog, mist, volcanic ashes)
+        return ':fog:'
+    elif code == 800:
+        return ':sunny:'
+    elif code == 801:
+        return ':partly_sunny:'
+    elif code == 802:
+        return ':sun_behind_small_cloud:'
+    elif code == 803:
+        return ':sun_behind_large_cloud:'
+    elif code == 804:
+        return ':cloud:'
+        
+    logging.getLogger().log(logging.ERROR, 'Weather code {} was not translated!'.format(code))
+    return 'Wettercode {}'.format(code)
 
-    emojis = [':cloud_with_lightning:', 
-        ':partly_sunny:', ':sunny:',
-        ':cloud:',
-        ':cloud_with_lightning_and_rain:', 
-        ':cloud_with_rain:', 
-        ':cloud_with_snow:', 
-        ':sun_behind_cloud:', 
-        ':sun_behind_large_cloud:', 
-        ':sun_behind_rain_cloud:', 
-        ':sun_behind_small_cloud:',
-        ':sunrise:',
-        ':sunrise_over_mountains:',
-        ':sunset:',
-        ':thunder_cloud_and_rain:',
-        ':fog:',
-        ':foggy:',':hot_face:',':sweat:',':cold_face:']
-    # for em in emojis:
-    #     print(em, e(em, use_aliases=True))
+def temperature_emoji(t):
+    # if True:
+    #     return ':cold_face: :grimacing: :smiley: :sunglasses: :sweat: :hot_face:'
+    if t < 0.0:
+        return ':cold_face:'
+    elif t < 10.0:
+        return ':grimacing:'
+    elif t < 20.0:
+        return ':smiley:'
+    elif t < 30.0:
+        return ':sunglasses:'
+    else:
+        return ':hot_face:'
+# emojis = [
+#     ':cloud_with_lightning:', #done
+#     ':partly_sunny:', 
+#     ':sunny:',
+#     ':cloud:',
+#     ':cloud_with_lightning_and_rain:', 
+#     ':cloud_with_rain:', 
+#     ':cloud_with_snow:', 
+#     ':sun_behind_cloud:', 
+#     ':sun_behind_large_cloud:', 
+#     ':sun_behind_rain_cloud:', 
+#     ':sun_behind_small_cloud:',
+#     ':sunrise:',
+#     ':sunrise_over_mountains:',
+#     ':sunset:',
+#     ':thunder_cloud_and_rain:',
+#     ':fog:',
+#     ':foggy:',':hot_face:',':sweat:',':cold_face:']
+# for em in emojis:
+#     print(em, e(em, use_aliases=True))
 
 class WeatherForecastOwm:
     def __init__(self, config):
@@ -58,13 +98,6 @@ class WeatherForecastOwm:
         self.longitude = config['openweathermap']['longitude']
 
     def query(self):
-# logger = logging.getLogger()
-# rain:        {'1h': 2.54}
-# snow: {}
-# wind: {'speed': 3.1, 'deg': 240}
-# humidity: 87
-# pressure: {'press': 1020, 'sea_level': None}
-# {'temp': 14.14, 'temp_max': 15.0, 'temp_min': 13.0, 'temp_kf': None}
         # Either query by city ID or lat/lon
         # obs = self.owm.weather_at_id(self.city_id)
         obs = self.owm.weather_at_coords(self.latitude, self.longitude)
@@ -72,8 +105,8 @@ class WeatherForecastOwm:
 
         forecast = list()
         temp = w.get_temperature(unit='celsius')
-        forecast.append('{:s}, {:d} °C'.format(w.get_detailed_status(), int(temp['temp'])))
-        forecast.append('Temperaturverlauf: {:d}-{:d} °C\n'.format(int(temp['temp_min']), int(temp['temp_max'])))
+        forecast.append('{:s} {:s}, {:d}°C'.format(w.get_detailed_status(), weather_code_emoji(w.get_weather_code()), int(temp['temp'])))
+        forecast.append('Temperaturverlauf: {:d}-{:d}°C {:s}\n'.format(int(temp['temp_min']), int(temp['temp_max']), temperature_emoji((temp['temp_min']+temp['temp_max'])/2.0)))
         forecast.append('Bewölkung: {} %'.format(w.get_clouds()))
 
         # if w.get_rain():
@@ -92,10 +125,17 @@ class WeatherForecastOwm:
         forecast.append('Rel. Feuchte: {} %'.format(w.get_humidity()))
         forecast.append('Luftdruck: {} hPa\n'.format(w.get_pressure()['press']))
         #TODO
-        sunrise_time = w.get_sunrise_time(timeformat='date')
-        sunset_time = w.get_sunset_time(timeformat='date')
-        forecast.append('Sonnenaufgang: {:s}:{:s} *TODO* stimmt nicht +2/+1'.format(sunrise_time.strftime('%H'), sunrise_time.strftime('%m')))
-        forecast.append('Sonnenuntergang: {:s}:{:s} *TODO* stimmt nicht +2/+1'.format(sunset_time.strftime('%H'), sunset_time.strftime('%m')))
+        sunrise_time = localize_utc_time(w.get_sunrise_time(timeformat='date'))
+        sunset_time = localize_utc_time(w.get_sunset_time(timeformat='date'))
+        forecast.append('Sonnenaufgang: {:s}:{:s}'.format(sunrise_time.strftime('%H'), sunrise_time.strftime('%m')))
+        forecast.append('Sonnenuntergang: {:s}:{:s}'.format(sunset_time.strftime('%H'), sunset_time.strftime('%m'))) # TODO check after Daylight Savings Time (Zeitumstellung!)
+
+        print('\n'.join(forecast))
+
+        forecaster = self.owm.three_hours_forecast("Graz,AT")
+        f = forecaster.get_forecast()
+        for weather in f:
+            print (weather.get_reference_time('iso'),weather.get_status())
 
         return '*Wetterbericht:*\n' + '\n'.join(forecast)
         

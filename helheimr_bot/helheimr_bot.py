@@ -250,6 +250,7 @@ def main():
     deconz_wrapper = hd.DeconzWrapper(api_token_deconz, config)
 
     weather_forecast = hw.WeatherForecastOwm(config)
+    # print(weather_forecast.query())
     
     bot = HelheimrBot(api_token_telegram, authorized_ids, deconz_wrapper, weather_forecast)
     bot.start()
