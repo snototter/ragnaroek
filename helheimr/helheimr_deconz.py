@@ -35,7 +35,7 @@ class TemperatureState:
 
     def __str__(self):
         #TODO str anpassen (None objects; viel zu lang)
-        return '_{:s}_: {:.1f} C bei {:.1f} % Luftfeuchte und {:d} Luftdruck, Batteriestatus: {:d} %'.format(
+        return '_{:s}_: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
             self.display_name, self.temperature, self.humidity, self.pressure, self.battery_level)
 
     def merge(self, other):
