@@ -1,0 +1,17 @@
+[Unit]
+Description=Helheimr Telegram Bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=RAGNAROEKWORKDIR
+User=RAGNAROEKUSR
+ExecStart=RAGNAROEKWORKDIR/.venv3/bin/python RAGNAROEKWORKDIR/helheimr_bot.py
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+
