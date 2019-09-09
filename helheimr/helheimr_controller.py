@@ -13,8 +13,9 @@ class ManualHeatingJob(hu.Job):
         self.unit = 'hours'
         self.controller = controller
         self.do(self.heat_up)
-        print('Will start heating at:', self.next_run)
-        self.next_run = hu.datetime_now()
+        #self.next_run = hu.datetime_now() #next_run is used to sleep in the event loop, don't modify it :-p
+        self.start()
+        print('Will start heating at: (DUMMY TIME!)', self.next_run) #TODO self.next_run is used for the event loop!
 
     def __str__(self):
         return "ManualHeatingJob()"
@@ -42,7 +43,7 @@ class HelheimrController:
         self.run_loop = True
         self.job_list = list()
 
-        self.poll_interval = 3 #TODO config
+        self.poll_interval = 30 #TODO config
 
         self.worker_thread = threading.Thread(target=self.control_loop)
         self.worker_thread.start()
@@ -71,12 +72,15 @@ class HelheimrController:
     def next_run(self):
         if len(self.job_list) == 0:
             return None
+        unow=hu.datetime_now()
+        for job in self.job_list:
+            print(' foo: ', job.next_run, hu.datetime_difference(unow, job.next_run).total_seconds(), job)
         return min(self.job_list).next_run
 
 
     @property
     def idle_time(self):
-        return hu.datetime_difference(self.next_run, datetime.datetime.utcnow()).total_seconds()
+        return hu.datetime_difference(hu.datetime_now(), self.next_run).total_seconds()
 
     # def schedule_heating(self, interval)
 
@@ -123,7 +127,9 @@ class HelheimrController:
                 #TODO check if heating job is still running before invoking another!
         
             poll_interval = self.poll_interval if not self.job_list else min(self.poll_interval, self.idle_time)
-            self.condition_var.wait(timeout=poll_interval)
+            self.logger.info('[HelheimrController] Next iteration, wait for {}'.format(poll_interval))
+            # self.condition_var.wait(timeout=poll_interval)#FIXME
+            self.condition_var.wait(timeout=3)
             self.condition_var.release()
         self.logger.info('[HelheimrController] Shutting down control loop, terminating active tasks')
         for job in self.job_list:
