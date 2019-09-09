@@ -387,8 +387,8 @@ class Job(object):
             self.keep_running = True
             self.worker_thread = threading.Thread(target=self._run_blocking, daemon=True)
             self.worker_thread.start()
-            self._schedule_next_run()
             self.last_run = datetime_now()
+            self._schedule_next_run()
 
     def _run_blocking(self):
         self.job_func()
