@@ -170,23 +170,26 @@ class HelheimrBot:
 
 
     def cmd_on(self, update, context):
+        logging.getLogger().info('TODO parse message args: {}'.format('\n'.join(context.args)))
         # Check if another user is currently sending an on/off command:
         if self.is_modifying_heating:
             self.bot.send_message(chat_id=update.message.chat_id, 
                 text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
                 parse_mode=telegram.ParseMode.MARKDOWN)
             return
+        self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
 
         # Check if already heating
         is_heating, status = self.deconz_wrapper.query_heating()
 
         if is_heating:
+            self.is_modifying_heating = False
             txt = '*Heizung* läuft schon :sunny:\n' + '\n'.join(map(str, status))
             context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt), 
                 parse_mode=telegram.ParseMode.MARKDOWN)
         else:
             # If not, ask for confirmation
-            self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
+            # self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_ON_CONFIRM),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
