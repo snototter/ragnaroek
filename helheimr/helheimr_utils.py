@@ -122,7 +122,9 @@ class Job(object):
         self.start_day = None       # Specific day of the week to start on
         self.tags = set()           # unique set of tags for the job
         self.worker_thread = None
-        self.keep_running = False
+        self.keep_running = True
+        self.start_after_creation = False # If true, will be marked to be run directly after creation
+
 
     def __lt__(self, other):
         """Jobs are sortable based on the time they run next."""
@@ -130,20 +132,20 @@ class Job(object):
 
     def __str__(self):
         return (
-            "Job(interval={}, "
-            "unit={}, "
+            "Job(every {} {}{}, "
             "do={}, "
             "args={}, "
             "kwargs={})"
         ).format(self.interval,
-                 self.unit,
+                 self.unit[-1] if self.interval == 1 else self.unit,
+                 '' if self.at_time is None else self.at_time,
                  self.job_func.__name__,
                  self.job_func.args,
                  self.job_func.keywords)
 
     def __repr__(self):
         def format_time(t):
-            return t.strftime('%Y-%m-%d %H:%M:%S') if t else '[never]'
+            return datetime_as_local(t).strftime('%Y-%m-%d %H:%M:%S') if t else '[never]'
 
         def is_repr(j):
             return not isinstance(j, Job)
@@ -286,6 +288,11 @@ class Job(object):
         self.start_day = 'sunday'
         return self.weeks
 
+    @property
+    def start_immediately(self):
+        self.start_after_creation = True
+        return self
+
     def tag(self, *tags):
         """
         Tags the job with one or more unique indentifiers.
@@ -375,6 +382,11 @@ class Job(object):
         :return: ``True`` if the job should be run now.
         """
         return datetime_now() >= self.next_run
+    
+    @property
+    def should_be_removed(self):
+        """Periodic jobs should not be removed"""
+        return False
 
     def start(self):
         """Start the job thread and immediately reschedule this job."""
@@ -387,17 +399,17 @@ class Job(object):
             self.keep_running = True
             self.worker_thread = threading.Thread(target=self._run_blocking, daemon=True)
             self.worker_thread.start()
-            self.last_run = datetime_now()
             self._schedule_next_run()
+            self.last_run = datetime_now()
 
     def _run_blocking(self):
         self.job_func()
         self.keep_running = False
 
     def stop(self):
-        if self.keep_running:
+        if self.is_running:
             self.keep_running = False
-            self.worker_thread.join()#TODO timeout
+            # self.worker_thread.join()#TODO timeout
 
     def _schedule_next_run(self):
         """
@@ -409,7 +421,11 @@ class Job(object):
         interval = self.interval
 
         self.period = datetime.timedelta(**{self.unit: interval})
-        self.next_run = datetime_now() + self.period
+        if self.last_run is None and self.start_after_creation:
+            print('will start myself immediately!', self)
+            self.next_run = datetime_now()
+        else:
+            self.next_run = datetime_now() + self.period
         if self.start_day is not None:
             if self.unit != 'weeks':
                 raise ScheduleValueError('`unit` should be \'weeks\'')
@@ -463,3 +479,92 @@ class Job(object):
             # Let's see if we will still make that time we specified today
             if (self.next_run - datetime.datetime.now()).days >= 7:
                 self.next_run -= self.period
+
+
+#######################################################################
+## Basic controlling stuff
+
+class OnOffController:
+    def __init__(self):
+        self.desired_value = None
+        self.hysteresis_threshold = None
+        self.prev_response = None
+    
+    def set_desired_value(self, desired_value):
+        self.desired_value = desired_value
+
+    def set_hysteresis(self, threshold):
+        self.hysteresis_threshold = threshold
+
+    def update(self, actual_value):
+        if self.desired_value is None:
+            return False #TODO log error
+
+        minv = self.desired_value if self.hysteresis_threshold is None else self.desired_value - self.hysteresis_threshold
+        maxv = self.desired_value if self.hysteresis_threshold is None else self.desired_value + self.hysteresis_threshold
+
+        response = False
+        if actual_value < minv:
+            response = True
+        elif actual_value > maxv:
+            response = False
+        else:
+            # Inside upper/lower threshold, continue 
+            if self.prev_response is None:
+                response = False
+            else:
+                response = self.prev_response
+        self.prev_response = response
+        return response
+
+        
+# class PID:
+#     def __init__(self, P, I, D):
+#         self.P = P
+#         self.I = I
+#         self.D = D
+#         self.desired_value = None
+#         self.prev_error = None
+#         self.integrator = None
+#         self.windup_guard = 5
+#         self.last_update = None
+#         self.logger = logging.getLogger()
+
+#     def set_desired_value(self, desired_value):
+#         self.logger.info('PID setting setpoint/desired value {}'.format(desired_value))
+#         self.desired_value = desired_value
+
+#     def update(self, actual_value):
+#         if self.desired_value is None:
+#             return 0.0
+
+#         error = self.desired_value - actual_value
+        
+#         if self.last_update is None:
+#             self.integrator = 0.0
+#             derivative = 0.0
+#             self.last_update = _timer_now()
+#             delta_error = 0.0
+#         else:
+#             self.last_update, dt = _timer_diff(self.last_update)
+#             delta_error = error - self.prev_error
+
+#             self.integrator += error * dt
+#             if self.integrator < -self.windup_guard:
+#                 self.integrator = -self.windup_guard
+#             elif self.integrator > self.windup_guard:
+#                 self.integrator = self.windup_guard
+
+#             if dt > 0.0:
+#                 derivative = delta_error / dt
+#             else:
+#                 derivative = 0.0
+
+#         self.prev_error = error
+#         #self.logger.info
+#         print('  PID: error {:.2f}, delta_error {:.2f}\n{:10.2f}, {:10.2f}, {:10.2f}'.format(error, delta_error, self.P*error, self.I*self.integrator, self.D*derivative))
+#         return self.P * error + self.I * self.integrator + self.D * derivative
+
+# #TODO PID Tuning https://robotics.stackexchange.com/questions/167/what-are-good-strategies-for-tuning-pid-loops
+# # TODO Real system depends on valve state within each room, etc
+
