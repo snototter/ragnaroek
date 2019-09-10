@@ -186,6 +186,7 @@ class DeconzWrapper:
             
 
     def turn_on(self):
+        #TODO check if already running!
         # Technically (or-relais), we only need to turn on one.
         # But to have a less confusing status report, turn all on:
         # _, plug_id = next(iter(self.heater_plug_mapping.items()))
@@ -200,6 +201,7 @@ class DeconzWrapper:
 
 
     def turn_off(self):
+        #TODO check if already off!
         # Since this is an or-relais, we need to turn off all heating plugs
         success = True
         msg = ''

@@ -303,7 +303,10 @@ if __name__ == '__main__':
         
     ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
 
-    controller = HelheimrController(ctrl_cfg)
+    # ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
+    # deconz_wrapper = hd.DeconzWrapper(ctrl_cfg)
+
+    controller = HelheimrController(ctrl_cfg, deconz_wrapper)
     try:
         controller.join()
     except KeyboardInterrupt:

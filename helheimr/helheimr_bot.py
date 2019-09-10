@@ -284,6 +284,7 @@ def main():
     bot = HelheimrBot(bot_cfg, deconz_wrapper, weather_forecast)
     bot.start()
     bot.idle()
+    #TODO support: /schedule (list scheduled tasks, save to disk, load from disk)
 
 
 if __name__ == '__main__':
