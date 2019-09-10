@@ -15,6 +15,7 @@ help - Liste verfügbarer Befehle
 # import sys
 import time
 import traceback
+import threading
 
 #TODOs:
 #TODO use logging
@@ -45,7 +46,7 @@ import traceback
 # cherry_blossom
 
 import helheimr_utils as hu
-import helheimr_deconz as hd
+import helheimr_raspbee as hr
 import helheimr_weather as hw
 
 import logging
@@ -134,6 +135,13 @@ class HelheimrBot:
 
     def idle(self):
         self.updater.idle()
+
+    def _shutdown(self): # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
+        self.updater.stop()
+        self.updater.is_idle = False
+
+    def stop(self):
+        threading.Thread(target=self._shutdown).start()
 
 
     def cmd_help(self, update, context):
@@ -274,7 +282,7 @@ def main():
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         
     ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-    deconz_wrapper = hd.DeconzWrapper(ctrl_cfg)
+    deconz_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
 
     weather_cfg = hu.load_configuration('configs/owm.cfg')
     weather_forecast = hw.WeatherForecastOwm(weather_cfg)

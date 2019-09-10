@@ -53,7 +53,7 @@ class TemperatureState:
 
 
 """ Communication with the zigbee/raspbee (deconz REST API) gateway """
-class DeconzWrapper:
+class RaspBeeWrapper:
     def __init__(self, cfg):
         # Deconz parameters
         self.gateway = cfg['raspbee']['deconz']['gateway']
@@ -142,6 +142,7 @@ class DeconzWrapper:
 
 
     def query_heating(self):
+        """:return: flag (True if heating currently heating), list of PlugState"""
         status = list()
         is_heating = False
         logger = logging.getLogger()
@@ -186,7 +187,9 @@ class DeconzWrapper:
             
 
     def turn_on(self):
-        #TODO check if already running!
+        is_heating, _ = self.query_heating()
+        if is_heating:
+            return True, 'Heizung läuft schon.'
         # Technically (or-relais), we only need to turn on one.
         # But to have a less confusing status report, turn all on:
         # _, plug_id = next(iter(self.heater_plug_mapping.items()))
@@ -201,7 +204,9 @@ class DeconzWrapper:
 
 
     def turn_off(self):
-        #TODO check if already off!
+        is_heating, _ = self.query_heating()
+        if not is_heating:
+            return True, 'Heizung ist schon aus.'
         # Since this is an or-relais, we need to turn off all heating plugs
         success = True
         msg = ''

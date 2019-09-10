@@ -6,6 +6,9 @@ import datetime
 import time
 
 import helheimr_utils as hu
+import helheimr_bot as hb
+import helheimr_raspbee as hr
+import helheimr_weather as hw
 
 def to_duration(hours, minutes, seconds=0):
     return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
@@ -90,11 +93,9 @@ class HeatingJob(hu.Job):
         self.cv_loop_idle.release()
         self.worker_thread.join()
 
-#TODO periodicHeatingJob
+
 class PeriodicHeatingJob(HeatingJob):
-    # def __init__(self, interval=1):
-    #     super(PeriodicHeatingJob, self).__init__(interval)
-    
+    #TODO overlaps(self, other): check start + duration    
     def _schedule_next_run(self):
         if self.heating_duration is None:
             raise hu.ScheduleValueError('PeriodicHeatingJob must have a duration')
@@ -103,6 +104,13 @@ class PeriodicHeatingJob(HeatingJob):
 
         if self.heating_duration >= self.period:
             raise hu.IntervalError("PeriodicHeatingJob's duration ({}) must be less than the scheduled interval ({})".format(self.heating_duration, self.period))
+
+    def __str__(self):
+        return "PeriodicHeatingJob: every {} {}{}, {}".format(self.interval,
+                 self.unit[-1] if self.interval == 1 else self.unit,
+                 '' if self.at_time is None else self.at_time,
+                 super(PeriodicHeatingJob, self).__str__())
+
 
 class ManualHeatingJob(HeatingJob):
     def __init__(self, controller):#, target_temperature=None, temperature_hysteresis=None, duration=None):
@@ -137,29 +145,33 @@ class ManualHeatingJob(HeatingJob):
 
 
 class HelheimrController:
-    def __init__(self, config):
-        self.lock = threading.Lock()
+    def __init__(self, config, raspbee_wrapper, telegram_bot):
+        self.raspbee_wrapper = raspbee_wrapper # The wrapper which is actually able to turn stuff on/off
+        self.telegram_bot = telegram_bot # Telegram bot for notifications and user input (on-the-go ;-)
+
+        self.lock = threading.Lock()    # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
         self.condition_var = threading.Condition(self.lock)
         self.logger = logging.getLogger()
-        self.run_loop = True
-        self.job_list = list()
+
+        self.run_loop = True # Flag to abort the scheduling/main loop
+        self.job_list = list() # List of scheduled/manually inserted jobs
 
         self.poll_interval = 30 #TODO config
-        self.active_heating_job = None
+        self.active_heating_job = None # References the currently active heating job (for convenience)
 
-        self.worker_thread = threading.Thread(target=self.control_loop)
+        self.worker_thread = threading.Thread(target=self._scheduling_loop) # The scheduler runs in a separate thread
         self.worker_thread.start()
 
         # self._add_manual_heating_job(None, None, datetime.timedelta(seconds=10))
         # self._add_manual_heating_job(23, 0.5, None)
         try:
-            self.job_list.append(HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
-            self.job_list.append(HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
-        except Exception as e:
-            print('OHOHOHOHOHOH TODO Error:', e)
-        print('\n')
+            j1 = HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5))
+            self._add_periodic_heating_job(j1) # TODO make params (every day at hh:mm)
+            j2 = HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5))
+            self._add_periodic_heating_job(j2)
+        except:
+            pass
 
-        self.condition_var.acquire()
         # self.job_list.append(hu.Job.every(5).seconds.do(dummy_job, 5))
         # self.job_list.append(hu.Job.every(10).seconds.do(dummy_job, 10))
         # self.job_list.append(hu.Job.every().minute.do(self.stop))
@@ -168,16 +180,29 @@ class HelheimrController:
         # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
             # temperature_hysteresis=0.5))
         # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
+        self.condition_var.acquire()
         self.job_list.append(hu.Job.every(15).seconds.do(self.stop))
         self.job_list.append(hu.Job.every(2).seconds.start_immediately.do(self.dummy_query))
         self.condition_var.notify()
         self.condition_var.release()
 
-        #TODO keep active heating job as separate variable
+    def _add_periodic_heating_job(self, job):
+        self.condition_var.acquire()
+        try: 
+            #TODO check for overlapping heating jobs!
+            self.job_list.append(job)
+            self.condition_var.notify()
+        except Exception as e:
+            print('\nOHOHOHOHOHOH TODO Error:\n', e)#TODO
+        finally:
+            self.condition_var.release()
+
 
 
     def dummy_query(self):
-        print('\nQuerying System State.........\n')
+        status = self.raspbee_wrapper.query_temperature()
+        txt = '*Aktuelle Temperatur:*\n' + '\n'.join(map(str, status))
+        self.logger.info(txt)
 
     def dummy_stop(self):
         if self.active_heating_job:
@@ -190,6 +215,10 @@ class HelheimrController:
         self.condition_var.notify() # Wake up controller/scheduler
         self.condition_var.release()
         self.worker_thread.join()
+
+        if self.telegram_bot:
+            # TODO send shutdown message
+            self.telegram_bot.stop()
 
 
     def join(self):
@@ -221,7 +250,7 @@ class HelheimrController:
             self.logger.error('[HelheimrController] Could not cancel job "{}"'.format(job))
 
 
-    def turn_on_manually(self, duration=None):
+    def turn_on_manually(self, target_temperature=None, temperature_hysteresis=0.5, duration=None):
         # self.condition_var.acquire()
         # self.condition_var.release()
         #TODO abort running task
@@ -234,9 +263,11 @@ class HelheimrController:
             self.logger.info('[HelheimrController] Start heating for {} TODO hours?'.format(duration))
         return True
 
+
     def turn_off_manually(self):
         self.logger.info('[HelheimrController] Stop heating')
         return True
+
     
     def _add_manual_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
         self.condition_var.acquire()
@@ -244,7 +275,9 @@ class HelheimrController:
         if any([isinstance(job, ManualHeatingJob) for job in self.job_list]):
             self.logger.warning("[HelheimrController] There's already a ManualHeatingJob in my task list. I'm ignoring this request.")
         else:
-            self.job_list.append(HeatingJob.manual(target_temperature, temperature_hysteresis, heating_duration))
+            mhj = HeatingJob.manual(target_temperature, temperature_hysteresis, heating_duration)
+            self.logger.info("[HelheimrController] Adding a ManualHeatingJob ({}) to my task list.".format(mhj))
+            self.job_list.append(mhj)
             # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=target_temperature, 
             #     temperature_hysteresis=temperature_hysteresis, duration=heating_duration))
             ret = True
@@ -253,7 +286,7 @@ class HelheimrController:
         return ret
 
 
-    def control_loop(self):
+    def _scheduling_loop(self):
         self.condition_var.acquire()
         while self.run_loop:
             # Filter finished one-time jobs
@@ -279,20 +312,22 @@ class HelheimrController:
                         job.start()
                     # print('Job {} will be run_next on {}'.format(job, hu.datetime_as_local(job.next_run)))
 
-                #TODO check if heating job is still running before invoking another!
             
-            # heating_jobs = (job for job in self.job_list if isinstance(job, HeatingJob))
-        
             poll_interval = self.poll_interval if not self.job_list else min(self.poll_interval, self.idle_time)
-            print('!!!!!!![HelheimrController] Next iteration, wait for {}'.format(poll_interval))
-            self.condition_var.wait(timeout=max(1,poll_interval))
-            print('!!!!!!![HelheimrController] woke up!')
+            print('Going to sleep for {:.1f} sec'.format(poll_interval))
+            ret = self.condition_var.wait(timeout=max(1,poll_interval))
+            if ret:
+                print('\n\nController woke up due to notification!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!') #TODO remove output
         
+        #######################################################################
+        # Gracefully shut down:
         self.condition_var.release()
-        self.logger.info('[HelheimrController] Shutting down control loop, terminating active jobs')
+        self.logger.info('[HelheimrController] Shutting down control loop, terminating active jobs.')
+
+        # Tear down all active jobs:
         for job in self.job_list:
             if job.is_running:
-                self.logger.info('[HelheimrController] Terminating "{}"'.format(job))
+                self.logger.info('[HelheimrController] Terminating "{}".'.format(job))
                 job.stop()
         self.logger.info('[HelheimrController] Clean up done, goodbye!')
 
@@ -302,13 +337,20 @@ if __name__ == '__main__':
                     format='%(asctime)s - %(levelname)s - %(message)s')
         
     ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
+    raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
 
-    # ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-    # deconz_wrapper = hd.DeconzWrapper(ctrl_cfg)
+    weather_cfg = hu.load_configuration('configs/owm.cfg')
+    weather_forecast = hw.WeatherForecastOwm(weather_cfg)
 
-    controller = HelheimrController(ctrl_cfg, deconz_wrapper)
+    bot_cfg = hu.load_configuration('configs/bot.cfg')
+    telegram_bot = hb.HelheimrBot(bot_cfg, raspbee_wrapper, weather_forecast) #TODO refactor to use controller instead of wrapper!
+
+    controller = HelheimrController(ctrl_cfg, raspbee_wrapper, telegram_bot)
     try:
-        controller.join()
+        telegram_bot.start()
+        telegram_bot.idle()
+        controller.stop()
+        #controller.join()
     except KeyboardInterrupt:
         controller.stop()
     #TODO shut down heating
