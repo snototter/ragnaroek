@@ -77,6 +77,13 @@ def time_as_utc(t):
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
     return datetime_as_utc(dt).timetz()
 
+# #TODO FIXME function 
+# def time_with_timezone(dt_object):
+#     if dt_object.tzinfo is None or dt_object.tzinfo.utcoffset(dt_object) is None:
+#         print('TODO TODO TODO ERROR? WARNING! no timezone set on dt_object!!!!')
+#         dt_object = dt_object.replace(tzinfo=tz.tzlocal())
+#     return datetime_as_utc(dt_object).timetz()
+
 
 def datetime_now():
     return datetime_as_utc(datetime.datetime.now())
@@ -462,8 +469,9 @@ class Job(object):
             # If we are running for the first time, make sure we run
             # at the specified time *today* (or *this hour*) as well
             if not self.last_run:
-                now = timdatetime.datetime.now()
-                if (self.unit == 'days' and self.at_time > now.time() and
+                now = datetime_now()
+                print('TODO COMPARE', self.at_time, ' vs ', now.timetz(), ' vs now: ', now.time())
+                if (self.unit == 'days' and self.at_time > now.timetz() and
                         self.interval == 1):
                     self.next_run = self.next_run - datetime.timedelta(days=1)
                 elif self.unit == 'hours' \
@@ -477,7 +485,7 @@ class Job(object):
                                     datetime.timedelta(minutes=1)
         if self.start_day is not None and self.at_time is not None:
             # Let's see if we will still make that time we specified today
-            if (self.next_run - datetime.datetime.now()).days >= 7:
+            if (self.next_run - datetime_now()).days >= 7:
                 self.next_run -= self.period
 
 

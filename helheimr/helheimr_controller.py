@@ -94,11 +94,12 @@ class HeatingJob(hu.Job):
         self.worker_thread.join()
 
 
-class PeriodicHeatingJob(HeatingJob):
-    #TODO overlaps(self, other): check start + duration    
+class PeriodicHeatingJob(HeatingJob):  
     def _schedule_next_run(self):
         if self.heating_duration is None:
             raise hu.ScheduleValueError('PeriodicHeatingJob must have a duration')
+        if self.at_time is None:
+            raise hu.ScheduleValueError('PeriodicHeatingJob can only occur at a specific time. Specify "at_time"')
 
         super(PeriodicHeatingJob, self)._schedule_next_run()
 
@@ -108,8 +109,19 @@ class PeriodicHeatingJob(HeatingJob):
     def __str__(self):
         return "PeriodicHeatingJob: every {} {}{}, {}".format(self.interval,
                  self.unit[-1] if self.interval == 1 else self.unit,
-                 '' if self.at_time is None else self.at_time,
+                 '' if self.at_time is None else ' at {}'.format(self.at_time),
                  super(PeriodicHeatingJob, self).__str__())
+
+    def overlaps(self, other):
+        # Periodic heating jobs are (currently) assumed to run each day at a specific time
+        start_this = datetime.datetime.combine(datetime.datetime.today(), self.at_time)
+        end_this = start_this + self.heating_duration
+        start_other = datetime.datetime.combine(datetime.datetime.today(), other.at_time)
+        end_other = start_other + other.heating_duration
+        print('comparing', start_this, end_this, ' vs ', start_other, end_other)
+        if (end_other < start_this) or (start_other > end_this):
+            return False
+        return True
 
 
 class ManualHeatingJob(HeatingJob):
@@ -162,40 +174,36 @@ class HelheimrController:
         self.worker_thread = threading.Thread(target=self._scheduling_loop) # The scheduler runs in a separate thread
         self.worker_thread.start()
 
-        # self._add_manual_heating_job(None, None, datetime.timedelta(seconds=10))
-        # self._add_manual_heating_job(23, 0.5, None)
-        try:
-            j1 = HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5))
-            self._add_periodic_heating_job(j1) # TODO make params (every day at hh:mm)
-            j2 = HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5))
-            self._add_periodic_heating_job(j2)
-        except:
-            pass
+        # # self._add_manual_heating_job(None, None, datetime.timedelta(seconds=10))
+        # # self._add_manual_heating_job(23, 0.5, None)
+        # try:
+        #     self.job_list.append(HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
+        #     self.job_list.append(HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
+        # except Exception as e:
+        #     print('This error was expected: ', e)
+        #     pass
+        self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
+            heating_duration=datetime.timedelta(hours=2),
+            day_interval=1, at_hour=6, at_minute=30)
+        self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
+            heating_duration=datetime.timedelta(hours=3),
+            day_interval=1, at_hour=7, at_minute=59)
 
-        # self.job_list.append(hu.Job.every(5).seconds.do(dummy_job, 5))
-        # self.job_list.append(hu.Job.every(10).seconds.do(dummy_job, 10))
-        # self.job_list.append(hu.Job.every().minute.do(self.stop))
-        # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=None, 
-        #     temperature_hysteresis=None, duration=datetime.timedelta(seconds=10)))
-        # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
-            # temperature_hysteresis=0.5))
-        # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
+        # # self.job_list.append(hu.Job.every(5).seconds.do(dummy_job, 5))
+        # # self.job_list.append(hu.Job.every(10).seconds.do(dummy_job, 10))
+        # # self.job_list.append(hu.Job.every().minute.do(self.stop))
+        # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=None, 
+        # #     temperature_hysteresis=None, duration=datetime.timedelta(seconds=10)))
+        # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
+        #     # temperature_hysteresis=0.5))
+        # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
         self.condition_var.acquire()
         self.job_list.append(hu.Job.every(15).seconds.do(self.stop))
-        self.job_list.append(hu.Job.every(2).seconds.start_immediately.do(self.dummy_query))
+        self.job_list.append(hu.Job.every(5).seconds.start_immediately.do(self.dummy_query))
         self.condition_var.notify()
         self.condition_var.release()
 
-    def _add_periodic_heating_job(self, job):
-        self.condition_var.acquire()
-        try: 
-            #TODO check for overlapping heating jobs!
-            self.job_list.append(job)
-            self.condition_var.notify()
-        except Exception as e:
-            print('\nOHOHOHOHOHOH TODO Error:\n', e)#TODO
-        finally:
-            self.condition_var.release()
+    
 
 
 
@@ -284,6 +292,26 @@ class HelheimrController:
             self.condition_var.notify()
         self.condition_var.release()
         return ret
+
+
+    def _add_periodic_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
+            day_interval=1, at_hour=6, at_minute=0):
+        self.condition_var.acquire()
+        try: 
+            #TODO check for overlapping heating jobs!
+            job = HeatingJob.every(day_interval).days.at(
+                '{:02d}:{:02d}:00'.format(at_hour, at_minute)).do_heat_up(
+                target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
+                heating_duration=heating_duration)
+            if any([j.overlaps(job) for j in self.job_list]):
+                raise hu.ScheduleError('The requested periodic job "{}" overlaps with an existing one!'.format(job))
+            self.job_list.append(job)
+            self.condition_var.notify()
+            #TODO print stack trace!!!!!!
+        except Exception as e:
+            print('\nOHOHOHOHOHOH TODO Error:\n', e)#TODO
+        finally:
+            self.condition_var.release()
 
 
     def _scheduling_loop(self):

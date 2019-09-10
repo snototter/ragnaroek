@@ -84,6 +84,8 @@ class HelheimrBot:
 
         self.bot = telegram.Bot(token=self.api_token)
 
+        self.shutdown_message_sent = False
+
         self.updater = Updater(token=self.api_token, use_context=True)
         self.dispatcher = self.updater.dispatcher
 
@@ -141,6 +143,16 @@ class HelheimrBot:
         self.updater.is_idle = False
 
     def stop(self):
+        if not self.shutdown_message_sent:
+            self.shutdown_message_sent = True
+            # Send shutdown message
+            for chat_id in self.authorized_ids:
+                # Send startup message to all authorized users
+                status_txt = self.query_status(None)
+                self.bot.send_message(chat_id=chat_id, 
+                    text=hu.emo("Ich gehe offline, bis bald. {:s}\n\n{:s}".format(
+                        _rand_flower(), status_txt)),
+                    parse_mode=telegram.ParseMode.MARKDOWN)
         threading.Thread(target=self._shutdown).start()
 
 
