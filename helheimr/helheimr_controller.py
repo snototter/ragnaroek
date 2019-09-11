@@ -210,9 +210,8 @@ class HelheimrController:
 
 
     def dummy_query(self):
-        status = self.raspbee_wrapper.query_temperature()
-        txt = '*Aktuelle Temperatur:*\n' + '\n'.join(map(str, status))
-        self.logger.info(txt)
+        sensor_states = self.raspbee_wrapper.query_temperature()
+        self.logger.info(hu.format_msg_temperature(sensor_states))
 
     def dummy_stop(self):
         if self.active_heating_job:
@@ -377,6 +376,9 @@ if __name__ == '__main__':
     telegram_bot = hb.HelheimrBot(bot_cfg, raspbee_wrapper, weather_forecast) #TODO refactor to use controller instead of wrapper!
 
     controller = HelheimrController(ctrl_cfg, raspbee_wrapper, telegram_bot)
+    #TODO telegram bot wird von controller gestartet
+    #TODO weather forecast => member von controller
+    #TODO controller.start
     try:
         telegram_bot.start()
         telegram_bot.idle()
