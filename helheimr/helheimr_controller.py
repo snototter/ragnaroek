@@ -108,11 +108,13 @@ class PeriodicHeatingJob(HeatingJob):
         if self.heating_duration >= self.period:
             raise hu.IntervalError("PeriodicHeatingJob's duration ({}) must be less than the scheduled interval ({})".format(self.heating_duration, self.period))
 
+
     def __str__(self):
         return "PeriodicHeatingJob: every {} {}{}, {}".format(self.interval,
                  self.unit[-1] if self.interval == 1 else self.unit,
                  '' if self.at_time is None else ' at {}'.format(self.at_time),
                  super(PeriodicHeatingJob, self).__str__())
+
 
     def overlaps(self, other):
         # Periodic heating jobs are (currently) assumed to run each day at a specific time
@@ -120,7 +122,7 @@ class PeriodicHeatingJob(HeatingJob):
         end_this = start_this + self.heating_duration
         start_other = datetime.datetime.combine(datetime.datetime.today(), other.at_time)
         end_other = start_other + other.heating_duration
-        print('comparing', start_this, end_this, ' vs ', start_other, end_other, 'TODO TODO TODO tz aware/UTC????')
+        
         if (end_other < start_this) or (start_other > end_this):
             return False
         return True
@@ -159,13 +161,16 @@ class ManualHeatingJob(HeatingJob):
 
 
 class HelheimrController:
-    def __init__(self, config, raspbee_wrapper, telegram_bot):
-        self.raspbee_wrapper = raspbee_wrapper # The wrapper which is actually able to turn stuff on/off
-        self.telegram_bot = telegram_bot # Telegram bot for notifications and user input (on-the-go ;-)
+    def __init__(self):#, config, raspbee_wrapper, telegram_bot):
+        # The wrapper which is actually able to turn stuff on/off
+        ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
+        self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
 
-        self.lock = threading.Lock()    # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
+        # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
+        self.lock = threading.Lock()
         self.condition_var = threading.Condition(self.lock)
-        self.logger = logging.getLogger()
+
+        self.logger = logging.getLogger() # Keep consistent logs...
 
         self.run_loop = True # Flag to abort the scheduling/main loop
         self.job_list = list() # List of scheduled/manually inserted jobs
@@ -200,22 +205,44 @@ class HelheimrController:
         #     # temperature_hysteresis=0.5))
         # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
         self.condition_var.acquire()
-        self.job_list.append(hu.Job.every(15).seconds.do(self.stop))
-        self.job_list.append(hu.Job.every(5).seconds.start_immediately.do(self.dummy_query))
+        self.job_list.append(hu.Job.every(120).seconds.do(self.stop))
+        # self.job_list.append(hu.Job.every(5).seconds.start_immediately.do(self.dummy_query))
         self.condition_var.notify()
         self.condition_var.release()
 
+        # Weather forecast/service wrapper
+        weather_cfg = hu.load_configuration('configs/owm.cfg')
+        self.weather_service = hw.WeatherForecastOwm(weather_cfg)
+
+        # Telegram bot for notifications and user input (heat on-the-go ;-)
+        bot_cfg = hu.load_configuration('configs/bot.cfg')
+        self.telegram_bot = hb.HelheimrBot(bot_cfg, self)
+
+        self.telegram_bot.start()
+
     
+    def query_heating_state(self):
+        """:return: is_heating(bool), list(PlugState)"""
+        return self.raspbee_wrapper.query_heating()
 
 
+    def query_temperature(self):
+        """:return: list(TemperatureState)"""
+        return self.raspbee_wrapper.query_temperature()
 
+
+    def query_weather_forecast(self):
+        """:return:""" #TODO return object, use utils to format!!!!
+        return self.weather_service.query()
+
+#TODO remove
     def dummy_query(self):
         sensor_states = self.raspbee_wrapper.query_temperature()
         self.logger.info(hu.format_msg_temperature(sensor_states))
 
-    def dummy_stop(self):
-        if self.active_heating_job:
-            self.active_heating_job.stop_heating()
+    # def dummy_stop(self):
+    #     if self.active_heating_job:
+    #         self.active_heating_job.stop_heating()
 
 
     def stop(self):
@@ -231,11 +258,13 @@ class HelheimrController:
 
 
     def join(self):
+        """Block on the controller's scheduling thread."""
         self.worker_thread.join()
 
 
     @property
     def next_run(self):
+        """:return: Datetime object indicating the time of the next scheduled job."""
         if len(self.job_list) == 0:
             return None
         return min(self.job_list).next_run
@@ -243,8 +272,10 @@ class HelheimrController:
 
     @property
     def idle_time(self):
+        """:return: Idle time in seconds before the next (scheduled) job is to be run."""
         return hu.datetime_difference(hu.datetime_now(), self.next_run).total_seconds()
 
+#TODO for configuring from bot:
     # def schedule_heating(self, interval)
 
 
@@ -263,13 +294,14 @@ class HelheimrController:
         # self.condition_var.acquire()
         # self.condition_var.release()
         #TODO abort running task
+        #FIXME implement
         if duration is None:
             self.logger.info('[HelheimrController] Start heating (forever) due to user request')
         else:
             if duration < 0:
                 self.logger.error('[HelheimrController] Invalid duration provided, ignoring request')
                 return False
-            self.logger.info('[HelheimrController] Start heating for {} TODO hours?'.format(duration))
+            self.logger.info('[HelheimrController] Start heating for {}'.format(duration))
         return True
 
 
@@ -344,10 +376,10 @@ class HelheimrController:
 
             
             poll_interval = self.poll_interval if not self.job_list else min(self.poll_interval, self.idle_time)
-            print('Going to sleep for {:.1f} sec'.format(poll_interval))
+            # print('Going to sleep for {:.1f} sec'.format(poll_interval))
             ret = self.condition_var.wait(timeout=max(1,poll_interval))
-            if ret:
-                print('\n\nController woke up due to notification!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!') #TODO remove output
+            # if ret:
+            #     print('\n\nController woke up due to notification!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!') #TODO remove output
         
         #######################################################################
         # Gracefully shut down:
@@ -366,24 +398,18 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, #logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
         
-    ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-    raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
+    
 
-    weather_cfg = hu.load_configuration('configs/owm.cfg')
-    weather_forecast = hw.WeatherForecastOwm(weather_cfg)
-
-    bot_cfg = hu.load_configuration('configs/bot.cfg')
-    telegram_bot = hb.HelheimrBot(bot_cfg, raspbee_wrapper, weather_forecast) #TODO refactor to use controller instead of wrapper!
-
-    controller = HelheimrController(ctrl_cfg, raspbee_wrapper, telegram_bot)
+    controller = HelheimrController()
+    #ctrl_cfg, raspbee_wrapper, telegram_bot)
     #TODO telegram bot wird von controller gestartet
     #TODO weather forecast => member von controller
     #TODO controller.start
     try:
-        telegram_bot.start()
-        telegram_bot.idle()
-        controller.stop()
-        #controller.join()
+        # telegram_bot.start()
+        # telegram_bot.idle()
+        controller.join()
+        # controller.stop()
     except KeyboardInterrupt:
         controller.stop()
     #TODO shut down heating

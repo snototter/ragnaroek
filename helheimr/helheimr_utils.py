@@ -596,29 +596,45 @@ def plug_to_str(plug_state, use_markdown=True):
             )
     return txt
 
+
 def temperature_sensor_to_str(sensor_state, use_markdown=True):
-    # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
-    #     'name':sensor_state.display_name,
-    #     }
+    # # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
+    # #     'name':sensor_state.display_name,
+    # #     }
     def format_num(fmt, num):
         s = '{:' + fmt + '}'
         if use_markdown:
             s = '`' + s + '`'
         return s.format(num)
 
-    txt = '{}{}{}: {}°C, {} %, {} hPa'.format(
+    # hair space: U+200A, thin space: U+2009
+    txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
             '_' if use_markdown else '',
             sensor_state.display_name,
             '_' if use_markdown else '',
             format_num('.1f', sensor_state.temperature),
             format_num('d', int(sensor_state.humidity)),
-            format_num('d', int(sensor_state.pressure))
-        )
+            format_num('d', int(sensor_state.pressure)))
+
+    # txt = '{}{}{}: {}{:.1f}\u200a° {:d}\u200a% {:d}\u2009hPa{}'.format(
+    #         '_' if use_markdown else '',
+    #         sensor_state.display_name,
+    #         '_' if use_markdown else '',
+    #         '`' if use_markdown else '',
+    #         sensor_state.temperature,
+    #         int(sensor_state.humidity),
+    #         int(sensor_state.pressure),
+    #         '`' if use_markdown else '')
     if sensor_state.battery_level < 20:
         txt += ', {:d} % Akku{:s}'.format(
             sensor_state.battery_level,
             ' :warning:' if use_markdown else '')
     return txt
+
+
+def format_details_plug_states(plug_states, use_markdown=True):
+    return '  ' + '\n  '.join([plug_to_str(ps, use_markdown) for ps in plug_states]) #TODO formating, maybe centerdot instead of indentation
+
 
 def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True):
     txt = '{}Heizung{} ist {}{}'.format(
@@ -636,8 +652,9 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
     #         break
     include_state_details = True
     if include_state_details:
-        txt += '\n  ' + '\n  '.join([plug_to_str(ps, use_markdown) for ps in plug_states]) #TODO formating, maybe centerdot
+        txt += '\n' + format_details_plug_states(plug_states, use_markdown=use_markdown)
     return txt
+
 
 def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True):
     return '{}Aktuelle Temperatur{}:\n  {}'.format(
