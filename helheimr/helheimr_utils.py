@@ -580,24 +580,31 @@ class OnOffController:
 #######################################################################
 ## TODO message formatting
 
-def plug_to_str(plug_state, use_markdown=True):
+def plug_to_str(plug_state, use_markdown=True, detailed=False):
     txt = '{}{}{} ist '.format(
             '_' if use_markdown else '',
             plug_state.display_name,
             '_' if use_markdown else ''
         )
     if plug_state.reachable:
-        txt += 'ein' if plug_state.on else 'aus.'
-    else:
-        txt += '{}NICHT{} erreichbar{}'.format(
+        txt += 'ein' if plug_state.on else 'aus'
+    if not plug_state.reachable or detailed:
+        txt += ' und '
+        if not plug_state.reachable:
+            txt += '{}NICHT{} '.format(
                 '*' if use_markdown else '',
-                '*' if use_markdown else '',
-                ' :skull_and_crossbones::bangbang:' if use_markdown else '!'
-            )
+                '*' if use_markdown else '')
+        txt += 'erreichbar{}'.format(
+                '.' if plug_state.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
+            # txt += '{}NICHT{} erreichbar{}'.format(
+            #     '*' if use_markdown else '',
+            #     '*' if use_markdown else '',
+            #     ' :skull_and_crossbones::bangbang:' if use_markdown else '!'
+            # )
     return txt
 
 
-def temperature_sensor_to_str(sensor_state, use_markdown=True):
+def temperature_sensor_to_str(sensor_state, use_markdown=True, detailed=False):
     # # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
     # #     'name':sensor_state.display_name,
     # #     }
@@ -625,18 +632,18 @@ def temperature_sensor_to_str(sensor_state, use_markdown=True):
     #         int(sensor_state.humidity),
     #         int(sensor_state.pressure),
     #         '`' if use_markdown else '')
-    if sensor_state.battery_level < 20:
+    if detailed or sensor_state.battery_level < 20:
         txt += ', {:d} % Akku{:s}'.format(
-            sensor_state.battery_level,
-            ' :warning:' if use_markdown else '')
+            int(sensor_state.battery_level),
+            ' :warning:' if use_markdown and sensor_state.battery_level < 20 else '')
     return txt
 
 
-def format_details_plug_states(plug_states, use_markdown=True):
-    return '  ' + '\n  '.join([plug_to_str(ps, use_markdown) for ps in plug_states]) #TODO formating, maybe centerdot instead of indentation
+def format_details_plug_states(plug_states, use_markdown=True, detailed=False):
+    return '  ' + '\n  '.join([plug_to_str(ps, use_markdown, detailed) for ps in plug_states]) #TODO formating, maybe centerdot instead of indentation
 
 
-def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True):
+def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
     txt = '{}Heizung{} ist {}{}'.format(
             '*' if use_markdown else '',
             '*' if use_markdown else '',
@@ -650,14 +657,14 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
     #     if plug_states[i].on != plug_states[i-1].on:
     #         include_state_details = True
     #         break
-    include_state_details = True
+    # include_state_details = True
     if include_state_details:
-        txt += '\n' + format_details_plug_states(plug_states, use_markdown=use_markdown)
+        txt += '\n' + format_details_plug_states(plug_states, use_markdown=use_markdown, detailed=True)
     return txt
 
 
-def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True):
+def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, include_state_details=False):
     return '{}Aktuelle Temperatur{}:\n  {}'.format(
             '*' if use_markdown else '',
             '*' if use_markdown else '',
-            '\n  '.join([temperature_sensor_to_str(s) for s in sensor_states]))
+            '\n  '.join([temperature_sensor_to_str(s, use_markdown, include_state_details) for s in sensor_states]))

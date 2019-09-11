@@ -283,8 +283,8 @@ class HelheimrController:
     # def schedule_heating(self, interval)
 
 
-    def cancel_job(self, job):
-        # Delete a registered job
+    def _cancel_job(self, job):
+        # Delete a registered job - make sure to acquire the lock first!
         try:
             self.logger.info('[HelheimrController] Removing job "{}"'.format(job))
             if job == self.active_heating_job:
@@ -315,14 +315,17 @@ class HelheimrController:
 
     
     def _add_manual_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
+        mhj = HeatingJob.manual(target_temperature, temperature_hysteresis, heating_duration)
         #TODO change: if there is an existing job, delete that and start the new one
         #TODO add param user (name) for message (terminating Job started by XY)
         self.condition_var.acquire()
         ret = False
+        #TODO active heating is a separate variable - but we still need to check for heating jobs
+        #e.g. start manually, what happens with a periodic job starting in 2 minutes?
         if any([isinstance(job, ManualHeatingJob) for job in self.job_list]):
             self.logger.warning("[HelheimrController] There's already a ManualHeatingJob in my task list. I'm ignoring this request.")
         else:
-            mhj = HeatingJob.manual(target_temperature, temperature_hysteresis, heating_duration)
+            
             self.logger.info("[HelheimrController] Adding a ManualHeatingJob ({}) to my task list.".format(mhj))
             self.job_list.append(mhj)
             # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=target_temperature, 
@@ -359,7 +362,7 @@ class HelheimrController:
         while self.run_loop:
             # Filter finished one-time jobs
             for job in [job for job in self.job_list if job.should_be_removed]:
-                self.cancel_job(job)
+                self._cancel_job(job)
 
             # Query job list for scheduled/active jobs
             runnable_jobs = (job for job in self.job_list if job.should_run)
@@ -376,6 +379,7 @@ class HelheimrController:
                             job.start()
                         else:
                             self.logger.warning("[HelheimrController] There's already a heating job '{}' running. I'm ignoring '{}'".format(self.active_heating_job, job))
+                            #TODO implement job.skip() - calls _schedule_next()
                     else:
                         job.start()
                     # print('Job {} will be run_next on {}'.format(job, hu.datetime_as_local(job.next_run)))

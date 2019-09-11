@@ -6,7 +6,8 @@ Commands (formating for @botfather):
 status - Statusabfrage
 on - :sunny: Heizung einschalten
 off - :snowflake: Heizung ausschalten
-forecast - Wettervorhersage
+forecast - :partly_sunny: Wettervorhersage
+details - Sehr detaillierte Statusmeldung
 help - Liste verfügbarer Befehle
 """
 
@@ -108,12 +109,16 @@ class HelheimrBot:
         status_handler = CommandHandler('status', self.cmd_status, self.user_filter)
         self.dispatcher.add_handler(status_handler)
 
+        detail_handler = CommandHandler('details', self.cmd_details, self.user_filter)
+        self.dispatcher.add_handler(detail_handler)
+
         on_handler = CommandHandler('on', self.cmd_on, self.user_filter)
         self.dispatcher.add_handler(on_handler)
 
         off_handler = CommandHandler('off', self.cmd_off, self.user_filter)
         self.dispatcher.add_handler(off_handler)
 
+        # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self.dispatcher.add_handler(CallbackQueryHandler(self.callback_handler))
 
         forecast_handler = CommandHandler('forecast', self.cmd_forecast, self.user_filter)
@@ -168,6 +173,7 @@ class HelheimrBot:
   /on - :sunny: Heizung einschalten.\n
   /off - :snowflake: Heizung ausschalten.\n\n
   /forecast - :partly_sunny: Wettervorhersage.\n
+  /details - Sehr detaillierte Statusmeldung.\n
   /help - Diese Hilfemeldung."""
         context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt),
             parse_mode=telegram.ParseMode.MARKDOWN)
@@ -178,18 +184,20 @@ class HelheimrBot:
             text=hu.emo("Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower())))
 
 
-    def query_status(self, chat_id):
+    def query_status(self, chat_id, detailed_report=False):
         # Query heating status
         is_heating, plug_states = self.controller.query_heating_state()
         txt = hu.format_msg_heating(is_heating, plug_states, 
             use_markdown=type(self).USE_MARKDOWN, 
-            use_emoji=type(self).USE_EMOJI)
+            use_emoji=type(self).USE_EMOJI,
+            include_state_details=detailed_report)
 
         # Query temperatures
         sensors = self.controller.query_temperature()
         txt += '\n\n' + hu.format_msg_temperature(sensors,
             use_markdown=type(self).USE_MARKDOWN, 
-            use_emoji=type(self).USE_EMOJI)
+            use_emoji=type(self).USE_EMOJI,
+            include_state_details=detailed_report)
 
         if chat_id is None:
             return txt
@@ -200,6 +208,10 @@ class HelheimrBot:
 
     def cmd_status(self, update, context):
         self.query_status(update.message.chat_id)
+
+
+    def cmd_details(self, update, context):
+        self.query_status(update.message.chat_id, detailed_report=True)
 
 
     def cmd_on(self, update, context):#FIXME
