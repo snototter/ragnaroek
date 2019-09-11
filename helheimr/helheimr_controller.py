@@ -110,8 +110,8 @@ class PeriodicHeatingJob(HeatingJob):
 
 
     def __str__(self):
-        return "PeriodicHeatingJob: every {} {}{}, {}".format(self.interval,
-                 self.unit[-1] if self.interval == 1 else self.unit,
+        return "PeriodicHeatingJob: every {}{}{}, {}".format(self.interval if self.interval > 1 else '',
+                 self.unit[:-1] if self.interval == 1 else self.unit,
                  '' if self.at_time is None else ' at {}'.format(self.at_time),
                  super(PeriodicHeatingJob, self).__str__())
 
@@ -204,6 +204,10 @@ class HelheimrController:
         # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
         #     # temperature_hysteresis=0.5))
         # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
+        # Create a dummy heating job:
+        start_time = (datetime.datetime.now() + datetime.timedelta(seconds=15)).time()
+        self._add_periodic_heating_job(27.8, 0.8, datetime.timedelta(hours=2), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second)
+
         self.condition_var.acquire()
         self.job_list.append(hu.Job.every(120).seconds.do(self.stop))
         # self.job_list.append(hu.Job.every(5).seconds.start_immediately.do(self.dummy_query))
@@ -293,7 +297,7 @@ class HelheimrController:
     def turn_on_manually(self, target_temperature=None, temperature_hysteresis=0.5, duration=None):
         # self.condition_var.acquire()
         # self.condition_var.release()
-        #TODO abort running task
+        #TODO abort running task (cancel if manual, stop this run if periodic)
         #FIXME implement
         if duration is None:
             self.logger.info('[HelheimrController] Start heating (forever) due to user request')
@@ -328,12 +332,12 @@ class HelheimrController:
 
 
     def _add_periodic_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
-            day_interval=1, at_hour=6, at_minute=0):
+            day_interval=1, at_hour=6, at_minute=0, at_second=0):
         self.condition_var.acquire()
         try: 
             #TODO check for overlapping heating jobs!
             job = HeatingJob.every(day_interval).days.at(
-                '{:02d}:{:02d}:00'.format(at_hour, at_minute)).do_heat_up(
+                '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
                 target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
                 heating_duration=heating_duration)
             if any([j.overlaps(job) for j in self.job_list]):
