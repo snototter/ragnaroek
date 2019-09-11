@@ -1,9 +1,10 @@
 # The heart of my home automation project
 
-import threading
-import logging
 import datetime
+import logging
+import threading
 import time
+import traceback
 
 import helheimr_utils as hu
 import helheimr_bot as hb
@@ -308,8 +309,9 @@ class HelheimrController:
             self.job_list.append(job)
             self.condition_var.notify()
             #TODO print stack trace!!!!!!
-        except Exception as e:
-            print('\nOHOHOHOHOHOH TODO Error:\n', e)#TODO
+        except:
+            err_msg = traceback.format_exc()
+            print('\nOHOHOHOHOHOH TODO Error:\n', err_msg)#TODO
         finally:
             self.condition_var.release()
 
