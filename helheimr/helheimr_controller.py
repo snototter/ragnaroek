@@ -94,7 +94,8 @@ class HeatingJob(hu.Job):
         self.cv_loop_idle.release()
         self.worker_thread.join()
 
-
+# TODO from libconf, to libconf https://github.com/Grk0/python-libconf
+# return a dict for serialization
 class PeriodicHeatingJob(HeatingJob):  
     def _schedule_next_run(self):
         if self.heating_duration is None:
@@ -119,7 +120,7 @@ class PeriodicHeatingJob(HeatingJob):
         end_this = start_this + self.heating_duration
         start_other = datetime.datetime.combine(datetime.datetime.today(), other.at_time)
         end_other = start_other + other.heating_duration
-        print('comparing', start_this, end_this, ' vs ', start_other, end_other)
+        print('comparing', start_this, end_this, ' vs ', start_other, end_other, 'TODO TODO TODO tz aware/UTC????')
         if (end_other < start_this) or (start_other > end_this):
             return False
         return True

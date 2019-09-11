@@ -493,6 +493,7 @@ class Job(object):
 ## Basic controlling stuff
 
 class OnOffController:
+    """Bang bang controller with hysteresis."""
     def __init__(self):
         self.desired_value = None
         self.hysteresis_threshold = None
@@ -576,3 +577,70 @@ class OnOffController:
 # #TODO PID Tuning https://robotics.stackexchange.com/questions/167/what-are-good-strategies-for-tuning-pid-loops
 # # TODO Real system depends on valve state within each room, etc
 
+#######################################################################
+## TODO message formatting
+
+def plug_to_str(plug_state, use_markdown=True):
+    txt = '{}{}{} ist '.format(
+            '_' if use_markdown else '',
+            plug_state.display_name,
+            '_' if use_markdown else ''
+        )
+    if plug_state.reachable:
+        txt += 'ein' if plug_state.on else 'aus.'
+    else:
+        txt += '{}NICHT{} erreichbar{}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else '',
+                ' :skull_and_crossbones::bangbang:' if use_markdown else '!'
+            )
+    return txt
+
+def temperature_sensor_to_str(sensor_state, use_markdown=True):
+    # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
+    #     'name':sensor_state.display_name,
+    #     }
+    def format_num(fmt, num):
+        s = '{:' + fmt + '}'
+        if use_markdown:
+            s = '`' + s + '`'
+        return s.format(num)
+
+    txt = '{}{}{}: {}°C, {} %, {} hPa'.format(
+            '_' if use_markdown else '',
+            sensor_state.display_name,
+            '_' if use_markdown else '',
+            format_num('.1f', sensor_state.temperature),
+            format_num('d', int(sensor_state.humidity)),
+            format_num('d', int(sensor_state.pressure))
+        )
+    if sensor_state.battery_level < 20:
+        txt += ', {:d} % Akku{:s}'.format(
+            sensor_state.battery_level,
+            ' :warning:' if use_markdown else '')
+    return txt
+
+def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True):
+    txt = '{}Heizung{} ist {}{}'.format(
+            '*' if use_markdown else '',
+            '*' if use_markdown else '',
+            'ein' if is_heating else 'aus',
+            '.' if not use_emoji else (' :sunny:' if is_heating else ' :snowman:')
+        )
+
+    # #TODO later on, I probably only want to know the states if the plug states differ:
+    # include_state_details = False
+    # for i in range(1, len(plug_states)):
+    #     if plug_states[i].on != plug_states[i-1].on:
+    #         include_state_details = True
+    #         break
+    include_state_details = True
+    if include_state_details:
+        txt += '\n  ' + '\n  '.join([plug_to_str(ps, use_markdown) for ps in plug_states]) #TODO formating, maybe centerdot
+    return txt
+
+def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True):
+    return '{}Aktuelle Temperatur{}:\n  {}'.format(
+            '*' if use_markdown else '',
+            '*' if use_markdown else '',
+            '\n  '.join([temperature_sensor_to_str(s) for s in sensor_states]))
