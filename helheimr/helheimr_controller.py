@@ -315,6 +315,8 @@ class HelheimrController:
 
     
     def _add_manual_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
+        #TODO change: if there is an existing job, delete that and start the new one
+        #TODO add param user (name) for message (terminating Job started by XY)
         self.condition_var.acquire()
         ret = False
         if any([isinstance(job, ManualHeatingJob) for job in self.job_list]):

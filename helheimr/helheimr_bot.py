@@ -157,7 +157,7 @@ class HelheimrBot:
                 # Send startup message to all authorized users
                 status_txt = self.query_status(None)
                 self.bot.send_message(chat_id=chat_id, 
-                    text=hu.emo("Ich werde heruntergefahren, bis bald. {:s}\n\n{:s}".format(
+                    text=hu.emo("Ich werde ausgeschalten, bis bald. {:s}\n\n{:s}".format(
                         _rand_flower(), status_txt)),
                     parse_mode=telegram.ParseMode.MARKDOWN)
             threading.Thread(target=self._shutdown).start()
