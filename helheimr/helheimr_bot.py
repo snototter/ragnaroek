@@ -13,6 +13,7 @@ help - Liste verfügbarer Befehle
 # import argparse
 # import os
 # import sys
+import datetime
 import time
 import traceback
 import threading
@@ -254,7 +255,7 @@ class HelheimrBot:
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
             update.message.reply_text('Heizung wirklich ausschalten?', reply_markup=reply_markup)
 
-
+#TODO cmd_details plug+reachable, sensors+battery
     def callback_handler(self, update, context):
         query = update.callback_query
         tokens = query.data.split(':')

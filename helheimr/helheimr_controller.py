@@ -300,14 +300,14 @@ class HelheimrController:
         else:
             if duration < 0:
                 self.logger.error('[HelheimrController] Invalid duration provided, ignoring request')
-                return False
+                return False, 'TODO'
             self.logger.info('[HelheimrController] Start heating for {}'.format(duration))
-        return True
+        return True, 'TODO'
 
 
     def turn_off_manually(self):
         self.logger.info('[HelheimrController] Stop heating')
-        return True
+        return True, 'FOO TODO'
 
     
     def _add_manual_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
