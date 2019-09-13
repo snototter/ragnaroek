@@ -13,8 +13,28 @@ class PlugState:
         self.on = deconz_plug['state']['on']
     
     def __str__(self):
-        return "_{:s}_ ist {:s}erreichbar und *{:s}*".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
+        return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
         #return "Plug '{:s}' is {:s}reachable and {:s}".format(self.name, '' if self.reachable else 'NOT ', 'on' if self.on else 'off')
+
+    def format_message(self, use_markdown=True, detailed_information=False):
+        txt = '{}{}{} ist '.format(
+            '_' if use_markdown else '',
+            plug_state.display_name,
+            '_' if use_markdown else ''
+        )
+        if plug_state.reachable:
+            txt += 'ein' if plug_state.on else 'aus'
+        if not plug_state.reachable or detailed_information:
+            txt += ' und '
+            if not plug_state.reachable:
+                txt += '{}NICHT{} '.format(
+                    '*' if use_markdown else '',
+                    '*' if use_markdown else '')
+            txt += 'erreichbar{}'.format(
+                    '.' if plug_state.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
+        else:
+            txt += '.'
+        return txt
 
 
 class TemperatureState:
@@ -34,10 +54,12 @@ class TemperatureState:
         elif deconz_sensor['type'] == 'ZHAPressure': #'pressure' in state:
             self.pressure = state['pressure']
 
+
     def __str__(self):
         #TODO str anpassen (None objects; viel zu lang)
-        return '_{:s}_: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
+        return '{:s}: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
             self.display_name, self.temperature, self.humidity, self.pressure, self.battery_level)
+
 
     def merge(self, other):
         if self.name != other.name:
@@ -51,6 +73,23 @@ class TemperatureState:
             self.temperature = other.temperature
         self.battery_level = min(self.battery_level, other.battery_level)
         return self
+
+
+    def format_message(self, use_markdown=True, detailed_information=False):
+        # hair space: U+200A, thin space: U+2009
+        txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
+                '_' if use_markdown else '',
+                self.display_name,
+                '_' if use_markdown else '',
+                hu.format_num('.1f', self.temperature, use_markdown),
+                hu.format_num('d', self.humidity, use_markdown)),
+                hu.format_num('d', self.pressure, use_markdown)))
+
+        if detailed or self.battery_level < 20:
+            txt += ', {}\u200a% Akku{:s}'.format(
+                hu.format_num('d', int(self.battery_level), use_markdown),
+                ' :warning:' if use_markdown and self.battery_level < 20 else '')
+        return txt
 
 
 """ Communication with the zigbee/raspbee (deconz REST API) gateway """

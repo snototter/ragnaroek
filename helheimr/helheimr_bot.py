@@ -58,6 +58,32 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 def _rand_flower():
     return random.choice([':sunflower:', ':hibiscus:', ':tulip:', ':rose:', ':cherry_blossom:'])
 
+
+def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
+    txt = '{}Heizung{} ist {}{}'.format(
+            '*' if use_markdown else '',
+            '*' if use_markdown else '',
+            'ein' if is_heating else 'aus',
+            ('.' if not include_state_details else ':') if not use_emoji else (' :sunny:' if is_heating else ' :snowman:')
+        )
+    # #TODO later on, I probably only want to know the states if the plug states differ:
+    # include_state_details = False
+    # for i in range(1, len(plug_states)):
+    #     if plug_states[i].on != plug_states[i-1].on:
+    #         include_state_details = True
+    #         break
+    if include_state_details:
+        txt += '\n  ' + '\n  '.join([plug.format_message(use_markdown=use_markdown, detailed_information=True) for plug in plug_states])
+    return txt
+
+
+def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, include_state_details=False):
+    return '{}Aktuelle Temperatur:{}\n  {}'.format(
+            '*' if use_markdown else '',
+            '*' if use_markdown else '',
+            # '\n  '.join([temperature_sensor_to_str(s, use_markdown, include_state_details) for s in sensor_states]))
+            '\n  '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
+
 #######################################################################
 # Main bot workflow
 class HelheimrBot:
@@ -187,14 +213,14 @@ class HelheimrBot:
     def query_status(self, chat_id, detailed_report=False):
         # Query heating status
         is_heating, plug_states = self.controller.query_heating_state()
-        txt = hu.format_msg_heating(is_heating, plug_states, 
+        txt = format_msg_heating(is_heating, plug_states, 
             use_markdown=type(self).USE_MARKDOWN, 
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
 
         # Query temperatures
         sensors = self.controller.query_temperature()
-        txt += '\n\n' + hu.format_msg_temperature(sensors,
+        txt += '\n\n' + format_msg_temperature(sensors,
             use_markdown=type(self).USE_MARKDOWN, 
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
