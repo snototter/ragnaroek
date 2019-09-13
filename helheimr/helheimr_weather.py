@@ -1,4 +1,4 @@
-from datetime import datetime
+import datetime
 from dateutil import tz
 import logging
 import math
@@ -18,15 +18,6 @@ def degrees_to_compass(deg, num_directions=8):
         return lookup[(val % 16)]
     else:
         raise ValueError('You can only convert angle to 8 or 16 compass directions!')
-
-
-#emoji list, supported by py-emoji. https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
-# https://stackoverflow.com/questions/4770297/convert-utc-datetime-string-to-local-datetime
-def localize_utc_time(dt_object):
-    from_zone = tz.gettz('UTC') # or tz.tzutc()
-    to_zone = tz.gettz('Europe/Vienna') # or tz.tzlocal()
-    utc = dt_object.replace(tzinfo=from_zone)
-    return utc.astimezone(to_zone)
 
 
 def weather_code_emoji(code):
@@ -50,7 +41,10 @@ def weather_code_emoji(code):
     elif code >= 700 and code < 800:
         # Atmospheric stuff (fog, mist, volcanic ashes)
         return ':fog:'
-    elif code == 800:
+    elif code == 800: # clear, check time-of-day
+        now = hu.datetime_as_local(hu.datetime_now()).timetz()
+        if now.hour >= 21 or now.hour < 5:
+            return ':full_moon:'
         return ':sunny:'
     elif code == 801:
         return ':partly_sunny:'
@@ -204,10 +198,10 @@ class WeatherReport:
             lines.append('Niederschlag: TODO')
         if self.snow is not None:
             lines.append('Schneefall: TODO')
-        if self.wind is not None:
+        if self.wind is not None and self.wind['speed'] is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
                     self.wind['speed'],
-                    ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if 'direction' in self.wind else ''
+                    ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else ''
                 ))
         lines.append('') # Will be joined with a newline
 
