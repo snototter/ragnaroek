@@ -2,6 +2,8 @@ import json
 import logging
 import requests
 
+import helheimr_utils as hu
+
 #TODO https://stackoverflow.com/questions/373335/how-do-i-get-a-cron-like-scheduler-in-python <== needed for controller
 #TODO decorator util: plug_state_to_telegram
 #TODO make properties, add format_message methods
@@ -82,10 +84,10 @@ class TemperatureState:
                 self.display_name,
                 '_' if use_markdown else '',
                 hu.format_num('.1f', self.temperature, use_markdown),
-                hu.format_num('d', self.humidity, use_markdown)),
-                hu.format_num('d', self.pressure, use_markdown)))
+                hu.format_num('d', int(self.humidity), use_markdown),
+                hu.format_num('d', self.pressure, use_markdown))
 
-        if detailed or self.battery_level < 20:
+        if detailed_information or self.battery_level < 20:
             txt += ', {}\u200a% Akku{:s}'.format(
                 hu.format_num('d', int(self.battery_level), use_markdown),
                 ' :warning:' if use_markdown and self.battery_level < 20 else '')

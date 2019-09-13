@@ -349,11 +349,12 @@ class HelheimrBot:
         try:
             forecast = self.controller.query_weather_forecast()
             # forecast = self.weather_forecast.query()
-            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(forecast.format(
-                    format_message, use_markdown=True, use_emoji=True)),
+            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(
+                forecast.format_message(use_markdown=True, use_emoji=True)),
                 parse_mode=telegram.ParseMode.MARKDOWN)
         except:
             err_msg = traceback.format_exc()
+            logging.getLogger().error('Error while querying weather report/forecast:\n' + err_msg)
             context.bot.send_message(chat_id=update.message.chat_id, text='Fehler während der Wetterabfrage:\n\n' + err_msg)
 
 

@@ -110,8 +110,8 @@ def get_windchill(temperature, wind_speed):
     return 13.12 + 0.6215*temperature - 11.37*speed_pow + 0.3965*temperature*speed_pow
 
 
-class WeatherForecast:
-    def __init__(self, owm_observation=None):
+class WeatherReport:
+    def __init__(self, weather=None):
         self._detailed_status = None
         self._weather_code = None
         self._temperature_current = None
@@ -124,10 +124,10 @@ class WeatherForecast:
         self._atmospheric_pressure = None
         self._sunset_time = None
         self._sunrise_time = None
-        if owm_observation is not None:
-            self.from_observation(owm_observation)
+        if weather is not None:
+            self.from_observation(weather)
 
-    def from_observation(self):
+    def from_observation(self, w):
         temp = w.get_temperature(unit='celsius')
         self.temperature = temp['temp']
         self.temperature_range = {
@@ -137,16 +137,19 @@ class WeatherForecast:
 
         self.detailed_status = w.get_detailed_status()
         self.weather_code = w.get_weather_code()
-        # self.weather_emoji = weather_code_emoji(self.weather_code)
-        rain = w.get_clouds()
-        if rain:
-            self.rain = rain['3h']
-            # TODO!!
 
-        snow = w.get_snow()
-        if snow:
-            self.snow = snow['3h'] 
-            # TODO!!
+        #TODO get rain, snow, change emoji during night
+        self.clouds = w.get_clouds()
+        # self.weather_emoji = weather_code_emoji(self.weather_code)
+        rain = w.get_rain()
+        # if rain:
+        #     self.rain = rain['3h']
+        #     # TODO!!
+
+        # snow = w.get_snow()
+        # if snow:
+        #     self.snow = snow['3h'] 
+        #     # TODO!!
 
         wind = w.get_wind(unit='meters_sec')
         if wind:
@@ -191,9 +194,9 @@ class WeatherForecast:
                     hu.format_num('d', windchill, use_markdown),
                     ' ' + temperature_emoji(windchill) if use_emoji else ''
                 ))
-        lines.append('\n')
+        lines.append('') # Will be joined with a newline
 
-        lines.append('Bewölkung: {}\u200a%'.format(hu.format_num('d', self.clouds, use_markdown))
+        lines.append('Bewölkung: {}\u200a%'.format(hu.format_num('d', self.clouds, use_markdown)))
         lines.append('Luftfeuchte: {}\u200a%'.format(hu.format_num('d', self.humidity)))
         if self.atmospheric_pressure is not None:
             lines.append('Luftdruck: {}\u200ahPa'.format(hu.format_num('d', self.atmospheric_pressure)))
@@ -204,9 +207,9 @@ class WeatherForecast:
         if self.wind is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
                     self.wind['speed'],
-                    ' aus {}'.format(degrees_to_compass(self.wind['direction']) if 'direction' in self.wind else ''
+                    ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if 'direction' in self.wind else ''
                 ))
-        lines.append('\n')
+        lines.append('') # Will be joined with a newline
 
         lines.append('Sonnenaufgang: {:s}'.format(self.sunrise_time.strftime('%H:%m')))
         lines.append('Sonnenuntergang: {:s}'.format(self.sunset_time.strftime('%H:%m'))) # TODO check after Daylight Savings Time (Zeitumstellung!)
@@ -246,8 +249,8 @@ class WeatherForecast:
     def clouds(self):
         return self._clouds
     @clouds.setter
-    def temperature(self, value):
-        self._temperature_current = value
+    def clouds(self, value):
+        self._clouds = value
     
     @property
     def rain(self):
@@ -312,5 +315,11 @@ class WeatherForecastOwm:
         # obs = self.owm.weather_at_id(self.city_id)
         obs = self.owm.weather_at_coords(self.latitude, self.longitude)
         w = obs.get_weather()
+        return WeatherReport(w)
 
-        return WeatherForecast(w)
+
+if __name__ == '__main__':
+    wcfg = hu.load_configuration('configs/owm.cfg')
+    weather_service = WeatherForecastOwm(wcfg)
+    print(weather_service.query().format_message(True, True))
+    
