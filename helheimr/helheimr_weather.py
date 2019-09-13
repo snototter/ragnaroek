@@ -284,12 +284,17 @@ class WeatherForecastOwm:
     def query(self):
         # Either query by city ID or lat/lon
         # obs = self.owm.weather_at_id(self.city_id)
-        obs = self.owm.weather_at_coords(self.latitude, self.longitude)
-        w = obs.get_weather()
-        return WeatherReport(w)
+        try:
+            obs = self.owm.weather_at_coords(self.latitude, self.longitude)
+            w = obs.get_weather()
+            return WeatherReport(w)
+        except:
+            logging.getLogger().error('Error while querying OpenWeatherMap:\n' + traceback.)
+            return None
 
 
 if __name__ == '__main__':
+    #TODO try without internet connection
     wcfg = hu.load_configuration('configs/owm.cfg')
     weather_service = WeatherForecastOwm(wcfg)
     print(weather_service.query().format_message(True, True))

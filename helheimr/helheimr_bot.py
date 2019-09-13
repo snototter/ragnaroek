@@ -360,14 +360,19 @@ class HelheimrBot:
 
 
     def cmd_forecast(self, update, context):
-        #FIXME try without connection (from controller, not bot obviously...)
         try:
             forecast = self.controller.query_weather_forecast()
-            # forecast = self.weather_forecast.query()
-            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(
-                forecast.format_message(use_markdown=True, use_emoji=True)),
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            if forecast is None:
+                context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(
+                    ':bangbang: *Fehler* beim Abfragen des Wetterberichts. Log überprüfen!'
+                    ),parse_mode=telegram.ParseMode.MARKDOWN)
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(
+                    forecast.format_message(use_markdown=True, use_emoji=True)),
+                    parse_mode=telegram.ParseMode.MARKDOWN)
         except:
+            # This will be a formating error (maybe some fields were not set, etc.)
+            # I keep this exception handling as long as I don't know what pyowm returns exactly for every weather condition
             err_msg = traceback.format_exc()
             logging.getLogger().error('Error while querying weather report/forecast:\n' + err_msg)
             context.bot.send_message(chat_id=update.message.chat_id, text='Fehler während der Wetterabfrage:\n\n' + err_msg)
