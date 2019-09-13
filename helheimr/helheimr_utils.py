@@ -12,14 +12,9 @@ import random
 import re
 import time
 import threading
+import traceback
+import urllib3
 
-# import urllib3 #TODO adjust https://stackoverflow.com/questions/3764291/checking-network-connection for py3
-# def internet_on():
-#     try:
-#         urllib3.urlopen('http://216.58.192.142', timeout=1)
-#         return True
-#     except urllib3.URLError as err: 
-#         return False
 
 #######################################################################
 # Utilities
@@ -45,6 +40,14 @@ def load_configuration(filename):
     with open(filename) as f:
         return libconf.load(f)
 
+def check_internet_connection():
+    try:
+        urllib3.urlopen('http://8.8.8.8', timeout=1)
+        return True
+    except:
+        logging.getLogger().error("Error while checking connection to Google's DNS server:\n" + traceback.format_exc())
+        return False
+
 
 #######################################################################
 # Time stuff
@@ -66,8 +69,6 @@ def datetime_as_utc(dt_object):
     """
     return as_timezone(dt_object, tz.tzlocal(), tz.tzutc())
     #     from_zone = tz.tzlocal() #tz.gettz('Europe/Vienna')
-    #     utc = dt_object.replace(tzinfo=from_zone)
-    # to_zone = tz.gettz('UTC') # or tz.tzutc()
 
 
 def time_as_utc(t):
@@ -76,13 +77,6 @@ def time_as_utc(t):
     else:
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
     return datetime_as_utc(dt).timetz()
-
-# #TODO FIXME function 
-# def time_with_timezone(dt_object):
-#     if dt_object.tzinfo is None or dt_object.tzinfo.utcoffset(dt_object) is None:
-#         print('TODO TODO TODO ERROR? WARNING! no timezone set on dt_object!!!!')
-#         dt_object = dt_object.replace(tzinfo=tz.tzlocal())
-#     return datetime_as_utc(dt_object).timetz()
 
 
 def datetime_now():

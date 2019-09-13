@@ -60,6 +60,13 @@ def _rand_flower():
 
 
 def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
+    if is_heating is None:
+        return '{}{}Fehler{} beim Abfragen der Heizung!'.format(
+                ':bangbang: ' if use_emoji else '',
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            )
+
     txt = '{}Heizung{} ist {}{}'.format(
             '*' if use_markdown else '',
             '*' if use_markdown else '',
@@ -73,17 +80,22 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
     #         include_state_details = True
     #         break
     if include_state_details:
-        txt += '\n  ' + '\n  '.join([plug.format_message(use_markdown=use_markdown, detailed_information=True) for plug in plug_states])
+        txt += '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=True) for plug in plug_states])
     return txt
 
 
 def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, include_state_details=False):
-    return '{}Aktuelle Temperatur:{}\n  {}'.format(
+    if sensor_states is None:
+        return '{}{}Fehler{} beim Abfragen der Thermometer!'.format(
+                ':bangbang: ' if use_emoji else '',
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            )
+    return '{}Aktuelle Temperatur:{}\n\u2022 {}'.format(
             '*' if use_markdown else '',
             '*' if use_markdown else '',
-            # '\n  '.join([temperature_sensor_to_str(s, use_markdown, include_state_details) for s in sensor_states]))
-            '\n  '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
-
+            '\n\u2022 '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
+#TODO black circle, medium black circle, bullet: \u23fa \u25cf \u2022
 #######################################################################
 # Main bot workflow
 class HelheimrBot:
@@ -188,7 +200,7 @@ class HelheimrBot:
                 # Send startup message to all authorized users
                 status_txt = self.query_status(None)
                 self.bot.send_message(chat_id=chat_id, 
-                    text=hu.emo("Ich werde ausgeschalten, bis bald. {:s}\n\n{:s}".format(
+                    text=hu.emo("System wird heruntergefahren, bis bald. {:s}\n\n{:s}".format(
                         _rand_flower(), status_txt)),
                     parse_mode=telegram.ParseMode.MARKDOWN)
             threading.Thread(target=self._shutdown).start()
@@ -197,6 +209,9 @@ class HelheimrBot:
     def cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*\n\n  /status - Statusabfrage.\n
   /on - :sunny: Heizung einschalten.\n
+      Heizdauer einstellen: /on 1.5h\n
+      Temperatur einstellen: /on 21.7c\n
+      Temperatur & Heizdauer setzen: /on 23c 2h\n
   /off - :snowflake: Heizung ausschalten.\n\n
   /forecast - :partly_sunny: Wettervorhersage.\n
   /details - Sehr detaillierte Statusmeldung.\n
@@ -241,7 +256,7 @@ class HelheimrBot:
 
 
     def cmd_on(self, update, context):#FIXME
-        logging.getLogger().info('TODO parse message args: add to response + special delimiter {}'.format('\n'.join(context.args)))
+        logging.getLogger().info('TODO parse message args: add to response + special delimiter {}'.format('\n'.join(context.args)))#TODO
         # Check if another user is currently sending an on/off command:
         if self.is_modifying_heating:
             self.context.bot.send_message(chat_id=update.message.chat_id, 
@@ -361,10 +376,10 @@ class HelheimrBot:
 
     def cmd_unknown(self, update, context):
         if update.message.chat_id in self.authorized_ids:
-            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo("Das habe ich nicht verstanden. :thinking:"))
+            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo("Das habe ich nicht verstanden. :thinking_face:"))
         else:
             logging.getLogger().warn('Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
-            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed:").format(update.message.chat.first_name, update.message.chat_id))
+            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
 
 
 # def main():

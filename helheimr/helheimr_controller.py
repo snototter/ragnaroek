@@ -214,6 +214,12 @@ class HelheimrController:
         self.condition_var.notify()
         self.condition_var.release()
 
+        if not hu.check_internet_connection():
+            #TODO weather won't work, telegram neither - check what happens!
+            #TODO add warning message to display
+            #TODO check_lan() ping the router!
+            self.logger.error('No internet connection!')
+
         # Weather forecast/service wrapper
         weather_cfg = hu.load_configuration('configs/owm.cfg')
         self.weather_service = hw.WeatherForecastOwm(weather_cfg)

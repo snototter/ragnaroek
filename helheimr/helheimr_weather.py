@@ -21,8 +21,6 @@ def degrees_to_compass(deg, num_directions=8):
 
 
 def weather_code_emoji(code):
-    # if True:
-    #     return ':cloud_with_lightning_and_rain: :cloud_with_lightning: :sun_behind_rain_cloud: :cloud_with_rain: :snowflake: :fog: :sunny: :partly_sunny: :sun_behind_small_cloud: :sun_behind_large_cloud: :cloud:'
     if code >= 200 and code < 300:
         # Thunderstorm
         return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:'
@@ -59,8 +57,6 @@ def weather_code_emoji(code):
     return 'Wettercode {}'.format(code)
 
 def temperature_emoji(t):
-    # if True:
-    #     return ':cold_face: :grimacing: :smiley: :sunglasses: :sweat: :hot_face:'
     if t < 0.0:
         return ':cold_face:'
     elif t < 10.0:
@@ -73,26 +69,7 @@ def temperature_emoji(t):
         return ':sweat:'
     else:
         return ':hot_face:'
-# emojis = [
-#     ':cloud_with_lightning:', #done
-#     ':partly_sunny:', 
-#     ':sunny:',
-#     ':cloud:',
-#     ':cloud_with_lightning_and_rain:', 
-#     ':cloud_with_rain:', 
-#     ':cloud_with_snow:', 
-#     ':sun_behind_cloud:', 
-#     ':sun_behind_large_cloud:', 
-#     ':sun_behind_rain_cloud:', 
-#     ':sun_behind_small_cloud:',
-#     ':sunrise:',
-#     ':sunrise_over_mountains:',
-#     ':sunset:',
-#     ':thunder_cloud_and_rain:',
-#     ':fog:',
-#     ':foggy:',':hot_face:',':sweat:',':cold_face:']
-# for em in emojis:
-#     print(em, e(em, use_aliases=True))
+
 
 def get_windchill(temperature, wind_speed):
     """Compute windchill temperature (input units °C and km/h)."""
