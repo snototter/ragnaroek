@@ -236,7 +236,7 @@ class HelheimrController:
 
 
     def query_weather_forecast(self):
-        """:return:""" #TODO return object, use utils to format!!!!
+        """:return: helheimr_weather.WeatherForecast object"""
         return self.weather_service.query()
 
 #TODO remove

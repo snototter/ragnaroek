@@ -4,6 +4,7 @@ import requests
 
 #TODO https://stackoverflow.com/questions/373335/how-do-i-get-a-cron-like-scheduler-in-python <== needed for controller
 #TODO decorator util: plug_state_to_telegram
+#TODO make properties, add format_message methods
 class PlugState:
     def __init__(self, display_name, deconz_plug):
         self.display_name = display_name

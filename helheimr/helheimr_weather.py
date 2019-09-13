@@ -1,15 +1,24 @@
 from datetime import datetime
 from dateutil import tz
 import logging
+import math
 from pyowm import OWM
 
-def degrees_to_compass(deg):
-    val = int((deg/45.0)+0.5)
-    lookup = ["Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest"]
-    return lookup[(val % 8)]
-    # val = int((deg/22.5)+0.5)
-    # lookup = ["N","NNO","NO","ONO","O","OSO", "SO", "SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"]
-    # return lookup[(val % 16)]
+import helheimr_utils as hu
+
+def degrees_to_compass(deg, num_directions=8):
+    """:return: Compass direction (str, either 8 or 16) for the given angle (in degrees, 0 is north, 45 is east)."""
+    if num_directions == 8:
+        val = int((deg/45.0)+0.5)
+        lookup = ["Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest"]
+        return lookup[(val % 8)]
+    elif num_directions == 16:
+        val = int((deg/22.5)+0.5)
+        lookup = ["N","NNO","NO","ONO","O","OSO", "SO", "SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"]
+        return lookup[(val % 16)]
+    else:
+        raise ValueError('You can only convert angle to 8 or 16 compass directions!')
+
 
 #emoji list, supported by py-emoji. https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 # https://stackoverflow.com/questions/4770297/convert-utc-datetime-string-to-local-datetime
@@ -62,10 +71,12 @@ def temperature_emoji(t):
         return ':cold_face:'
     elif t < 10.0:
         return ':grimacing:'
-    elif t < 20.0:
+    elif t < 18.0:
         return ':smiley:'
-    elif t < 30.0:
+    elif t < 27.0:
         return ':sunglasses:'
+    elif t < 30.0:
+        return ':sweat:'
     else:
         return ':hot_face:'
 # emojis = [
@@ -89,6 +100,205 @@ def temperature_emoji(t):
 # for em in emojis:
 #     print(em, e(em, use_aliases=True))
 
+def get_windchill(temperature, wind_speed):
+    """Compute windchill temperature (input units °C and km/h)."""
+    if temperature > 10.0:
+        return temperature
+    if wind_speed is None or wind_speed < 5:
+        return temperature
+    speed_pow = math.pow(wind_speed, 0.16)
+    return 13.12 + 0.6215*temperature - 11.37*speed_pow + 0.3965*temperature*speed_pow
+
+
+class WeatherForecast:
+    def __init__(self, owm_observation=None):
+        self._detailed_status = None
+        self._weather_code = None
+        self._temperature_current = None
+        self._temperature_range = None
+        self._clouds = None
+        self._rain = None
+        self._wind = None
+        self._snow = None
+        self._humidity = None
+        self._atmospheric_pressure = None
+        self._sunset_time = None
+        self._sunrise_time = None
+        if owm_observation is not None:
+            self.from_observation(owm_observation)
+
+    def from_observation(self):
+        temp = w.get_temperature(unit='celsius')
+        self.temperature = temp['temp']
+        self.temperature_range = {
+                'min': temp['temp_min'],
+                'max': temp['temp_max']
+            }
+
+        self.detailed_status = w.get_detailed_status()
+        self.weather_code = w.get_weather_code()
+        # self.weather_emoji = weather_code_emoji(self.weather_code)
+        rain = w.get_clouds()
+        if rain:
+            self.rain = rain['3h']
+            # TODO!!
+
+        snow = w.get_snow()
+        if snow:
+            self.snow = snow['3h'] 
+            # TODO!!
+
+        wind = w.get_wind(unit='meters_sec')
+        if wind:
+            self.wind = {
+                'speed': wind['speed'] * 3.6 if 'speed' in wind else None,
+                'direction': wind['deg'] if 'deg' in wind else None
+            }
+        else:
+            self.wind = {
+                'speed': None,
+                'direction': None
+            }
+
+        self.humidity = w.get_humidity() # int
+        press = w.get_pressure()
+        if press is not None and 'press' in press:
+            self.atmospheric_pressure = press['press'] # dict
+        
+        self.sunrise_time = hu.datetime_as_local(w.get_sunrise_time(timeformat='date'))
+        self.sunset_time = hu.datetime_as_local(w.get_sunset_time(timeformat='date'))
+        
+
+    def format_message(self, use_markdown=True, use_emoji=True):
+        lines = list()
+        lines.append('{}Wetterbericht:{}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
+        lines.append('{:s}{:s}, {:s}\u200a°'.format(
+                self.detailed_status,
+                ' ' + weather_code_emoji(self.weather_code) if use_emoji else '',
+                hu.format_num('.1f', self.temperature, use_markdown),
+            ))
+        lines.append('Temperaturverlauf: {:s}-{:s}\u200a°{:s}'.format(
+                hu.format_num('d', int(self.temperature_range['min']), use_markdown),
+                hu.format_num('d', int(self.temperature_range['max']), use_markdown),
+                ' ' + temperature_emoji((self.temperature_range['min'] + self.temperature_range['max']) / 2.0) if use_emoji else ''
+            ))
+        windchill = int(get_windchill(self.temperature, self.wind['speed']))
+        if int(self.temperature) > windchill:
+            lines.append('Gefühlte Temperatur: {:s}\u200a°{:s}'.format(
+                    hu.format_num('d', windchill, use_markdown),
+                    ' ' + temperature_emoji(windchill) if use_emoji else ''
+                ))
+        lines.append('\n')
+
+        lines.append('Bewölkung: {}\u200a%'.format(hu.format_num('d', self.clouds, use_markdown))
+        lines.append('Luftfeuchte: {}\u200a%'.format(hu.format_num('d', self.humidity)))
+        if self.atmospheric_pressure is not None:
+            lines.append('Luftdruck: {}\u200ahPa'.format(hu.format_num('d', self.atmospheric_pressure)))
+        if self.rain is not None:
+            lines.append('Niederschlag: TODO')
+        if self.snow is not None:
+            lines.append('Schneefall: TODO')
+        if self.wind is not None:
+            lines.append('Wind: {}\u200akm/h{}'.format(
+                    self.wind['speed'],
+                    ' aus {}'.format(degrees_to_compass(self.wind['direction']) if 'direction' in self.wind else ''
+                ))
+        lines.append('\n')
+
+        lines.append('Sonnenaufgang: {:s}'.format(self.sunrise_time.strftime('%H:%m')))
+        lines.append('Sonnenuntergang: {:s}'.format(self.sunset_time.strftime('%H:%m'))) # TODO check after Daylight Savings Time (Zeitumstellung!)
+
+        return '\n'.join(lines)
+
+
+    @property
+    def detailed_status(self):
+        return self._detailed_status
+    @detailed_status.setter
+    def detailed_status(self, value):
+        self._detailed_status = value
+
+    @property
+    def weather_code(self):
+        return self._weather_code
+    @weather_code.setter
+    def weather_code(self, value):
+        self._weather_code = value
+
+    @property
+    def temperature(self):
+        return self._temperature_current
+    @temperature.setter
+    def temperature(self, value):
+        self._temperature_current = value
+
+    @property
+    def temperature_range(self):
+        return self._temperature_range
+    @temperature_range.setter
+    def temperature_range(self, minmax):
+        self._temperature_range = minmax
+
+    @property
+    def clouds(self):
+        return self._clouds
+    @clouds.setter
+    def temperature(self, value):
+        self._temperature_current = value
+    
+    @property
+    def rain(self):
+        return self._rain
+    @rain.setter
+    def rain(self, value):
+        self._rain = value
+
+    @property
+    def wind(self):
+        return self._wind
+    @wind.setter
+    def wind(self, value):
+        self._wind = value
+
+    @property
+    def snow(self):
+        return self._snow
+    @snow.setter
+    def snow(self, value):
+        self._snow = value
+
+    @property
+    def humidity(self):
+        return self._humidity
+    @humidity.setter
+    def humidity(self, value):
+        self._humidity = value
+
+    @property
+    def atmospheric_pressure(self):
+        return self._atmospheric_pressure
+    @atmospheric_pressure.setter
+    def atmospheric_pressure(self, value):
+        self._atmospheric_pressure = value
+
+    @property
+    def sunrise_time(self):
+        return self._sunrise_time
+    @sunrise_time.setter
+    def sunrise_time(self, value):
+        self._sunrise_time = value
+
+    @property
+    def sunset_time(self):
+        return self._sunset_time
+    @sunset_time.setter
+    def sunset_time(self, value):
+        self._sunset_time = value
+
+
 class WeatherForecastOwm:
     def __init__(self, config):
         self.owm = OWM(API_key=config['openweathermap']['api_token'],
@@ -103,39 +313,4 @@ class WeatherForecastOwm:
         obs = self.owm.weather_at_coords(self.latitude, self.longitude)
         w = obs.get_weather()
 
-        forecast = list()
-        temp = w.get_temperature(unit='celsius')
-        forecast.append('{:s} {:s}, {:d}°C'.format(w.get_detailed_status(), weather_code_emoji(w.get_weather_code()), int(temp['temp'])))
-        forecast.append('Temperaturverlauf: {:d}-{:d}°C {:s}\n'.format(int(temp['temp_min']), int(temp['temp_max']), temperature_emoji((temp['temp_min']+temp['temp_max'])/2.0)))
-        forecast.append('Bewölkung: {} %'.format(w.get_clouds()))
-
-        # if w.get_rain():
-        #     forecast.append('')TODO
-        # if w.get_snow():TODO
-        wind = w.get_wind()
-        if wind:
-            forecast.append('Wind: {:s}{:.1f} km/h'.format(degrees_to_compass(wind['deg']) + ', ' if 'deg' in wind else '', wind['speed']*3.6))
-
-        # sunrise_time = datetime.fromtimestamp(sunrise_timestamp)
-        # pip install pytz, tzlocal
-        # https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone/17363006#17363006
-        # print('Sunrise:', sunrise_time.strftime("%Y %m %d -- %H:%M:%S"))
-        # print('Sunset:', sunset_time.strftime("%Y %m %d -- %H:%M:%S"))
-
-        forecast.append('Rel. Feuchte: {} %'.format(w.get_humidity()))
-        forecast.append('Luftdruck: {} hPa\n'.format(w.get_pressure()['press']))
-        #TODO
-        sunrise_time = localize_utc_time(w.get_sunrise_time(timeformat='date'))
-        sunset_time = localize_utc_time(w.get_sunset_time(timeformat='date'))
-        forecast.append('Sonnenaufgang: {:s}:{:s}'.format(sunrise_time.strftime('%H'), sunrise_time.strftime('%m')))
-        forecast.append('Sonnenuntergang: {:s}:{:s}'.format(sunset_time.strftime('%H'), sunset_time.strftime('%m'))) # TODO check after Daylight Savings Time (Zeitumstellung!)
-
-        print('\n'.join(forecast))
-
-        forecaster = self.owm.three_hours_forecast("Graz,AT")
-        f = forecaster.get_forecast()
-        for weather in f:
-            print (weather.get_reference_time('iso'),weather.get_status())
-
-        return '*Wetterbericht:*\n' + '\n'.join(forecast)
-        
+        return WeatherForecast(w)

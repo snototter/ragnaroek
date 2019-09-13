@@ -319,11 +319,12 @@ class HelheimrBot:
 
 
     def cmd_forecast(self, update, context):
-        #FIXME
+        #FIXME try without connection (from controller, not bot obviously...)
         try:
             forecast = self.controller.query_weather_forecast()
             # forecast = self.weather_forecast.query()
-            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(forecast),
+            context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(forecast.format(
+                    format_message, use_markdown=True, use_emoji=True)),
                 parse_mode=telegram.ParseMode.MARKDOWN)
         except:
             err_msg = traceback.format_exc()

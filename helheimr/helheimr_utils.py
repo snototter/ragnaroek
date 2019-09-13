@@ -603,25 +603,25 @@ def plug_to_str(plug_state, use_markdown=True, detailed=False):
             # )
     return txt
 
+def format_num(fmt, num, use_markdown=True):
+        s = '{:' + fmt + '}'
+        if use_markdown:
+            s = '`' + s + '`'
+        return s.format(num)
 
 def temperature_sensor_to_str(sensor_state, use_markdown=True, detailed=False):
     # # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
     # #     'name':sensor_state.display_name,
     # #     }
-    def format_num(fmt, num):
-        s = '{:' + fmt + '}'
-        if use_markdown:
-            s = '`' + s + '`'
-        return s.format(num)
 
     # hair space: U+200A, thin space: U+2009
     txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
             '_' if use_markdown else '',
             sensor_state.display_name,
             '_' if use_markdown else '',
-            format_num('.1f', sensor_state.temperature),
-            format_num('d', int(sensor_state.humidity)),
-            format_num('d', int(sensor_state.pressure)))
+            format_num('.1f', sensor_state.temperature, use_markdown),
+            format_num('d', int(sensor_state.humidity, use_markdown)),
+            format_num('d', int(sensor_state.pressure, use_markdown)))
 
     # txt = '{}{}{}: {}{:.1f}\u200a° {:d}\u200a% {:d}\u2009hPa{}'.format(
     #         '_' if use_markdown else '',
