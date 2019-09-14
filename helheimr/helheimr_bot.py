@@ -7,9 +7,12 @@ status - Statusabfrage
 on - :sunny: Heizung einschalten
 off - :snowflake: Heizung ausschalten
 forecast - :partly_sunny: Wettervorhersage
-details - Sehr detaillierte Statusmeldung
+details - Detaillierte Systeminformation
 help - Liste verfügbarer Befehle
 """
+
+#TODO botfather & help: heizung ein = thermo emo statt sonne
+#TODO botfather cmd aktualisieren
 
 # import argparse
 # import os
@@ -59,6 +62,10 @@ def _rand_flower():
     return random.choice([':sunflower:', ':hibiscus:', ':tulip:', ':rose:', ':cherry_blossom:'])
 
 
+def format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
+    return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
+
+
 def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
     if is_heating is None:
         return '{}{}Fehler{} beim Abfragen der Heizung!'.format(
@@ -80,7 +87,7 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
     #         include_state_details = True
     #         break
     if include_state_details:
-        txt += '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=True) for plug in plug_states])
+        txt += format_details_plug_states(plug_states, use_markdown, include_state_details)
     return txt
 
 
@@ -214,7 +221,7 @@ class HelheimrBot:
       Temperatur & Heizdauer setzen: /on 23c 2h\n
   /off - :snowflake: Heizung ausschalten.\n\n
   /forecast - :partly_sunny: Wettervorhersage.\n
-  /details - Sehr detaillierte Statusmeldung.\n
+  /details - Detaillierte Systeminformation.\n
   /help - Diese Hilfemeldung."""
         context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt),
             parse_mode=telegram.ParseMode.MARKDOWN)
@@ -252,7 +259,12 @@ class HelheimrBot:
 
 
     def cmd_details(self, update, context):
-        self.query_status(update.message.chat_id, detailed_report=True)
+        txt = self.controller.query_detailed_status()
+        context.bot.send_message(
+            chat_id=update.message.chat_id, 
+            text=hu.emo(txt), 
+            parse_mode=telegram.ParseMode.MARKDOWN)
+        #self.query_status(update.message.chat_id, detailed_report=True)
 
 
     def cmd_on(self, update, context):#FIXME
@@ -270,7 +282,7 @@ class HelheimrBot:
 
         if is_heating:
             self.is_modifying_heating = False
-            txt = '*Heizung* läuft schon :sunny:\n' + hu.format_details_plug_states(plug_states)
+            txt = '*Heizung* läuft schon :sunny:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)
             context.bot.send_message(
                 chat_id=update.message.chat_id, 
                 text=hu.emo(txt), 
@@ -295,10 +307,10 @@ class HelheimrBot:
             return
 
         # Check if already off
-        is_heating, status = self.controller.query_heating_state()
+        is_heating, plug_states = self.controller.query_heating_state()
         if not is_heating:
             self.bot.send_message(chat_id=update.message.chat_id, 
-                text=hu.emo('Heizung ist schon *aus* :snowman:\n' + '\n'.join(map(str, status))),
+                text=hu.emo('Heizung ist schon *aus* :snowman:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)),
                 parse_mode=telegram.ParseMode.MARKDOWN)
         else:
             self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating

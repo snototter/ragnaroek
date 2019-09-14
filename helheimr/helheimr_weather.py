@@ -4,6 +4,8 @@ import logging
 import math
 from pyowm import OWM
 
+import traceback
+
 import helheimr_utils as hu
 
 def degrees_to_compass(deg, num_directions=8):
@@ -280,6 +282,7 @@ class WeatherForecastOwm:
         # self.city_id = config['openweathermap']['city_id']
         self.latitude = config['openweathermap']['latitude']
         self.longitude = config['openweathermap']['longitude']
+        
 
     def query(self):
         # Either query by city ID or lat/lon
@@ -289,7 +292,9 @@ class WeatherForecastOwm:
             w = obs.get_weather()
             return WeatherReport(w)
         except:
-            logging.getLogger().error('Error while querying OpenWeatherMap:\n' + traceback.)
+            logging.getLogger().error('###############################################################################'
+                + '\nError while querying OpenWeatherMap:\n' + traceback.format_exc()
+                + '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
             return None
 
 

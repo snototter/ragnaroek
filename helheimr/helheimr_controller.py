@@ -71,6 +71,7 @@ class HeatingJob(hu.Job):
         self.cv_loop_idle.acquire()
         while self.keep_running:
             if use_temperature_controller:
+                #TODO
                 # current_temperature = ...
                 # bang_bang.update(current_temperature)
                 pass
@@ -209,16 +210,18 @@ class HelheimrController:
         self._add_periodic_heating_job(27.8, 0.8, datetime.timedelta(hours=2), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second)
 
         self.condition_var.acquire()
-        self.job_list.append(hu.Job.every(120).seconds.do(self.stop))
-        # self.job_list.append(hu.Job.every(5).seconds.start_immediately.do(self.dummy_query))
+        self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove
         self.condition_var.notify()
         self.condition_var.release()
+
 
         if not hu.check_internet_connection():
             #TODO weather won't work, telegram neither - check what happens!
             #TODO add warning message to display
             #TODO check_lan() ping the router!
             self.logger.error('No internet connection!')
+        else:
+            self.logger.info('Yes, WE ARE ONLINE!') #TODO remove...
 
         # Weather forecast/service wrapper
         weather_cfg = hu.load_configuration('configs/owm.cfg')
@@ -229,6 +232,18 @@ class HelheimrController:
         self.telegram_bot = hb.HelheimrBot(bot_cfg, self)
 
         self.telegram_bot.start()
+
+        # Collect hosts we need to contact (weather service, telegram, local IPs, etc.)
+        self.known_hosts_local = self._load_known_hosts(ctrl_cfg['network']['local'])
+        self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
+        self.known_urls = {
+            'deConz/Phoscon':self.raspbee_wrapper.api_url,
+            'telegram':'https://t.me/' + bot_cfg['telegram']['bot_name']
+        }
+
+    
+    def _load_known_hosts(self, libconf_attr_dict):
+        return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
 
     
     def query_heating_state(self):
@@ -245,10 +260,29 @@ class HelheimrController:
         """:return: helheimr_weather.WeatherForecast object"""
         return self.weather_service.query()
 
-#TODO remove
-    def dummy_query(self):
-        sensor_states = self.raspbee_wrapper.query_temperature()
-        self.logger.info(hu.format_msg_temperature(sensor_states))
+    def query_detailed_status(self):
+        msg = list()
+        # Check connectivity:
+        msg.append('*Netzwerk:*')
+        # Home network
+        for name, host in self.known_hosts_local.items():
+            reachable = hu.ping(host)
+            msg.append('\u2022 {} [LAN] ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+
+        # WWW
+        for name, host in self.known_hosts_internet.items():
+            reachable = hu.ping(host)
+            msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+
+        # Check URLs (telegram, deconz/phoscon)
+        for name, url in self.known_urls.items():
+            reachable = hu.check_url(url)
+            msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+
+        msg.append('') # Empty line to separate text content
+        msg.append(self.raspbee_wrapper.query_full_state())
+        
+        return '\n'.join(msg)
 
     # def dummy_stop(self):
     #     if self.active_heating_job:
@@ -357,7 +391,7 @@ class HelheimrController:
             self.condition_var.notify()
             #TODO print stack trace!!!!!!
         except:
-            err_msg = traceback.format_exc()
+            err_msg = traceback.format_exc(limit=3)
             print('\nOHOHOHOHOHOH TODO Error:\n', err_msg)#TODO
         finally:
             self.condition_var.release()

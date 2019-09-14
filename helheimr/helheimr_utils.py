@@ -8,13 +8,17 @@ except ImportError:
     from collections import Hashable
 import functools
 import logging
+import os
 import random
 import re
+import requests
+import subprocess
 import time
 import threading
 import traceback
-import urllib3
+# import urllib3
 
+#TODO refactor into separate scripts (network, scheduling, controller, text)
 
 #######################################################################
 # Utilities
@@ -33,21 +37,64 @@ import urllib3
 #     return [int(id) for id in slurp_stripped_lines(filename)]
 
 def emo(txt):
-    # Convenience wrapper, since I often need/forget optional keywords ;-)
+    """Simply wrapping emoji.emojize() since I often need/forget the optional parameter ;-)"""
     return emojize(txt, use_aliases=True)
 
+
 def load_configuration(filename):
+    """Loads a libconfig configuration file."""
     with open(filename) as f:
         return libconf.load(f)
 
-def check_internet_connection():
-    try:
-        urllib3.urlopen('http://8.8.8.8', timeout=1)
-        return True
-    except:
-        logging.getLogger().error("Error while checking connection to Google's DNS server:\n" + traceback.format_exc())
-        return False
 
+def http_get_request(url, timeout=1.0):
+    """
+    Performs a GET request at the given url (string) and returns the response if one
+    was received within timeout (float) seconds. Otherwise, returns None.
+    """
+    try:
+        r = requests.get(url, timeout=timeout)
+        return r
+    except:
+        err_msg = traceback.format_exc(limit=3)
+        logging.getLogger().error("Error connecting to '{}':\n{}".format(url, err_msg))
+        return None
+
+
+def http_put_request(url, data, timeout=5.0):
+    try:
+        r = requests.put(url, data=data, timeout=timeout)
+        return r
+    except:
+        err_msg = traceback.format_exc(limit=3)
+        logging.getLogger().error("Error connecting to '{}':\n{}".format(url, err_msg))
+        return None
+
+
+def ping(host, timeout=1):
+    """Returns True if the host (string) responds to ICMP requests within timeout (int) seconds."""
+    # Ping 1 package with timeout 1 second
+    with open(os.devnull, 'wb') as devnull:
+        return subprocess.call(['ping', '-c', '1', '-w', str(timeout), host], stdout=devnull, stderr=subprocess.STDOUT) == 0
+
+
+def check_url(url, timeout=1):
+    """Returns true if the given URL (string) can be retrieved via GET."""
+    return http_get_request(url, timeout) is not None
+
+
+def check_internet_connection(timeout=1):
+    """Pings common DNS server to check, if we are online."""
+    hosts = ['1.0.0.1', # Cloudflare DNS (usually fastest ping for me)
+        '1.1.1.1', # Also Cloudfare,
+        '8.8.8.8', # Google DNS
+        '8.8.8.4' # Google again
+        ]
+    for host in hosts:
+        if ping(host, timeout):
+            return True
+    return False
+    
 
 #######################################################################
 # Time stuff
