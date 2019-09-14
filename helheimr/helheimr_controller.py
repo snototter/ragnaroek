@@ -11,6 +11,11 @@ import helheimr_bot as hb
 import helheimr_raspbee as hr
 import helheimr_weather as hw
 
+#TODO serialize periodic heating (and other) tasks:
+# x,y = {'every':1, 'unit':'day'}, {'foo':'fighters'}
+# z = (x,y)
+# print(libconf.dumps({'heating_jobs':z}))
+
 def to_duration(hours, minutes, seconds=0):
     return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
 

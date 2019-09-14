@@ -274,7 +274,8 @@ class WeatherReport:
     def sunset_time(self, value):
         self._sunset_time = value
 
-
+#TODO temp, min, max is only current reading!!!
+#TODO refactor everything, make sub-packages
 class WeatherForecastOwm:
     def __init__(self, config):
         self.owm = OWM(API_key=config['openweathermap']['api_token'],
