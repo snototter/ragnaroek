@@ -353,12 +353,12 @@ class HelheimrBot:
                     hours = int(h)
                     minutes = int((h - hours) * 60)
                     duration = datetime.timedelta(hours=hours, minutes=minutes)
-                    #FIXME document in help and botfather!
+
             
-            #FIXME params
             success, txt = self.controller.turn_on_manually(target_temperature=temperature,
                 temperature_hysteresis=hysteresis,
-                duration=duration)
+                duration=duration,
+                created_by=query.from_user.first_name)
             if not success:
                 query.edit_message_text(text=hu.emo(':bangbang: Fehler: ' + txt))
             else:
