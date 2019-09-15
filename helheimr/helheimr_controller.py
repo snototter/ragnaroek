@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# coding=utf-8
+
 # The heart of my home automation project
 
 import datetime
@@ -100,25 +103,27 @@ class HeatingJob(hu.Job):
 
         self.cv_loop_idle.acquire()
         while self.keep_running:
+            # #TODO heating is working, disabled for further implementation tests
             current_temperature = self.controller.query_temperature_for_heating()
-            if use_temperature_controller:
-                #TODO controller: query_temperature_for_heating () return Wohnzimmer
-                # current_temperature = ...
-                # bang_bang.update(current_temperature)
-                should_heat = True
-            else:
-                should_heat = True
-            # TODO ensure that heating is running
+            # if use_temperature_controller:
+            #     if current_temperature is None:
+            #         self.controller.broadcast_error('Ich konnte kein Thermometer abfragen - versuche, die Heizung einzuschalten.')
+            #         should_heat = True
+            #     else:
+            #         should_heat = bang_bang.update(current_temperature)
+            # else:
+            #     should_heat = True
 
-            if should_heat:
-                ret, msg = self.controller.heating_system.turn_on()
-            else:
-                ret, msg = self.controller.heating_system.turn_off()
+            # if should_heat:
+            #     ret, msg = self.controller.heating_system.turn_on()
+            # else:
+            #     ret, msg = self.controller.heating_system.turn_off()
 
-            if not ret:
-                logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
-                #TODO notify user via controller.broadcast_error()
-#TODO cfg heating_temp_order [1  wohnzimmer, 2 schlafzimmer, ..] use wohnzimmer if reachable, else #2, #3, then fail...
+            # if not ret:
+            #     logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
+            #     self.controller.broadcast_error('Heizung konnte nicht {}geschaltet werden:\n'.format('ein' if should_heat else 'aus') + msg)
+
+            # TODO remove:
             dummy_msg = '{} heating {}for {} now, finish {}{}. Current temperature: {:.1f}°'.format(
                 'Manual' if isinstance(self, ManualHeatingJob) else 'Periodic',
                 ' to {}+/-{} °C '.format(self.target_temperature, self.temperature_hysteresis) if self.target_temperature is not None else '',
@@ -127,10 +132,12 @@ class HeatingJob(hu.Job):
                 '' if self.created_by is None else ', created by {}'.format(self.created_by),
                 current_temperature
                 )
-            self.controller.broadcast_warning(dummy_msg)#TODO remove
+            print(dummy_msg)
+            # self.controller.broadcast_warning(dummy_msg)#TODO remove
+
             if end_time is not None and hu.datetime_now() >= end_time:
                 break
-            self.cv_loop_idle.wait(timeout=30)#TODO adjust timeout!
+            self.cv_loop_idle.wait(timeout=60)#TODO adjust timeout! - maybe query every 2-5 minutes???
         self.cv_loop_idle.release
         self.keep_running = False
 
@@ -140,7 +147,7 @@ class HeatingJob(hu.Job):
             logging.getLogger().error('Could not turn off heating after finishing this heating job:\n' + msg)
             #TODO notify user
 
-
+#TODO make separate stop_without_turning_off() - set a flag to prevent turning the heater off if we're inside add_manual_job (since the manual job may start the heater pretty soon (or turn it off itself...))
     def stop(self):
         """Stop heating (if currently active). Does NOT delete the task."""
         if self.keep_running:
@@ -191,8 +198,8 @@ class PeriodicHeatingJob(HeatingJob):
             'type' : 'periodic',
             'every': self.interval,
             'unit': self.unit,
-            'at': self.at_time, # Periodic heating job MUST have an at_time
-            'duration': self.heating_duration 
+            'at': self.at_time, # Periodic heating job MUST have an at_time #TODO FIXME at_time is hu.time-as_utc: need to store it as local time :-/
+            'duration': str(self.heating_duration)
         }
         if self.target_temperature is not None:
             d['temperature'] = self.target_temperature
@@ -295,6 +302,10 @@ class HelheimrController:
         # Create a dummy heating job:
         start_time = (datetime.datetime.now() + datetime.timedelta(seconds=10)).time()
         self._add_periodic_heating_job(27.8, 0.8, to_duration(hours=1), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second, created_by='Helheimr')
+
+        #TODO test serializing periodic jobs:
+        # import libconf
+        # print(libconf.dumps(self.job_list[-1].to_dict()))
 
         self.condition_var.acquire()
         self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove

@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+# coding=utf-8
+
 """
 Telegram bot helheimr - controlling and querying our heating system.
 
