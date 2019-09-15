@@ -139,7 +139,7 @@ class HelheimrBot:
 
         # Test telegram token/connection
         self.bot = self.updater.bot
-        self.logger.info('HelheimrBot querying myself:\n{}'.format(self.bot.get_me()))
+        self.logger.info('HelheimrBot querying myself: {}'.format(self.bot.get_me()))
         
         #######################################################################
         # Register command handlers
@@ -218,7 +218,9 @@ class HelheimrBot:
   /on - :sunny: Heizung einschalten.\n
       Heizdauer einstellen: /on 1.5h\n
       Temperatur einstellen: /on 21.7c\n
+      Hysterese einstellen: /on 21c 1c\n
       Temperatur & Heizdauer setzen: /on 23c 2h\n
+      Alles: /on 22c 0.5c 1.5h\n
   /off - :snowflake: Heizung ausschalten.\n\n
   /forecast - :partly_sunny: Wettervorhersage.\n
   /details - Detaillierte Systeminformation.\n
@@ -259,6 +261,7 @@ class HelheimrBot:
 
 
     def cmd_details(self, update, context):
+        context.bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.TYPING)
         txt = self.controller.query_detailed_status()
         context.bot.send_message(
             chat_id=update.message.chat_id, 
@@ -271,7 +274,7 @@ class HelheimrBot:
         logging.getLogger().info('TODO parse message args: add to response + special delimiter {}'.format('\n'.join(context.args)))#TODO
         # Check if another user is currently sending an on/off command:
         if self.is_modifying_heating:
-            self.context.bot.send_message(chat_id=update.message.chat_id, 
+            context.bot.send_message(chat_id=update.message.chat_id, 
                 text='Heizungsstatus wird gerade von einem anderen Chat geändert.\n\nBitte versuche es in ein paar Sekunden nochmal.',
                 parse_mode=telegram.ParseMode.MARKDOWN)
             return
@@ -320,7 +323,7 @@ class HelheimrBot:
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
             update.message.reply_text('Heizung wirklich ausschalten?', reply_markup=reply_markup)
 
-#TODO cmd_details plug+reachable, sensors+battery
+
     def callback_handler(self, update, context):
         query = update.callback_query
         tokens = query.data.split(':')
@@ -333,24 +336,32 @@ class HelheimrBot:
         elif response == type(self).CALLBACK_TURN_ON_CONFIRM:
             # Parse optional parameters
             temperature = None
+            hysteresis = 0.5
             duration = None
             for idx in range(1, len(tokens)):
                 t = tokens[idx].lower()
                 if t.endswith('c'): # Temperature
-                    temperature = float(t[:-1])
+                    val = float(t[:-1].replace(',','.'))
+                    # The first ##c sets the temperature, the second ##c sets the hysteresis
+                    if temperature is None:
+                        temperature = val
+                    else:
+                        hysteresis = val
                 elif t.endswith('h'):
-                    h = float(t[:-1])
+                    h = float(t[:-1].replace(',','.'))
                     hours = int(h)
                     minutes = int((h - hours) * 60)
                     duration = datetime.timedelta(hours=hours, minutes=minutes)
                     #FIXME document in help and botfather!
             
             #FIXME params
-            success, txt = self.controller.turn_on_manually()
+            success, txt = self.controller.turn_on_manually(target_temperature=temperature,
+                temperature_hysteresis=hysteresis,
+                duration=duration)
             if not success:
-                query.edit_message_text(text=hu.emo(':bangbang: Fehler, konnte Heizung nicht eingeschaltet werden:\n\n' + txt))
+                query.edit_message_text(text=hu.emo(':bangbang: Fehler: ' + txt))
             else:
-                query.edit_message_text(text='Wird erledigt...TODO"{}", "{}"'.format(temperature, duration))
+                query.edit_message_text(text='Wird erledigt...')
                 context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
                 status_txt = self.query_status(None)
@@ -358,7 +369,6 @@ class HelheimrBot:
             self.is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
-            #FIXME params
             success, txt = self.controller.turn_off_manually()
             if not success:
                 query.edit_message_text(text='Fehler, konnte Heizung nicht ausschalten:\n\n' + txt)

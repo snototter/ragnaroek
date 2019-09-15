@@ -18,19 +18,19 @@ class PlugState:
     def format_message(self, use_markdown=True, detailed_information=False):
         txt = '{}{}{} ist '.format(
             '_' if use_markdown else '',
-            plug_state.display_name,
+            self.display_name,
             '_' if use_markdown else ''
         )
-        if plug_state.reachable:
-            txt += 'ein' if plug_state.on else 'aus'
-        if not plug_state.reachable or detailed_information:
+        if self.reachable:
+            txt += 'ein' if self.on else 'aus'
+        if not self.reachable or detailed_information:
             txt += ' und '
-            if not plug_state.reachable:
+            if not self.reachable:
                 txt += '{}NICHT{} '.format(
                     '*' if use_markdown else '',
                     '*' if use_markdown else '')
             txt += 'erreichbar{}'.format(
-                    '.' if plug_state.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
+                    '.' if self.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
         else:
             txt += '.'
         return txt
@@ -89,6 +89,15 @@ class TemperatureState:
                 hu.format_num('d', int(self.battery_level), use_markdown),
                 ' :warning:' if use_markdown and self.battery_level < 20 else '')
         return txt
+
+    @staticmethod
+    def merge_sensors(sensor_list):
+        merged = list()
+        sorted_sensors = sorted(sensor_list, key=lambda s:s.name)
+        #TODO use sorted list, iterate group as long as they have the same name: merge; else add to output list
+        # for i in range(0, len(sorted_sensors)):
+        #FIXME implement
+
 
 
 """ Communication with the zigbee/raspbee (deconz REST API) gateway """
@@ -192,17 +201,43 @@ class RaspBeeWrapper:
         return mapping
 
 
+    @property
+    def known_power_plug_ids(self):
+        return list(self._heating_plug_raspbee_name_mapping)
+
     def query_full_state(self):
         #TODO parse only interesting fields, e.g.:
         # dhcp, address, gateway
         # number of lights, sensors
-        r = hu.http_get_request(self.api_url + '/sensors')
+        r = hu.http_get_request(self.api_url)
         if r is None:
-            return dict()
-
+            return list()
         state = json.loads(r.content)
-        print(json.dumps(state, indent=2))
-        return 'TO BE DONE!'
+        # print(json.dumps(state, indent=2))
+
+        msg = list()
+        msg.append('\u2022 deCONZ API Version: {}'.format(hu.format_num('s', state['config']['apiversion'])))
+        msg.append('\u2022 deCONZ SW Version: {}'.format(hu.format_num('s', state['config']['swversion'])))
+        msg.append('\u2022 ZigBee Kanal: {}'.format(hu.format_num('d', state['config']['zigbeechannel'])))
+
+        # Iterate over reported lights (this group contains our power plugs)
+        is_heating = None
+        for raspbee_id in state['lights']:
+            if raspbee_id in self.known_power_plug_ids:
+                plug = PlugState(self.lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
+                msg.append('  \u2022 ' + plug.format_message(use_markdown=True, detailed_information=True))
+                is_heating = (is_heating if is_heating is not None else False) or plug.on
+        
+        if is_heating is not None:
+            msg.insert(0, '\u2022 Heizung ist {}'.format('ein :sunny:' if is_heating else 'aus :snowman:'))
+        else:
+            msg.insert(0, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
+
+#TODO cmd_details plug+reachable, sensors+battery
+        #for raspbee_id in state['sensors']:
+        # TODO create all TemperatureState then merge them (adjust merge to not raise exception...)
+
+        return '\n'.join(msg)
 
 
     def query_heating(self):

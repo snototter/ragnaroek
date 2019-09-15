@@ -19,6 +19,13 @@ import helheimr_weather as hw
 def to_duration(hours, minutes, seconds=0):
     return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
+
+class HeatingConfigurationError(Exception):
+    """Used to indicate wrong configurations (e.g. temperature/duration,...)"""
+    def __init__(self, message):
+        self.message = message
+
+
 class HeatingJob(hu.Job):
     @staticmethod
     def every(interval=1):
@@ -40,6 +47,15 @@ class HeatingJob(hu.Job):
         self.cv_loop_idle = threading.Condition(self.lock) # Use this condition variable instead of sleep() inside a heating job (upon stopping, self.keep_running=False, it will notify all waiting threads)
 
     def do_heat_up(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
+        # Sanity checks
+        if target_temperature is not None and (target_temperature < 10 or target_temperature > 30):
+            raise HeatingConfigurationError('Temperatur muss zwischen 10 und 30 Grad eingestellt werden')
+            if temperature_hysteresis is not None and ((target_temperature-temperature_hysteresis) < 10 or (target_temperature+temperature_hysteresis) > 30):
+                raise HeatingConfigurationError('Temperatur +/- Hysterese muss zwischen 10 und 30 Grad eingestellt werden')
+        #TODO check if tz aware or not
+        if heating_duration is not None and heating_duration < datetime.timedelta(minutes=15):
+            raise HeatingConfigurationError('Heizung muss für mindestens 15 Minuten eingeschalten werden')
+
         self.target_temperature = target_temperature
         self.temperature_hysteresis = temperature_hysteresis
         self.heating_duration = heating_duration
@@ -84,7 +100,12 @@ class HeatingJob(hu.Job):
                 should_heat = True
             # TODO ensure that heating is running
 
-            print('I am heating for {} now'.format(hu.datetime_difference(start_time, hu.datetime_now())))
+            print('{} heating {}for {} now, finish {}'.format(
+                'Manual' if isinstance(self, ManualHeatingJob) else 'Periodic',
+                ' to {}+/-{} °C '.format(self.target_temperature, self.temperature_hysteresis) if self.target_temperature is not None else '',
+                hu.datetime_difference(start_time, hu.datetime_now()),
+                end_time if end_time is not None else 'never'
+                ))
             if end_time is not None and hu.datetime_now() >= end_time:
                 break
             self.cv_loop_idle.wait(timeout=1)
@@ -187,32 +208,33 @@ class HelheimrController:
         self.worker_thread = threading.Thread(target=self._scheduling_loop) # The scheduler runs in a separate thread
         self.worker_thread.start()
 
-        # # self._add_manual_heating_job(None, None, datetime.timedelta(seconds=10))
-        # # self._add_manual_heating_job(23, 0.5, None)
-        # try:
-        #     self.job_list.append(HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
-        #     self.job_list.append(HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
-        # except Exception as e:
-        #     print('This error was expected: ', e)
-        #     pass
-        self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
-            heating_duration=datetime.timedelta(hours=2),
-            day_interval=1, at_hour=6, at_minute=30)
-        self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
-            heating_duration=datetime.timedelta(hours=3),
-            day_interval=1, at_hour=7, at_minute=59)
+        #TODO dummy jobs, replace by load-from-file:
+        # # # self._add_manual_heating_job(None, None, datetime.timedelta(seconds=10))
+        # # # self._add_manual_heating_job(23, 0.5, None)
+        # # try:
+        # #     self.job_list.append(HeatingJob.every(10).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
+        # #     self.job_list.append(HeatingJob.every(4).seconds.do_heat_up(target_temperature=20.0, temperature_hysteresis=0.5, heating_duration=to_duration(0, 0, 5)))
+        # # except Exception as e:
+        # #     print('This error was expected: ', e)
+        # #     pass
+        # self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
+        #     heating_duration=datetime.timedelta(hours=2),
+        #     day_interval=1, at_hour=6, at_minute=30)
+        # self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, 
+        #     heating_duration=datetime.timedelta(hours=3),
+        #     day_interval=1, at_hour=7, at_minute=59)
 
-        # # self.job_list.append(hu.Job.every(5).seconds.do(dummy_job, 5))
-        # # self.job_list.append(hu.Job.every(10).seconds.do(dummy_job, 10))
-        # # self.job_list.append(hu.Job.every().minute.do(self.stop))
-        # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=None, 
-        # #     temperature_hysteresis=None, duration=datetime.timedelta(seconds=10)))
-        # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
-        #     # temperature_hysteresis=0.5))
-        # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
-        # Create a dummy heating job:
-        start_time = (datetime.datetime.now() + datetime.timedelta(seconds=15)).time()
-        self._add_periodic_heating_job(27.8, 0.8, datetime.timedelta(hours=2), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second)
+        # # # self.job_list.append(hu.Job.every(5).seconds.do(dummy_job, 5))
+        # # # self.job_list.append(hu.Job.every(10).seconds.do(dummy_job, 10))
+        # # # self.job_list.append(hu.Job.every().minute.do(self.stop))
+        # # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=None, 
+        # # #     temperature_hysteresis=None, duration=datetime.timedelta(seconds=10)))
+        # # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
+        # #     # temperature_hysteresis=0.5))
+        # # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
+        # # Create a dummy heating job:
+        # start_time = (datetime.datetime.now() + datetime.timedelta(seconds=15)).time()
+        # self._add_periodic_heating_job(27.8, 0.8, datetime.timedelta(hours=2), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second)
 
         self.condition_var.acquire()
         self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove
@@ -223,10 +245,9 @@ class HelheimrController:
         if not hu.check_internet_connection():
             #TODO weather won't work, telegram neither - check what happens!
             #TODO add warning message to display
-            #TODO check_lan() ping the router!
             self.logger.error('No internet connection!')
-        else:
-            self.logger.info('Yes, WE ARE ONLINE!') #TODO remove...
+        # else:
+        #     self.logger.info('Yes, WE ARE ONLINE!') #TODO remove...
 
         # Weather forecast/service wrapper
         weather_cfg = hu.load_configuration('configs/owm.cfg')
@@ -241,10 +262,8 @@ class HelheimrController:
         # Collect hosts we need to contact (weather service, telegram, local IPs, etc.)
         self.known_hosts_local = self._load_known_hosts(ctrl_cfg['network']['local'])
         self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
-        self.known_urls = {
-            'deConz/Phoscon':self.raspbee_wrapper.api_url,
-            'telegram':'https://t.me/' + bot_cfg['telegram']['bot_name']
-        }
+        self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
+        self.known_url_raspbee = self.raspbee_wrapper.api_url
 
     
     def _load_known_hosts(self, libconf_attr_dict):
@@ -278,14 +297,18 @@ class HelheimrController:
         for name, host in self.known_hosts_internet.items():
             reachable = hu.ping(host)
             msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
-
-        # Check URLs (telegram, deconz/phoscon)
-        for name, url in self.known_urls.items():
-            reachable = hu.check_url(url)
-            msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+        # Also check telegram
+        reachable = hu.check_url(self.known_url_telegram_api)
+        msg.append('\u2022 Telegram API ist {}'.format('online' if reachable else 'offline :bangbang:'))
 
         msg.append('') # Empty line to separate text content
-        msg.append(self.raspbee_wrapper.query_full_state())
+        
+        # Query RaspBee state
+        msg.append('*Heizung:*')
+        reachable = hu.check_url(self.known_url_raspbee)
+        msg.append('\u2022 deCONZ API ist {}'.format('online' if reachable else 'offline :bangbang:'))
+        if reachable:
+            msg.append(self.raspbee_wrapper.query_full_state())
         
         return '\n'.join(msg)
 
@@ -340,18 +363,29 @@ class HelheimrController:
 
 
     def turn_on_manually(self, target_temperature=None, temperature_hysteresis=0.5, duration=None):
-        # self.condition_var.acquire()
-        # self.condition_var.release()
-        #TODO abort running task (cancel if manual, stop this run if periodic)
-        #FIXME implement
-        if duration is None:
-            self.logger.info('[HelheimrController] Start heating (forever) due to user request')
-        else:
-            if duration < 0:
-                self.logger.error('[HelheimrController] Invalid duration provided, ignoring request')
-                return False, 'TODO'
-            self.logger.info('[HelheimrController] Start heating for {}'.format(duration))
-        return True, 'TODO'
+        """TODO
+        duration datetime.timedelta
+        """
+        try:
+            self._add_manual_heating_job(target_temperature, temperature_hysteresis, duration)
+            return True, 'Befehl wurde an Heizungssteuerung weitergeleitet.'
+        except HeatingConfigurationError as e:
+            return False, e.message
+        except: # TODO custom exception (heatingconfigerror, nur e.message/text anzeigen) vs general exception
+            err_msg = traceback.format_exc(limit=3)
+            return False, '[Traceback]: '+err_msg # TODO traceback
+        # # self.condition_var.acquire()
+        # # self.condition_var.release()
+        # #TODO abort running task (cancel if manual, stop this run if periodic)
+        # #FIXME implement
+        # if duration is None:
+        #     self.logger.info('[HelheimrController] Start heating (forever) due to user request')
+        # else:
+        #     if duration < 0:
+        #         self.logger.error('[HelheimrController] Invalid duration provided, ignoring request')
+        #         return False, 'TODO'
+        #     self.logger.info('[HelheimrController] Start heating for {}'.format(duration))
+        # return True, 'TODO'
 
 
     def turn_off_manually(self):
@@ -411,7 +445,7 @@ class HelheimrController:
 
             # Query job list for scheduled/active jobs
             runnable_jobs = (job for job in self.job_list if job.should_run)
-            print('\n\nNext loop iteration, known jobs:\n' + '\n'.join(map(str, self.job_list)))
+            print('\n\nNext loop iteration, known jobs:\n' + '\n'.join(map(str, self.job_list))) # TODO zeit zwischen aufrufen plotten!
             for job in sorted(runnable_jobs):
                 # If there is a job which is not running already, start it.
                 if not job.is_running:

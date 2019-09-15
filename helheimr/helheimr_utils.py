@@ -47,7 +47,7 @@ def load_configuration(filename):
         return libconf.load(f)
 
 
-def http_get_request(url, timeout=1.0):
+def http_get_request(url, timeout=2.0):
     """
     Performs a GET request at the given url (string) and returns the response if one
     was received within timeout (float) seconds. Otherwise, returns None.
@@ -71,19 +71,19 @@ def http_put_request(url, data, timeout=5.0):
         return None
 
 
-def ping(host, timeout=1):
+def ping(host, timeout=2):
     """Returns True if the host (string) responds to ICMP requests within timeout (int) seconds."""
     # Ping 1 package with timeout 1 second
     with open(os.devnull, 'wb') as devnull:
         return subprocess.call(['ping', '-c', '1', '-w', str(timeout), host], stdout=devnull, stderr=subprocess.STDOUT) == 0
 
 
-def check_url(url, timeout=1):
+def check_url(url, timeout=2):
     """Returns true if the given URL (string) can be retrieved via GET."""
     return http_get_request(url, timeout) is not None
 
 
-def check_internet_connection(timeout=1):
+def check_internet_connection(timeout=2):
     """Pings common DNS server to check, if we are online."""
     hosts = ['1.0.0.1', # Cloudflare DNS (usually fastest ping for me)
         '1.1.1.1', # Also Cloudfare,
