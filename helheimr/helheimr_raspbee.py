@@ -237,7 +237,7 @@ class RaspBeeWrapper:
         for raspbee_id in state['lights']:
             if raspbee_id in self.known_power_plug_ids:
                 plug = PlugState(self.lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
-                msg.append('\u2022 Steckdose ' + plug.format_message(use_markdown=True, detailed_information=True))
+                msg.append('\u2022 Steckdose für ' + plug.format_message(use_markdown=True, detailed_information=True))
                 is_heating = (is_heating if is_heating is not None else False) or plug.on
         
         if is_heating is not None:
