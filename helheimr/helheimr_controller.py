@@ -117,7 +117,7 @@ class HeatingJob(hu.Job):
             if not ret:
                 logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
                 #TODO notify user via controller.broadcast_error()
-
+#TODO cfg heating_temp_order [1  wohnzimmer, 2 schlafzimmer, ..] use wohnzimmer if reachable, else #2, #3, then fail...
             print('{} heating {}for {} now, finish {}{}'.format(
                 'Manual' if isinstance(self, ManualHeatingJob) else 'Periodic',
                 ' to {}+/-{} °C '.format(self.target_temperature, self.temperature_hysteresis) if self.target_temperature is not None else '',
@@ -130,7 +130,7 @@ class HeatingJob(hu.Job):
             self.cv_loop_idle.wait(timeout=2)#TODO adjust timeout!
         self.cv_loop_idle.release
         self.keep_running = False
-        
+
         logging.getLogger().info('[ManualHeatingJob] Terminating "{}" after {}'.format(self, hu.datetime_difference(start_time, hu.datetime_now())))
         ret, msg = self.controller.heating_system.turn_off()
         if not ret:
