@@ -139,6 +139,8 @@ class RaspBeeWrapper:
         # Map deconz sensor name to deconz ID
         self._temperature_sensor_raspbee_name_mapping = self._map_deconz_temperature_sensors(cfg)
 
+        #TODO FIXME self.heating_preferred_reference_temperature_sensor_order = #lädt libconf array als array?
+
 
     @property
     def api_url(self):
@@ -213,12 +215,14 @@ class RaspBeeWrapper:
     def known_power_plug_ids(self):
         return list(self._heating_plug_raspbee_name_mapping.values())
 
+
     @property
     def known_temperature_sensor_ids(self):
         known_ids = list()
         for _, ids in self._temperature_sensor_raspbee_name_mapping.items():
             known_ids.extend(ids)
         return known_ids
+
 
     def query_full_state(self):
         r = hu.http_get_request(self.api_url)
@@ -301,6 +305,22 @@ class RaspBeeWrapper:
                     merged_state = merged_state.merge(state)
             status.append(merged_state)
         return status
+
+
+    def query_temperature_for_heating(self):
+        """To adjust the heating, we need a reference temperature reading.
+        However, sensors may be unreachable. Thus, we can configure a 
+        "preferred reference temperature sensor order" which we iterate
+        to obtain a valid reading. If no sensor is available, return None.
+        """
+        temp_states = self.query_temperature()
+        if temp_states is None:
+            return None
+        temp_dict = {t.name: t for t in temp_states}
+        for sensor_name in self.heating_preferred_reference_temperature_sensor_order:
+            if sensor_name in temp_dict:
+                return temp_dict[sensor_name].temperature
+        return None
 
 
     def switch_light(self, light_id, turn_on):

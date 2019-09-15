@@ -100,6 +100,7 @@ class HeatingJob(hu.Job):
 
         self.cv_loop_idle.acquire()
         while self.keep_running:
+            current_temperature = self.controller.query_temperature_for_heating()
             if use_temperature_controller:
                 #TODO controller: query_temperature_for_heating () return Wohnzimmer
                 # current_temperature = ...
@@ -118,12 +119,13 @@ class HeatingJob(hu.Job):
                 logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
                 #TODO notify user via controller.broadcast_error()
 #TODO cfg heating_temp_order [1  wohnzimmer, 2 schlafzimmer, ..] use wohnzimmer if reachable, else #2, #3, then fail...
-            print('{} heating {}for {} now, finish {}{}'.format(
+            print('{} heating {}for {} now, finish {}{}. Current temperature: {:.1f}°'.format(
                 'Manual' if isinstance(self, ManualHeatingJob) else 'Periodic',
                 ' to {}+/-{} °C '.format(self.target_temperature, self.temperature_hysteresis) if self.target_temperature is not None else '',
                 hu.datetime_difference(start_time, hu.datetime_now()),
                 'at {}'.format(end_time) if end_time is not None else 'never',
-                '' if self.created_by is None else ', created by {}'.format(self.created_by)
+                '' if self.created_by is None else ', created by {}'.format(self.created_by),
+                current_temperature
                 ))
             if end_time is not None and hu.datetime_now() >= end_time:
                 break
@@ -340,6 +342,15 @@ class HelheimrController:
     def query_temperature(self):
         """:return: list(TemperatureState)"""
         return self.heating_system.query_temperature()
+
+
+    def query_temperature_for_heating(self):
+        """To adjust the heating, we need a reference temperature reading.
+        However, sensors may be unreachable. Thus, we can configure a 
+        "preferred reference temperature sensor order" which we iterate
+        to obtain a valid reading. If no sensor is available, return None.
+        """
+        return self.heating_system.query_temperature_for_heating()
 
 
     def query_weather_forecast(self):
