@@ -214,17 +214,18 @@ class HelheimrBot:
 
 
     def cmd_help(self, update, context):
-        txt = """*Liste verfügbarer Befehle:*\n\n  /status - Statusabfrage.\n
-  /on - :sunny: Heizung einschalten.\n
-      Heizdauer einstellen: /on 1.5h\n
-      Temperatur einstellen: /on 21.7c\n
-      Hysterese einstellen: /on 21c 1c\n
-      Temperatur & Heizdauer setzen: /on 23c 2h\n
-      Alles: /on 22c 0.5c 1.5h\n
-  /off - :snowflake: Heizung ausschalten.\n\n
-  /forecast - :partly_sunny: Wettervorhersage.\n
-  /details - Detaillierte Systeminformation.\n
-  /help - Diese Hilfemeldung."""
+        txt = """*Liste verfügbarer Befehle:*
+/status - Statusabfrage.
+/on - :sunny: Heizung einschalten.
+  nur Temperatur: /on 21.7c
+  Hysterese: /on 21c 1c
+  nur Heizdauer: /on 1.5h
+  Temperatur und Dauer: /on 23c 2h
+  Alles: /on 22c 0.5c 1.5h
+/off - :snowflake: Heizung ausschalten.\n
+/forecast - :partly_sunny: Wettervorhersage.
+/details - Detaillierte Systeminformation.
+/help - Diese Hilfemeldung."""
         context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt),
             parse_mode=telegram.ParseMode.MARKDOWN)
 

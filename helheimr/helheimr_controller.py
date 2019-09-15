@@ -306,15 +306,12 @@ class HelheimrController:
         # Query RaspBee state
         msg.append('*Heizung:*')
         reachable = hu.check_url(self.known_url_raspbee)
-        msg.append('\u2022 deCONZ API ist {}'.format('online' if reachable else 'offline :bangbang:'))
         if reachable:
             msg.append(self.raspbee_wrapper.query_full_state())
+        else:
+            msg.append('\u2022 deCONZ API ist offline :bangbang:')
         
         return '\n'.join(msg)
-
-    # def dummy_stop(self):
-    #     if self.active_heating_job:
-    #         self.active_heating_job.stop_heating()
 
 
     def stop(self):
@@ -324,8 +321,8 @@ class HelheimrController:
         self.condition_var.release()
         self.worker_thread.join()
 
+        # Send shutdown message
         if self.telegram_bot:
-            # TODO send shutdown message
             self.telegram_bot.stop()
 
 
@@ -374,21 +371,9 @@ class HelheimrController:
         except: # TODO custom exception (heatingconfigerror, nur e.message/text anzeigen) vs general exception
             err_msg = traceback.format_exc(limit=3)
             return False, '[Traceback]: '+err_msg # TODO traceback
-        # # self.condition_var.acquire()
-        # # self.condition_var.release()
-        # #TODO abort running task (cancel if manual, stop this run if periodic)
-        # #FIXME implement
-        # if duration is None:
-        #     self.logger.info('[HelheimrController] Start heating (forever) due to user request')
-        # else:
-        #     if duration < 0:
-        #         self.logger.error('[HelheimrController] Invalid duration provided, ignoring request')
-        #         return False, 'TODO'
-        #     self.logger.info('[HelheimrController] Start heating for {}'.format(duration))
-        # return True, 'TODO'
-
 
     def turn_off_manually(self):
+        # FIXME TODO HeatingJob braucht stop() - aber nur für diese Iteration (periodic), manual muss anschließend gelöscht werden
         self.logger.info('[HelheimrController] Stop heating')
         return True, 'FOO TODO'
 
@@ -401,16 +386,15 @@ class HelheimrController:
         ret = False
         #TODO active heating is a separate variable - but we still need to check for heating jobs
         #e.g. start manually, what happens with a periodic job starting in 2 minutes?
-        if any([isinstance(job, ManualHeatingJob) for job in self.job_list]):
-            self.logger.warning("[HelheimrController] There's already a ManualHeatingJob in my task list. I'm ignoring this request.")
-        else:
+        if self.active_heating_job is not None:
+            self.logger.warning("[HelheimrController] There's an active heating job, I'm stopping it right now
             
-            self.logger.info("[HelheimrController] Adding a ManualHeatingJob ({}) to my task list.".format(mhj))
-            self.job_list.append(mhj)
-            # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=target_temperature, 
-            #     temperature_hysteresis=temperature_hysteresis, duration=heating_duration))
-            ret = True
-            self.condition_var.notify()
+            #TODO terminate job
+            # upon error return prematurely (but condvar.release()!)
+        self.logger.info("[HelheimrController] Adding a ManualHeatingJob ({}) to my task list.".format(mhj))
+        self.job_list.append(mhj)
+        ret = True
+        self.condition_var.notify()
         self.condition_var.release()
         return ret
 

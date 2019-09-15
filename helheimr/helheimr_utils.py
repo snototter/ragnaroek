@@ -644,6 +644,10 @@ class OnOffController:
 #             # )
 #     return txt
 
+def value(value, default=''):
+    """Returns the value if not none, otherwise an empty string."""
+    return default if value is None else value
+
 def format_num(fmt, num, use_markdown=True):
         s = '{:' + fmt + '}'
         if use_markdown:

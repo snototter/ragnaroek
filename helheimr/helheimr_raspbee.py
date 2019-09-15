@@ -55,9 +55,12 @@ class TemperatureState:
 
 
     def __str__(self):
-        #TODO str anpassen (None objects; viel zu lang)
         return '{:s}: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
-            self.display_name, self.temperature, self.humidity, self.pressure, self.battery_level)
+            self.display_name, 
+            -100 if self.temperature is None else self.temperature, 
+            -100 if self.humidity is None else self.humidity, 
+            -1000 if self.pressure is None else self.pressure, 
+            -9999 if self.battery_level is None else self.battery_level)
 
 
     def merge(self, other):
@@ -92,11 +95,16 @@ class TemperatureState:
 
     @staticmethod
     def merge_sensors(sensor_list):
-        merged = list()
+        if len(sensor_list) == 0:
+            return list()
         sorted_sensors = sorted(sensor_list, key=lambda s:s.name)
-        #TODO use sorted list, iterate group as long as they have the same name: merge; else add to output list
-        # for i in range(0, len(sorted_sensors)):
-        #FIXME implement
+        merged = [sorted_sensors[0]]
+        for i in range(1, len(sorted_sensors)):
+            if sorted_sensors[i].name != merged[-1].name:
+                merged.append(sorted_sensors[i])
+            else:
+                merged[-1] = merged[-1].merge(sorted_sensors[i])
+        return merged
 
 
 
@@ -203,12 +211,16 @@ class RaspBeeWrapper:
 
     @property
     def known_power_plug_ids(self):
-        return list(self._heating_plug_raspbee_name_mapping)
+        return list(self._heating_plug_raspbee_name_mapping.values())
+
+    @property
+    def known_temperature_sensor_ids(self):
+        known_ids = list()
+        for _, ids in self._temperature_sensor_raspbee_name_mapping.items():
+            known_ids.extend(ids)
+        return known_ids
 
     def query_full_state(self):
-        #TODO parse only interesting fields, e.g.:
-        # dhcp, address, gateway
-        # number of lights, sensors
         r = hu.http_get_request(self.api_url)
         if r is None:
             return list()
@@ -233,9 +245,16 @@ class RaspBeeWrapper:
         else:
             msg.insert(0, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
 
-#TODO cmd_details plug+reachable, sensors+battery
-        #for raspbee_id in state['sensors']:
-        # TODO create all TemperatureState then merge them (adjust merge to not raise exception...)
+        sensors = list()
+        for raspbee_id in state['sensors']:
+            if raspbee_id in self.known_temperature_sensor_ids:
+                sensors.append(TemperatureState(self.lookup_temperature_display_name(raspbee_id), state['sensors'][raspbee_id]))
+        if len(sensors) == 0:
+            msg.append('\u2022 :bangbang: Thermometer sind nicht erreichbar!')
+        else:
+            sensors = TemperatureState.merge_sensors(sensors)
+            for sensor in sensors:
+                msg.append('\u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
 
         return '\n'.join(msg)
 
