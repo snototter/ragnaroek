@@ -148,7 +148,7 @@ class RaspBeeWrapper:
     def lookup_heating_display_name(self, raspbee_id):
         for lbl, rid in self._heating_plug_raspbee_name_mapping.items():
             if rid == raspbee_id:
-                return self._heating_plug_raspbee_name_mapping[lbl]
+                return self._heating_plug_display_name_mapping[lbl]
         return 'ID {}'.format(raspbee_id)
 
     
@@ -227,7 +227,7 @@ class RaspBeeWrapper:
         state = json.loads(r.content)
         # print(json.dumps(state, indent=2))
 
-        msg = list()
+        msg = ['*Heizung:*']
         msg.append('\u2022 deCONZ API Version: {}'.format(hu.format_num('s', state['config']['apiversion'])))
         msg.append('\u2022 deCONZ SW Version: {}'.format(hu.format_num('s', state['config']['swversion'])))
         msg.append('\u2022 ZigBee Kanal: {}'.format(hu.format_num('d', state['config']['zigbeechannel'])))
@@ -237,13 +237,14 @@ class RaspBeeWrapper:
         for raspbee_id in state['lights']:
             if raspbee_id in self.known_power_plug_ids:
                 plug = PlugState(self.lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
-                msg.append('  \u2022 ' + plug.format_message(use_markdown=True, detailed_information=True))
+                msg.append('\u2022 Steckdose ' + plug.format_message(use_markdown=True, detailed_information=True))
                 is_heating = (is_heating if is_heating is not None else False) or plug.on
         
         if is_heating is not None:
-            msg.insert(0, '\u2022 Heizung ist {}'.format('ein :sunny:' if is_heating else 'aus :snowman:'))
+            msg.insert(1, '\u2022 Heizung ist {}'.format('ein :sunny:' if is_heating else 'aus :snowman:'))
         else:
-            msg.insert(0, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
+            msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
+
 
         sensors = list()
         for raspbee_id in state['sensors']:
@@ -253,8 +254,9 @@ class RaspBeeWrapper:
             msg.append('\u2022 :bangbang: Thermometer sind nicht erreichbar!')
         else:
             sensors = TemperatureState.merge_sensors(sensors)
+            msg.append('\n*Thermometer:*')
             for sensor in sensors:
-                msg.append('\u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
+                msg.append('  \u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
 
         return '\n'.join(msg)
 

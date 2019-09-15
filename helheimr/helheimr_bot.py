@@ -207,8 +207,8 @@ class HelheimrBot:
                 # Send startup message to all authorized users
                 status_txt = self.query_status(None)
                 self.bot.send_message(chat_id=chat_id, 
-                    text=hu.emo("System wird heruntergefahren, bis bald. {:s}\n\n{:s}".format(
-                        _rand_flower(), status_txt)),
+                    text=hu.emo("System wird heruntergefahren, bis bald.\n\n{:s}".format(
+                        status_txt)),
                     parse_mode=telegram.ParseMode.MARKDOWN)
             threading.Thread(target=self._shutdown).start()
 
@@ -217,11 +217,11 @@ class HelheimrBot:
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
 /on - :sunny: Heizung einschalten.
-  nur Temperatur: /on 21.7c
-  Hysterese: /on 21c 1c
-  nur Heizdauer: /on 1.5h
-  Temperatur und Dauer: /on 23c 2h
-  Alles: /on 22c 0.5c 1.5h
+  nur Temperatur: /on `21.7c`
+  Hysterese: /on `21c` `1c`
+  nur Heizdauer: /on `1.5h`
+  Temperatur und Dauer: /on `23c` `2h`
+  Alles: /on `22c` `0.5c` `1.5h`\n
 /off - :snowflake: Heizung ausschalten.\n
 /forecast - :partly_sunny: Wettervorhersage.
 /details - Detaillierte Systeminformation.

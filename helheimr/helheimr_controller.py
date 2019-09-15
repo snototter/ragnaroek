@@ -304,12 +304,11 @@ class HelheimrController:
         msg.append('') # Empty line to separate text content
         
         # Query RaspBee state
-        msg.append('*Heizung:*')
         reachable = hu.check_url(self.known_url_raspbee)
         if reachable:
             msg.append(self.raspbee_wrapper.query_full_state())
         else:
-            msg.append('\u2022 deCONZ API ist offline :bangbang:')
+            msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
         
         return '\n'.join(msg)
 
@@ -387,7 +386,7 @@ class HelheimrController:
         #TODO active heating is a separate variable - but we still need to check for heating jobs
         #e.g. start manually, what happens with a periodic job starting in 2 minutes?
         if self.active_heating_job is not None:
-            self.logger.warning("[HelheimrController] There's an active heating job, I'm stopping it right now
+            self.logger.warning("[HelheimrController] There's an active heating job, I'm stopping it right now")
             
             #TODO terminate job
             # upon error return prematurely (but condvar.release()!)
