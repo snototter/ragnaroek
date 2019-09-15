@@ -177,15 +177,20 @@ class HelheimrBot:
 
 
     def start(self):
+        # Start polling messages from telegram servers
         self.updater.start_polling(poll_interval=self.poll_interval,
             timeout=self.timeout, bootstrap_retries=self.bootstrap_retries)
+        # Send startup message to all authorized users
+        status_txt = self.query_status(None)
+        self.broadcast_message("Hallo, ich bin online. {:s}\n\n{:s}".format(
+                    _rand_flower(), status_txt))
 
+
+    def broadcast_message(self, txt):
+        """Send given message to all authorized chat IDs."""
         for chat_id in self.authorized_ids:
-            # Send startup message to all authorized users
-            status_txt = self.query_status(None)
             self.bot.send_message(chat_id=chat_id, 
-                text=hu.emo("Hallo, ich bin online. {:s}\n\n{:s}".format(
-                    _rand_flower(), status_txt)),
+                text=hu.emo(txt),
                 parse_mode=telegram.ParseMode.MARKDOWN)
             
 
@@ -370,7 +375,7 @@ class HelheimrBot:
             self.is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
-            success, txt = self.controller.turn_off_manually()
+            success, txt = self.controller.turn_off_manually(query.from_user.first_name)
             if not success:
                 query.edit_message_text(text='Fehler, konnte Heizung nicht ausschalten:\n\n' + txt)
             else:

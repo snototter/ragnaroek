@@ -16,7 +16,7 @@ import helheimr_weather as hw
 # z = (x,y)
 # print(libconf.dumps({'heating_jobs':z}))
 
-def to_duration(hours, minutes, seconds=0):
+def to_duration(hours=0, minutes=0, seconds=0):
     return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
 
@@ -29,7 +29,7 @@ class HeatingConfigurationError(Exception):
 class HeatingJob(hu.Job):
     @staticmethod
     def every(interval=1):
-        return PeriodicHeatingJob(interval=interval, controller=controller)
+        return PeriodicHeatingJob(interval=interval)
 
 
     @staticmethod
@@ -119,17 +119,18 @@ class HeatingJob(hu.Job):
                 logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
                 #TODO notify user via controller.broadcast_error()
 #TODO cfg heating_temp_order [1  wohnzimmer, 2 schlafzimmer, ..] use wohnzimmer if reachable, else #2, #3, then fail...
-            print('{} heating {}for {} now, finish {}{}. Current temperature: {:.1f}°'.format(
+            dummy_msg = '{} heating {}for {} now, finish {}{}. Current temperature: {:.1f}°'.format(
                 'Manual' if isinstance(self, ManualHeatingJob) else 'Periodic',
                 ' to {}+/-{} °C '.format(self.target_temperature, self.temperature_hysteresis) if self.target_temperature is not None else '',
                 hu.datetime_difference(start_time, hu.datetime_now()),
                 'at {}'.format(end_time) if end_time is not None else 'never',
                 '' if self.created_by is None else ', created by {}'.format(self.created_by),
                 current_temperature
-                ))
+                )
+            self.controller.broadcast_warning(dummy_msg)#TODO remove
             if end_time is not None and hu.datetime_now() >= end_time:
                 break
-            self.cv_loop_idle.wait(timeout=2)#TODO adjust timeout!
+            self.cv_loop_idle.wait(timeout=30)#TODO adjust timeout!
         self.cv_loop_idle.release
         self.keep_running = False
 
@@ -291,9 +292,9 @@ class HelheimrController:
         # # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
         # #     # temperature_hysteresis=0.5))
         # # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
-        # # Create a dummy heating job:
-        # start_time = (datetime.datetime.now() + datetime.timedelta(seconds=15)).time()
-        # self._add_periodic_heating_job(27.8, 0.8, datetime.timedelta(hours=2), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second)
+        # Create a dummy heating job:
+        start_time = (datetime.datetime.now() + datetime.timedelta(seconds=10)).time()
+        self._add_periodic_heating_job(27.8, 0.8, to_duration(hours=1), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second, created_by='Helheimr')
 
         self.condition_var.acquire()
         self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove
@@ -332,6 +333,30 @@ class HelheimrController:
     @property
     def heating_system(self):
         return self.raspbee_wrapper
+
+
+    def _broadcast_message(self, text, msg_type):
+        #TODO broadcast to display!!!
+        if msg_type == 'info':
+            telegram_msg = text
+        elif msg_type == 'warning':
+            telegram_msg = ':warning: ' + text
+        elif msg_type == 'error':
+            telegram_msg = ':bangbang: ' + text
+        else:
+            raise RuntimeError('Invalid message type "{}"'.format(msg_type))
+
+        self.telegram_bot.broadcast_message(telegram_msg)
+
+
+    def broadcast_info(self, text):
+        self._broadcast_message(text, 'info')
+
+    def broadcast_warning(self, text):
+        self._broadcast_message(text, 'warning')
+
+    def broadcast_error(self, text):
+        self._broadcast_message(text, 'error')
     
 
     def query_heating_state(self):
@@ -461,7 +486,7 @@ class HelheimrController:
         mhj = HeatingJob.manual(target_temperature=target_temperature, 
             temperature_hysteresis=temperature_hysteresis, 
             heating_duration=heating_duration,
-            controller=self
+            controller=self,
             created_by=created_by)
         ret = False
         try:
@@ -484,14 +509,15 @@ class HelheimrController:
 
 
     def _add_periodic_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
-            day_interval=1, at_hour=6, at_minute=0, at_second=0):
+            day_interval=1, at_hour=6, at_minute=0, at_second=0, created_by=None):
         self.condition_var.acquire()
         try: 
             job = HeatingJob.every(day_interval).days.at(
                 '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
                     controller=self,
                     target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
-                    heating_duration=heating_duration)
+                    heating_duration=heating_duration,
+                    created_by=created_by)
             if any([j.overlaps(job) for j in self.job_list]):
                 raise HeatingConfigurationError('The requested periodic job "{}" overlaps with an existing one!'.format(job))
             self.job_list.append(job)

@@ -139,7 +139,9 @@ class RaspBeeWrapper:
         # Map deconz sensor name to deconz ID
         self._temperature_sensor_raspbee_name_mapping = self._map_deconz_temperature_sensors(cfg)
 
-        #TODO FIXME self.heating_preferred_reference_temperature_sensor_order = #lädt libconf array als array?
+        # Load ordering of temperature sensors to query for heating-reference-temperature (heating
+        # will be stopped, once this sensor reports the configured temperature)
+        self._heating_preferred_reference_temperature_sensor_order = cfg['raspbee']['temperature']['preferred_heating_reference']
 
 
     @property
@@ -317,7 +319,7 @@ class RaspBeeWrapper:
         if temp_states is None:
             return None
         temp_dict = {t.name: t for t in temp_states}
-        for sensor_name in self.heating_preferred_reference_temperature_sensor_order:
+        for sensor_name in self._heating_preferred_reference_temperature_sensor_order:
             if sensor_name in temp_dict:
                 return temp_dict[sensor_name].temperature
         return None
