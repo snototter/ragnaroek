@@ -11,11 +11,11 @@ off - :snowflake: Heizung ausschalten
 forecast - :partly_sunny: Wettervorhersage
 details - Detaillierte Systeminformation
 config - Heizungsprogramm einrichten
+shutdown - System herunterfahren
 help - Liste verfügbarer Befehle
 """
 
-#TODO botfather & help: heizung ein = thermo emo statt sonne
-#TODO botfather cmd aktualisieren
+
 
 # import argparse
 # import os
@@ -26,21 +26,14 @@ import traceback
 import threading
 
 #TODOs:
-#TODO use logging
+#TODO botfather & help: heizung ein = thermo emo statt sonne
+#TODO botfather cmd aktualisieren
+#TODO Unicode: black circle, medium black circle, bullet: \u23fa \u25cf \u2022
 #TODO als service einrichten (python venv?)
 #TODO forecast icons (w.get_weather_code(), weather condition codes, check emoji, make mapping)
-#TODO update1: wird erledigt ... (...), sleep, update2  Status
-#TODO temperature mapping < 8, 8-18, 18-28, 28+
-#TODO pair temperature sensor
-#TODO sicher j/n
-#TODO laeuft schon...
 #TODO altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
-#TODO deconz poll (timer + bei /status bzw nach /on, /off)
 #TODO reminder alle config minuten, falls heizung laeuft (zB 12h)
-#TODO gpio pins auslesen - raspbee hardware test ist nicht moeglich. alternative: deconz/phoscon sw check
-#TODO status abfrage deconz: https://dresden-elektronik.github.io/deconz-rest-doc/configuration/#getfullstate
-
-#TODO restart bot https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets#simple-way-of-restarting-the-bot
+#TODO shutdown: raspberry herunterfahren!
 
 # Telegram emojis: 
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
@@ -106,7 +99,7 @@ def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, inc
             '*' if use_markdown else '',
             '*' if use_markdown else '',
             '\n\u2022 '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
-#TODO black circle, medium black circle, bullet: \u23fa \u25cf \u2022
+
 #######################################################################
 # Main bot workflow
 class HelheimrBot:
@@ -170,7 +163,10 @@ class HelheimrBot:
         off_handler = CommandHandler('off', self.cmd_off, self.user_filter)
         self.dispatcher.add_handler(off_handler)
 
-        cfg_handler = CommandHandler('configure', self.cmd_configure, self.user_filter)
+        shutdown_handler = CommandHandler('shutdown', self.cmd_shutdown, self.user_filter)
+        self.dispatcher.add_handler(shutdown_handler)
+
+        cfg_handler = CommandHandler('config', self.cmd_configure, self.user_filter)
         self.dispatcher.add_handler(cfg_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
@@ -209,9 +205,19 @@ class HelheimrBot:
         self.updater.idle()
 
 
-    def _shutdown(self): # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
+    def _shutdown(self): 
+        # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
         self.updater.stop()
         self.updater.is_idle = False
+
+    def _shutdown_controller(self):
+        # Should be run from a different thread
+        time.sleep(3)
+        self.controller.shutdown()
+
+
+    def cmd_shutdown(self, update, context):
+        threading.Thread(target=self._shutdown_controller, daemon=True).start()
 
 
     def stop(self):
@@ -245,7 +251,10 @@ class HelheimrBot:
 
 /config - Heizungsprogramm einstellen.
   Uhrzeit + Dauer: /config 6:00 2h
-  ... + Temperatur: /config 6:00 23c 2h
+  Zusätzlich Temperatur: /config 6:00 23c 2h
+  Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
+
+/shutdown - System herunterfahren.
 /help - Diese Hilfemeldung."""
         context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt),
             parse_mode=telegram.ParseMode.MARKDOWN)
@@ -292,8 +301,7 @@ class HelheimrBot:
         #self.query_status(update.message.chat_id, detailed_report=True)
 
 
-    def cmd_on(self, update, context):#FIXME
-        logging.getLogger().info('TODO parse message args: add to response + special delimiter {}'.format('\n'.join(context.args)))#TODO
+    def cmd_on(self, update, context):
         # Check if another user is currently sending an on/off command:
         if self.is_modifying_heating:
             context.bot.send_message(chat_id=update.message.chat_id, 
@@ -399,7 +407,7 @@ class HelheimrBot:
                 context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
                 status_txt = self.query_status(None)
-                query.edit_message_text(text=status_txt, parse_mode=telegram.ParseMode.MARKDOWN)
+                query.edit_message_text(text=hu.emo(status_txt), parse_mode=telegram.ParseMode.MARKDOWN)
             self.is_modifying_heating = False
 
 

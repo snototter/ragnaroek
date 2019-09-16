@@ -375,3 +375,257 @@ class RaspBeeWrapper:
             success = success and s
             msg.append(m)
         return success, '\n'.join(msg)
+
+
+class DummyRaspBeeWrapper:
+    #Used to develop without actually switching the heater on/off
+    def __init__(self, cfg):
+        # Deconz parameters
+        self._gateway = cfg['raspbee']['deconz']['gateway']
+        self._tcp_port = cfg['raspbee']['deconz']['port']
+        self._token = cfg['raspbee']['deconz']['api_token']
+        self._api_url = 'http://' + self._gateway + ':' + str(self._tcp_port) + '/api/' + self._token
+
+        # Currently I don't want a generic approach but rather know 
+        # exactly (hardcoded) which plugs I control programatically
+        
+        ######## Plugs to actually control the heating
+        # Map deconz plug name to human-readable display name
+        self._heating_plug_display_name_mapping = {
+            cfg['raspbee']['heating']['plug_names']['flat'] : cfg['raspbee']['heating']['display_names']['flat'],
+            cfg['raspbee']['heating']['plug_names']['basement'] : cfg['raspbee']['heating']['display_names']['basement']
+        }
+
+        # Map deconz plug name to deconz ID
+        self._heating_plug_raspbee_name_mapping = self._map_deconz_heating_plugs(cfg)
+
+        ######## Temperature sensors
+        # Map deconz sensor name to human-readable display name
+        self._temperature_sensor_display_name_mapping = {
+            cfg['raspbee']['temperature']['sensor_names']['living_room'] : cfg['raspbee']['temperature']['display_names']['living_room']
+        }
+
+        # Map deconz sensor name to deconz ID
+        self._temperature_sensor_raspbee_name_mapping = self._map_deconz_temperature_sensors(cfg)
+
+        # Load ordering of temperature sensors to query for heating-reference-temperature (heating
+        # will be stopped, once this sensor reports the configured temperature)
+        self._heating_preferred_reference_temperature_sensor_order = cfg['raspbee']['temperature']['preferred_heating_reference']
+
+        self.is_dummy_heating = False
+
+
+    @property
+    def api_url(self):
+        return self._api_url
+
+
+    def lookup_heating_display_name(self, raspbee_id):
+        for lbl, rid in self._heating_plug_raspbee_name_mapping.items():
+            if rid == raspbee_id:
+                return self._heating_plug_display_name_mapping[lbl]
+        return 'ID {}'.format(raspbee_id)
+
+    
+    def lookup_temperature_display_name(self, raspbee_id):
+        for lbl, rids in self._temperature_sensor_raspbee_name_mapping.items():
+            if raspbee_id in rids:
+                return self._temperature_sensor_display_name_mapping[lbl]
+        return 'ID {}'.format(raspbee_id)
+
+
+    def _map_deconz_heating_plugs(self, cfg):
+        # Our 'smart' plugs are linked to the zigbee gateway as "lights"
+        r = hu.http_get_request(self.api_url + '/lights')
+        if r is None:
+            return dict()
+
+        lights = json.loads(r.content)
+        logger = logging.getLogger()
+
+        plug_names = [
+            cfg['raspbee']['heating']['plug_names']['flat'],
+            cfg['raspbee']['heating']['plug_names']['basement']
+        ]
+        mapping = dict()
+
+        for raspbee_id, light in lights.items():
+            if light['name'] in plug_names:
+                logger.info('Mapping {:s} ({:s}) to RaspBee ID {}'.format(light['name'],
+                    self._heating_plug_display_name_mapping[light['name']], raspbee_id))
+                mapping[light['name']] = raspbee_id
+        return mapping
+
+
+    def _map_deconz_temperature_sensors(self, cfg):
+        # Each of our sensors is takes up 3 separate raspbee IDs (temperature, humidity, pressure)
+        r = hu.http_get_request(self.api_url + '/sensors')
+        if r is None:
+            return dict()
+
+        sensors = json.loads(r.content)
+        logger = logging.getLogger()
+
+        sensor_names = [
+            cfg['raspbee']['temperature']['sensor_names']['living_room']
+        ]
+        mapping = dict()
+
+        for raspbee_id, sensor in sensors.items():
+            s = sensor['name']
+            if s in sensor_names:
+                logger.info('Mapping {:s} ({:s}) to RaspBee ID {}'.format(s,
+                    self._temperature_sensor_display_name_mapping[s], raspbee_id))
+                if s in mapping:
+                    mapping[s].append(raspbee_id)
+                else:
+                    mapping[s] = [raspbee_id]
+        return mapping
+
+
+    @property
+    def known_power_plug_ids(self):
+        return list(self._heating_plug_raspbee_name_mapping.values())
+
+
+    @property
+    def known_temperature_sensor_ids(self):
+        known_ids = list()
+        for _, ids in self._temperature_sensor_raspbee_name_mapping.items():
+            known_ids.extend(ids)
+        return known_ids
+
+
+    def query_full_state(self):
+        r = hu.http_get_request(self.api_url)
+        if r is None:
+            return list()
+        state = json.loads(r.content)
+        # print(json.dumps(state, indent=2))
+
+        msg = ['*Heizung:*']
+        msg.append('\u2022 deCONZ API Version: {}'.format(hu.format_num('s', state['config']['apiversion'])))
+        msg.append('\u2022 deCONZ SW Version: {}'.format(hu.format_num('s', state['config']['swversion'])))
+        msg.append('\u2022 ZigBee Kanal: {}'.format(hu.format_num('d', state['config']['zigbeechannel'])))
+
+        # Iterate over reported lights (this group contains our power plugs)
+        is_heating = None
+        for raspbee_id in state['lights']:
+            if raspbee_id in self.known_power_plug_ids:
+                plug = PlugState(self.lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
+                msg.append('\u2022 Steckdose für ' + plug.format_message(use_markdown=True, detailed_information=True))
+                is_heating = (is_heating if is_heating is not None else False) or plug.on
+        
+        if is_heating is not None:
+            msg.insert(1, '\u2022 Heizung ist {}'.format('ein :sunny:' if is_heating else 'aus :snowman:'))
+        else:
+            msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
+
+
+        sensors = list()
+        for raspbee_id in state['sensors']:
+            if raspbee_id in self.known_temperature_sensor_ids:
+                sensors.append(TemperatureState(self.lookup_temperature_display_name(raspbee_id), state['sensors'][raspbee_id]))
+        if len(sensors) == 0:
+            msg.append('\u2022 :bangbang: Thermometer sind nicht erreichbar!')
+        else:
+            sensors = TemperatureState.merge_sensors(sensors)
+            msg.append('\n*Thermometer:*')
+            for sensor in sensors:
+                msg.append('  \u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
+
+        return '\n'.join(msg)
+
+
+    def query_heating(self):
+        """:return: flag (True if heating currently heating), list of PlugState"""
+        return self.is_dummy_heating, list()
+
+
+    def query_temperature(self):
+        status = list()
+        logger = logging.getLogger()
+        if len(self._temperature_sensor_raspbee_name_mapping) == 0:
+            logger.error('Cannot query temperature, as there are no known/reachable sensors!')
+            return None
+
+        for sensor_lbl, sensor_ids in self._temperature_sensor_raspbee_name_mapping.items():
+            merged_state = None
+            for sensor_id in sensor_ids:
+                r = hu.http_get_request(self.api_url + '/sensors/' + sensor_id)
+                if r is None:
+                    return None # Abort query
+                state = TemperatureState(self._temperature_sensor_display_name_mapping[sensor_lbl], json.loads(r.content))
+                if merged_state is None:
+                    merged_state = state
+                else:
+                    merged_state = merged_state.merge(state)
+            status.append(merged_state)
+        return status
+
+
+    def query_temperature_for_heating(self):
+        """To adjust the heating, we need a reference temperature reading.
+        However, sensors may be unreachable. Thus, we can configure a 
+        "preferred reference temperature sensor order" which we iterate
+        to obtain a valid reading. If no sensor is available, return None.
+        """
+        temp_states = self.query_temperature()
+        if temp_states is None:
+            return None
+        temp_dict = {t.name: t for t in temp_states}
+        for sensor_name in self._heating_preferred_reference_temperature_sensor_order:
+            if sensor_name in temp_dict:
+                return temp_dict[sensor_name].temperature
+        return None
+
+
+    def switch_light(self, light_id, turn_on):
+        self.is_dummy_heating = turn_on
+        return True, 'Dummy'
+        # r = hu.http_put_request(self.api_url + '/lights/' + light_id + '/state', 
+        #     '{:s}'.format('{"on":true}' if turn_on else '{"on":false}'))
+        # if r is None:
+        #     return False, 'Exception während {:s}schalten von {:s}. Log überprüfen!'.format(
+        #             'Ein' if turn_on else 'Aus', self.lookup_heating_display_name(light_id)
+        #         )
+
+        # # r = requests.put(self.api_url + '/lights/' + light_id + '/state', 
+        # #     data='{:s}'.format('{"on":true}' if turn_on else '{"on":false}'))
+        # if r.status_code != 200:
+        #     return False, 'Fehler (HTTP {:d}) beim {:s}schalten von {:s}.'.format(
+        #         r.status_code, 'Ein' if turn_on else 'Aus', self.lookup_heating_display_name(light_id))
+        # else:
+        #     return True, '{:s} wurde {:s}geschaltet.'.format(self.lookup_heating_display_name(light_id), 
+        #         'ein' if turn_on else 'aus')
+            
+
+    def turn_on(self):
+        is_heating, _ = self.query_heating()
+        if is_heating:
+            return True, 'Heizung läuft schon.'
+        # Technically (or-relais), we only need to turn on one.
+        # But to have a less confusing status report, turn all on:
+        # _, plug_id = next(iter(self.heater_plug_mapping.items()))
+        # self.switch_light(plug_id, True)
+        success = True
+        msg = list()
+        for _, plug_id in self._heating_plug_raspbee_name_mapping.items():
+            s, m = self.switch_light(plug_id, True)
+            success = success and s
+            msg.append(m)
+        return success, '\n'.join(msg)
+
+
+    def turn_off(self):
+        is_heating, _ = self.query_heating()
+        if not is_heating:
+            return True, 'Heizung ist schon aus.'
+        # Since this is an or-relais, we need to turn off all heating plugs
+        success = True
+        msg = list()
+        for _, plug_id in self._heating_plug_raspbee_name_mapping.items():
+            s, m = self.switch_light(plug_id, False)
+            success = success and s
+            msg.append(m)
+        return success, '\n'.join(msg)

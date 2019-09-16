@@ -449,9 +449,6 @@ class Job(object):
 
     def start(self):
         """Start the job thread and immediately reschedule this job."""
-        # logging.getLogger().info('Running job %s', self)
-
-        # ret = self.job_func() #TODO start thread, add variables to keep running, etc
         if self.worker_thread is not None and self.keep_running:
             logging.getLogger().warn('This job is already running. I will ignore this additional start() request: {}'.format(self))
         else:    
@@ -467,8 +464,7 @@ class Job(object):
 
     def stop(self):
         if self.is_running:
-            self.keep_running = False
-            # self.worker_thread.join()#TODO timeout
+            self.keep_running = False # Heating jobs overwrite this (they have a condition variable which notifies the worker thread and ensures termination via joining)
 
     def _schedule_next_run(self):
         """
@@ -581,122 +577,16 @@ class OnOffController:
         self.prev_response = response
         return response
 
-        
-# class PID:
-#     def __init__(self, P, I, D):
-#         self.P = P
-#         self.I = I
-#         self.D = D
-#         self.desired_value = None
-#         self.prev_error = None
-#         self.integrator = None
-#         self.windup_guard = 5
-#         self.last_update = None
-#         self.logger = logging.getLogger()
-
-#     def set_desired_value(self, desired_value):
-#         self.logger.info('PID setting setpoint/desired value {}'.format(desired_value))
-#         self.desired_value = desired_value
-
-#     def update(self, actual_value):
-#         if self.desired_value is None:
-#             return 0.0
-
-#         error = self.desired_value - actual_value
-        
-#         if self.last_update is None:
-#             self.integrator = 0.0
-#             derivative = 0.0
-#             self.last_update = _timer_now()
-#             delta_error = 0.0
-#         else:
-#             self.last_update, dt = _timer_diff(self.last_update)
-#             delta_error = error - self.prev_error
-
-#             self.integrator += error * dt
-#             if self.integrator < -self.windup_guard:
-#                 self.integrator = -self.windup_guard
-#             elif self.integrator > self.windup_guard:
-#                 self.integrator = self.windup_guard
-
-#             if dt > 0.0:
-#                 derivative = delta_error / dt
-#             else:
-#                 derivative = 0.0
-
-#         self.prev_error = error
-#         #self.logger.info
-#         print('  PID: error {:.2f}, delta_error {:.2f}\n{:10.2f}, {:10.2f}, {:10.2f}'.format(error, delta_error, self.P*error, self.I*self.integrator, self.D*derivative))
-#         return self.P * error + self.I * self.integrator + self.D * derivative
-
-# #TODO PID Tuning https://robotics.stackexchange.com/questions/167/what-are-good-strategies-for-tuning-pid-loops
-# # TODO Real system depends on valve state within each room, etc
 
 #######################################################################
-## TODO message formatting
+## Message formatting
 
-# def plug_to_str(plug_state, use_markdown=True, detailed=False):
-#     txt = '{}{}{} ist '.format(
-#             '_' if use_markdown else '',
-#             plug_state.display_name,
-#             '_' if use_markdown else ''
-#         )
-#     if plug_state.reachable:
-#         txt += 'ein' if plug_state.on else 'aus'
-#     if not plug_state.reachable or detailed:
-#         txt += ' und '
-#         if not plug_state.reachable:
-#             txt += '{}NICHT{} '.format(
-#                 '*' if use_markdown else '',
-#                 '*' if use_markdown else '')
-#         txt += 'erreichbar{}'.format(
-#                 '.' if plug_state.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
-#             # txt += '{}NICHT{} erreichbar{}'.format(
-#             #     '*' if use_markdown else '',
-#             #     '*' if use_markdown else '',
-#             #     ' :skull_and_crossbones::bangbang:' if use_markdown else '!'
-#             # )
-#     return txt
-
-def value(value, default=''):
-    """Returns the value if not none, otherwise an empty string."""
-    return default if value is None else value
+# def value(value, default=''):
+#     """Returns the value if not none, otherwise an empty string."""
+#     return default if value is None else value
 
 def format_num(fmt, num, use_markdown=True):
         s = '{:' + fmt + '}'
         if use_markdown:
             s = '`' + s + '`'
         return s.format(num)
-
-# def temperature_sensor_to_str(sensor_state, use_markdown=True, detailed=False):
-#     # # txt = '%(highlight)s%(name)s%(highlight)s' % {'highlight':'_' if use_markdown else '',
-#     # #     'name':sensor_state.display_name,
-#     # #     }
-
-#     # hair space: U+200A, thin space: U+2009
-#     txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
-#             '_' if use_markdown else '',
-#             sensor_state.display_name,
-#             '_' if use_markdown else '',
-#             format_num('.1f', sensor_state.temperature, use_markdown),
-#             format_num('d', int(sensor_state.humidity, use_markdown)),
-#             format_num('d', int(sensor_state.pressure, use_markdown)))
-
-#     # txt = '{}{}{}: {}{:.1f}\u200a° {:d}\u200a% {:d}\u2009hPa{}'.format(
-#     #         '_' if use_markdown else '',
-#     #         sensor_state.display_name,
-#     #         '_' if use_markdown else '',
-#     #         '`' if use_markdown else '',
-#     #         sensor_state.temperature,
-#     #         int(sensor_state.humidity),
-#     #         int(sensor_state.pressure),
-#     #         '`' if use_markdown else '')
-#     if detailed or sensor_state.battery_level < 20:
-#         txt += ', {:d} % Akku{:s}'.format(
-#             int(sensor_state.battery_level),
-#             ' :warning:' if use_markdown and sensor_state.battery_level < 20 else '')
-#     return txt
-
-
-# def format_details_plug_states(plug_states, use_markdown=True, detailed=False):
-#     return '  ' + '\n  '.join([plug_to_str(ps, use_markdown, detailed) for ps in plug_states]) #TODO formating, maybe centerdot instead of indentation

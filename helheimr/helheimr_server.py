@@ -37,7 +37,7 @@ class HelheimrServer(http.server.SimpleHTTPRequestHandler):
         self._set_headers()
         print('POST IT')
         query = urlparse(self.path)
-        query_components = parse_qs(urlparse(self.path).query)
+        query_components = parse_qs(urlparse(self.path).query) #FIXME urllib parse_qs
         logging.getLogger().info('Incoming query: {}\n\n{}\n\n'.format(query, query_components))
         self.wfile.write(json.dumps({'request':'post', 'status':False}).encode())
 
