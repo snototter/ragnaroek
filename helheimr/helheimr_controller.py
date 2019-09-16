@@ -4,6 +4,7 @@
 # The heart of my home automation project
 
 import datetime
+import libconf
 import logging
 import threading
 import time
@@ -299,9 +300,11 @@ class HelheimrController:
         # # # self.job_list.append(ManualHeatingJob(controller=self, target_temperature=23, 
         # #     # temperature_hysteresis=0.5))
         # # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
-        # Create a dummy heating job:
+        #TODO Create a dummy heating job:
+        self.filename_job_list = 'configs/scheduled-jobs.cfg'
         start_time = (datetime.datetime.now() + datetime.timedelta(seconds=10)).time()
         self._add_periodic_heating_job(27.8, 0.8, to_duration(hours=1), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second, created_by='Helheimr')
+        self.serialize_jobs()
 
         #TODO test serializing periodic jobs:
         # import libconf
@@ -455,8 +458,11 @@ class HelheimrController:
         """:return: Idle time in seconds before the next (scheduled) job is to be run."""
         return hu.datetime_difference(hu.datetime_now(), self.next_run).total_seconds()
 
-#TODO for configuring from bot:
-    # def schedule_heating(self, interval)
+#TODO configure perdiodic task from bot:
+    # def schedule_heating(self, day_interval=1, at_hour=6, at_minute=30, target_temperature=None, temperature_hysteresis=0.5, heating_duration=to_duration(hours=2), created_by=None).
+        # success ... self._add_periodic_heating_job()
+        # if success:
+        # self.serialize()
 
 
     def _cancel_job(self, job):
@@ -560,7 +566,7 @@ class HelheimrController:
                     if isinstance(job, HeatingJob):
                         # There must only be one heating job active!
                         #TODO but manual takes preference over scheduled
-                        if self.active_heating_job is None:
+                        if self.active_heating_job is None or not self.active_heating_job.is_running:
                             self.active_heating_job = job
                             job.start()
                         else:
@@ -575,8 +581,9 @@ class HelheimrController:
             self.logger.info('[HelheimrController] Going to sleep for {:.1f} seconds'.format(max(1,poll_interval)))
             # print('Going to sleep for {:.1f} sec'.format(poll_interval))
             ret = self.condition_var.wait(timeout=max(1,poll_interval))
-            # if ret:
-            #     print('\n\nController woke up due to notification!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!') #TODO remove output
+            #TODO maybe remove output
+            if ret:
+                self.logger.info('[HelheimrController] Woke up due to notification!'.format(max(1,poll_interval)))
         
         #######################################################################
         # Gracefully shut down:
@@ -590,6 +597,27 @@ class HelheimrController:
                 job.stop()
         self.logger.info('[HelheimrController] Clean up done, goodbye!')
 
+    def deserialize_jobs(self):
+        #TODO implement
+        pass 
+
+    def serialize_jobs(self):
+        self.condition_var.acquire()
+        # Each job class (e.g. periodic heating) has a separate group within the configuration file:
+        phjs = [j.to_dict() for j in self.job_list if isinstance(j, PeriodicHeatingJob)] # Periodic heating jobs
+        #TODO add other tasks (such as periodic display update) too!
+        self.condition_var.release()
+        try:
+            lcdict = {
+                    'periodic_heating' : phjs
+                }
+            with open(self.filename_job_list, 'w') as f:
+                # f.write(libconf.dumps(lcdict))
+                libconf.dump(lcdict, f)
+            pass
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            #TODO broadcast error!
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, #logging.DEBUG,
