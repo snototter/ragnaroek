@@ -177,7 +177,7 @@ class PeriodicHeatingJob(HeatingJob):
     def __str__(self):
         return "PeriodicHeatingJob: every {}{}{}, {}".format(self.interval if self.interval > 1 else '',
                  self.unit[:-1] if self.interval == 1 else self.unit,
-                 '' if self.at_time is None else ' at {}'.format(self.at_time),
+                 '' if self.at_time is None else ' at {}'.format(hu.time_as_local(self.at_time)),
                  super(PeriodicHeatingJob, self).__str__())
 
 
@@ -197,28 +197,62 @@ class PeriodicHeatingJob(HeatingJob):
         """Return a dict for serialization via libconf."""
         d = {
             'type' : 'periodic',
-            'every': self.interval,
-            'unit': self.unit,
-            'at': self.at_time, # Periodic heating job MUST have an at_time #TODO FIXME at_time is hu.time-as_utc: need to store it as local time :-/
+            'day_interval': self.interval,
+            'at': hu.time_as_local(self.at_time).strftime('%H:%M:%S'), # Store as local time
             'duration': str(self.heating_duration)
         }
         if self.target_temperature is not None:
             d['temperature'] = self.target_temperature
             if self.temperature_hysteresis is not None:
                 d['hysteresis'] = self.temperature_hysteresis
+        if self.created_by is not None:
+            d['created_by'] = self.created_by
         return d
+
     
     @staticmethod
-    def from_libconf(self, cfg):
+    def from_libconf(cfg, controller):
         if cfg['type'] != 'periodic':
             raise RuntimeError('Cannot instantiate a PeriodicHeatingJob from type "{}" - it must be "periodic"!'.format(cfg['type']))
-        interval = cfg['every']
-        unit = cfg['unit']
+
+        day_interval = cfg['day_interval']
+        # The generic Job class expects at_time given as a string (but we have to take care of UTC/localtime).
+        # The configuration file uses localtime:
         at = cfg['at']
-        duration = cfg['duration']
-        print('TODO TODO TODO TODO: ', interval, unit, at, duration)
-        #TODO build job and return
-        return None
+        # # at_utc = hu.time_as_utc(datetime.datetime.strptime(cfg['at'], '%H:%M:%S').timetz())
+        # # at = str(at_utc) # should be loaded as string! hu.time_as_utc(datetime.datetime.strptime(cfg['at'], '%H:%M:%S').time())
+
+        # Parse duration string (using strptime doesn't work if duration > 24h)
+        d = cfg['duration'].split(':')
+        hours = int(d[0])
+        minutes = 0 if len(d) == 1 else int(d[1])
+        seconds = 0 if len(d) == 2 else int(d[2])
+        duration = datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+        def val_or_none(k):
+            return cfg[k] if k in cfg else None
+        
+        temperature = val_or_none('temperature')
+        hysteresis = val_or_none('hysteresis')
+        created_by = val_or_none('created_by')
+
+        # def p(k):
+        #     print(k, type(k))
+        # p(temperature)
+        # p(hysteresis)
+        # p(created_by)
+        # p(at)
+        # p(duration)
+        # p(day_interval)
+        
+        job = HeatingJob.every(day_interval).days.at(at).do_heat_up(
+                controller=controller,
+                target_temperature=temperature, temperature_hysteresis=hysteresis, 
+                heating_duration=duration,
+                created_by=created_by)
+        #TODO FIXME check utc vs local!!!!
+        print('TODO Check utc/local of at_time: ', job.at_time, job)
+        return job
 
 
 
@@ -256,7 +290,25 @@ class ManualHeatingJob(HeatingJob):
 
 
 class HelheimrController:
+    JOB_LIST_CONFIG_KEY_PERIODIC_HEATING = 'periodic_heating_jobs'
+    
     def __init__(self):
+        #FIXME remove:
+        self.filename_job_list = 'configs/scheduled-jobs.cfg'
+        self.logger = logging.getLogger() # Keep consistent logs...
+        self.job_list = list() # List of scheduled/manually inserted jobs
+        self.lock = threading.Lock()
+        self.condition_var = threading.Condition(self.lock)
+        start_time = (datetime.datetime.now() + datetime.timedelta(seconds=10)).time()
+        self._add_periodic_heating_job(27.8, 0.8, to_duration(hours=1), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second, created_by='Helheimr')
+        print(self.job_list)
+        self.serialize_jobs()
+        print('Done')
+        self.job_list = list()
+        self.deserialize_jobs()
+        print(self.job_list)
+
+
         # The wrapper which is actually able to turn stuff on/off
         ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
         self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
@@ -302,6 +354,7 @@ class HelheimrController:
         # # # self.job_list.append(hu.Job.every(3).seconds.do(self.dummy_stop))
         #TODO Create a dummy heating job:
         self.filename_job_list = 'configs/scheduled-jobs.cfg'
+        self.deserialize_jobs()
         start_time = (datetime.datetime.now() + datetime.timedelta(seconds=10)).time()
         self._add_periodic_heating_job(27.8, 0.8, to_duration(hours=1), 1, at_hour=start_time.hour, at_minute=start_time.minute, at_second=start_time.second, created_by='Helheimr')
         self.serialize_jobs()
@@ -478,16 +531,16 @@ class HelheimrController:
 
     def turn_on_manually(self, target_temperature=None, temperature_hysteresis=0.5, duration=None, created_by=None):
         """TODO
-        duration datetime.timedelta
+        duration is datetime.timedelta
         """
         try:
             self._add_manual_heating_job(target_temperature, temperature_hysteresis, duration, created_by)
             return True, 'Befehl wurde an Heizungssteuerung weitergeleitet.'
         except HeatingConfigurationError as e:
             return False, e.message
-        except: # TODO custom exception (heatingconfigerror, nur e.message/text anzeigen) vs general exception
+        except:
             err_msg = traceback.format_exc(limit=3)
-            return False, '[Traceback]: '+err_msg # TODO traceback
+            return False, '[Traceback]: '+err_msg
 
 
     def turn_off_manually(self, user_name):
@@ -527,18 +580,26 @@ class HelheimrController:
 
     def _add_periodic_heating_job(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
             day_interval=1, at_hour=6, at_minute=0, at_second=0, created_by=None):
-        self.condition_var.acquire()
-        try: 
-            job = HeatingJob.every(day_interval).days.at(
+        job = HeatingJob.every(day_interval).days.at(
                 '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
-                    controller=self,
-                    target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
-                    heating_duration=heating_duration,
-                    created_by=created_by)
-            if any([j.overlaps(job) for j in self.job_list]):
-                raise HeatingConfigurationError('The requested periodic job "{}" overlaps with an existing one!'.format(job))
-            self.job_list.append(job)
+                controller=self,
+                target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
+                heating_duration=heating_duration,
+                created_by=created_by)
+        return self._add_periodic_heating_job_object(job)
+        
+
+    def _add_periodic_heating_job_object(self, periodic_heating_job):
+        ret_val = False
+        self.condition_var.acquire()
+        try:
+            if any([j.overlaps(periodic_heating_job) for j in self.job_list]):
+                raise HeatingConfigurationError('The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job))
+            self.job_list.append(periodic_heating_job)
             self.condition_var.notify()
+            ret_val = True
+        except HeatingConfigurationError as e:
+            self.logger.error('[HelheimrController] Error inserting new heating job: ' + e.message)
         except:
             #TODO separate catch for HeatingConfiguration Error
             #TODO print stack trace!!!!!!
@@ -546,6 +607,7 @@ class HelheimrController:
             print('\nOHOHOHOHOHOH TODO Error:\n', err_msg)#TODO
         finally:
             self.condition_var.release()
+        return ret_val
 
 
     def _scheduling_loop(self):
@@ -597,27 +659,41 @@ class HelheimrController:
                 job.stop()
         self.logger.info('[HelheimrController] Clean up done, goodbye!')
 
+
     def deserialize_jobs(self):
+        job_cfg = hu.load_configuration(self.filename_job_list)
+        for j in job_cfg[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING]:
+            job = PeriodicHeatingJob.from_libconf(j, self)
+            print('Deserialized: ', job)
+            self._add_periodic_heating_job_object(job)
+            #TODO add
+        # ret = self._add_periodic_heating_job(target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
+        #     day_interval=1, at_hour=6, at_minute=0, at_second=0, created_by=None)
         #TODO implement
         pass 
+
 
     def serialize_jobs(self):
         self.condition_var.acquire()
         # Each job class (e.g. periodic heating) has a separate group within the configuration file:
-        phjs = [j.to_dict() for j in self.job_list if isinstance(j, PeriodicHeatingJob)] # Periodic heating jobs
-        #TODO add other tasks (such as periodic display update) too!
+        # Periodic heating jobs:
+        phjs = [j for j in self.job_list if isinstance(j, PeriodicHeatingJob)]
+        # Sort them by at_time:
+        phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)] 
         self.condition_var.release()
+        #TODO add other tasks (such as periodic display update) too!
         try:
             lcdict = {
-                    'periodic_heating' : phjs
+                    type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING : tuple(phds)
                 }
             with open(self.filename_job_list, 'w') as f:
                 # f.write(libconf.dumps(lcdict))
                 libconf.dump(lcdict, f)
-            pass
         except:
             err_msg = traceback.format_exc(limit=3)
+            print('TODO Error: ' + err_msg)
             #TODO broadcast error!
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, #logging.DEBUG,

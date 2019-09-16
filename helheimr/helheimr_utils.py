@@ -129,6 +129,14 @@ def time_as_utc(t):
     return datetime_as_utc(dt).timetz()
 
 
+def time_as_local(t):
+    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
+    else:
+        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
+    return datetime_as_local(dt).timetz()
+
+
 def datetime_now():
     return datetime_as_utc(datetime.datetime.now())
 
@@ -217,7 +225,7 @@ class Job(object):
             return 'Every %s %s at %s do %s %s' % (
                    self.interval,
                    self.unit[:-1] if self.interval == 1 else self.unit,
-                   self.at_time, call_repr, timestats)
+                   time_as_local(self.at_time), call_repr, timestats)
         else:
             fmt = (
                 'Every %(interval)s ' +
@@ -514,7 +522,7 @@ class Job(object):
             # at the specified time *today* (or *this hour*) as well
             if not self.last_run:
                 now = datetime_now()
-                print('TODO COMPARE', self.at_time, ' vs ', now.timetz(), ' vs now: ', now.time())
+                print('TODO COMPARE', self.at_time, ' vs ', now.timetz(), ' vs now: ', now.time(), ' LOCALIZED: ', time_as_local(now.time()))
                 if (self.unit == 'days' and self.at_time > now.timetz() and
                         self.interval == 1):
                     self.next_run = self.next_run - datetime.timedelta(days=1)
