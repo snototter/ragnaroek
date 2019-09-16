@@ -10,6 +10,7 @@ on - :sunny: Heizung einschalten
 off - :snowflake: Heizung ausschalten
 forecast - :partly_sunny: Wettervorhersage
 details - Detaillierte Systeminformation
+config - Heizungsprogramm einrichten
 help - Liste verfügbarer Befehle
 """
 
@@ -59,6 +60,7 @@ import logging
 import random
 import telegram
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+
 
 def _rand_flower():
     return random.choice([':sunflower:', ':hibiscus:', ':tulip:', ':rose:', ':cherry_blossom:'])
@@ -111,8 +113,11 @@ class HelheimrBot:
     WAIT_TIME_HEATING_TOGGLE = 3
 
     CALLBACK_TURN_ON_OFF_CANCEL = '0'
-    CALLBACK_TURN_ON_CONFIRM = '2'
-    CALLBACK_TURN_OFF_CONFIRM = '4'
+    CALLBACK_TURN_ON_CONFIRM = '1'
+    CALLBACK_TURN_OFF_CONFIRM = '2'
+    CALLBACK_CONFIG_CANCEL = '3'
+    CALLBACK_CONFIG_CONFIRM = '4'
+
 
     USE_MARKDOWN = True
     USE_EMOJI = True
@@ -164,6 +169,9 @@ class HelheimrBot:
 
         off_handler = CommandHandler('off', self.cmd_off, self.user_filter)
         self.dispatcher.add_handler(off_handler)
+
+        cfg_handler = CommandHandler('configure', self.cmd_configure, self.user_filter)
+        self.dispatcher.add_handler(cfg_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self.dispatcher.add_handler(CallbackQueryHandler(self.callback_handler))
@@ -223,15 +231,21 @@ class HelheimrBot:
     def cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
+
 /on - :sunny: Heizung einschalten.
   nur Temperatur: /on `21.7c`
   Hysterese: /on `21c` `1c`
   nur Heizdauer: /on `1.5h`
   Temperatur und Dauer: /on `23c` `2h`
-  Alles: /on `22c` `0.5c` `1.5h`\n
-/off - :snowflake: Heizung ausschalten.\n
+  Alles: /on `22c` `0.5c` `1.5h`
+
+/off - :snowflake: Heizung ausschalten.
 /forecast - :partly_sunny: Wettervorhersage.
 /details - Detaillierte Systeminformation.
+
+/config - Heizungsprogramm einstellen.
+  Uhrzeit + Dauer: /config 6:00 2h
+  ... + Temperatur: /config 6:00 23c 2h
 /help - Diese Hilfemeldung."""
         context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo(txt),
             parse_mode=telegram.ParseMode.MARKDOWN)
@@ -309,7 +323,7 @@ class HelheimrBot:
             update.message.reply_text('Heizung wirklich einschalten?', reply_markup=reply_markup)
 
 
-    def cmd_off(self, update, context):#FIXME
+    def cmd_off(self, update, context):
         # Check if another user is currently sending an on/off command:
         if self.is_modifying_heating:
             self.bot.send_message(chat_id=update.message.chat_id, 
@@ -389,6 +403,28 @@ class HelheimrBot:
             self.is_modifying_heating = False
 
 
+    def cmd_configure(self, update, context):
+        at_time = None
+        temperature = None
+        hysteresis = None
+        duration = None
+        for a in context.args:
+            if a[-1] == 'c':
+                val = float(a[:-1].replace(',','.'))
+                if temperature is None:
+                    temperature = val
+                else:
+                    hysteresis = val
+            elif ':' in a:
+                at_time = a
+            elif a[-1] == 'h':
+                h = float(a[:-1].replace(',','.'))
+                hours = int(h)
+                minutes = int((h - hours) * 60)
+                duration = datetime.timedelta(hours=hours, minutes=minutes)
+        #TODO make callback!!! CALLBACK_CONFIG_CANCEL CALLBACK_CONFIG_CONFIRM!!!
+        context.bot.send_message(chat_id=update.message.chat_id, text='Korrekt? Um {}, {}°+/-{}° für {}'.format(at_time, temperature, hysteresis, duration))
+
     def cmd_forecast(self, update, context):
         try:
             forecast = self.controller.query_weather_forecast()
@@ -432,7 +468,6 @@ class HelheimrBot:
 #     bot = HelheimrBot(bot_cfg, deconz_wrapper, weather_forecast)
 #     bot.start()
 #     bot.idle()
-#     #TODO support: /schedule (list scheduled tasks, save to disk, load from disk)
 
 
 # if __name__ == '__main__':

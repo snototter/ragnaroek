@@ -458,8 +458,8 @@ class Job(object):
             self.keep_running = True
             self.worker_thread = threading.Thread(target=self._run_blocking, daemon=True)
             self.worker_thread.start()
-            self._schedule_next_run()
             self.last_run = datetime_now()
+            self._schedule_next_run()
 
     def _run_blocking(self):
         self.job_func()
@@ -481,7 +481,7 @@ class Job(object):
 
         self.period = datetime.timedelta(**{self.unit: interval})
         if self.last_run is None and self.start_after_creation:
-            print('will start myself immediately!', self)
+            # print('will start myself immediately!', self)
             self.next_run = datetime_now()
         else:
             self.next_run = datetime_now() + self.period
@@ -522,7 +522,6 @@ class Job(object):
             # at the specified time *today* (or *this hour*) as well
             if not self.last_run:
                 now = datetime_now()
-                print('TODO COMPARE', self.at_time, ' vs ', now.timetz(), ' vs now: ', now.time(), ' LOCALIZED: ', time_as_local(now.time()))
                 if (self.unit == 'days' and self.at_time > now.timetz() and
                         self.interval == 1):
                     self.next_run = self.next_run - datetime.timedelta(days=1)
