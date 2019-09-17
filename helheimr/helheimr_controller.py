@@ -93,13 +93,17 @@ class HeatingJob(hu.Job):
 
     def heating_loop(self):
         self.was_started = True
-        # Use expected start time instead of actual start time!
+
+        # Compute (optional) end time:
+        # * Periodic heating jobs have at_time set (which is the expected start time).
+        # * Manual heating jobs don't have an at_time (but may have a duration).
         start_time = hu.datetime_now() if self.at_time is None else hu.datetime_as_utc(datetime.datetime.combine(datetime.datetime.today(), self.at_time))
         if self.heating_duration is not None:
             end_time = start_time + self.heating_duration
         else:
             end_time = None
 
+        # Check if we need a controller.
         if self.target_temperature is not None:
             use_temperature_controller = True
             bang_bang = hu.OnOffController()
@@ -108,7 +112,9 @@ class HeatingJob(hu.Job):
         else:
             use_temperature_controller = False
 
-        error_count = 0
+#https://stackoverflow.com/questions/4151320/efficient-circular-buffer
+#TODO controller should log temperature in a circular buffer, direction_with_hysteresis (increasing, decreasing, stays the same over the past X minutes)
+        consecutive_errors = 0 #TODO we may want to retry turning the heater on/off a few times before aborting this task
         self.cv_loop_idle.acquire()
         while self.keep_running:
             current_temperature = self.controller.query_temperature_for_heating()
@@ -144,12 +150,12 @@ class HeatingJob(hu.Job):
             # Check if heating is actually on/off
             is_heating, _ = self.controller.query_heating_state()
             if is_heating != should_heat:
-                error_count += 1
+                consecutive_errors += 1
                 self.controller.broadcast_error("Heizung reagiert nicht - Status '{}', sollte aber '{}' sein!".format('ein' if is_heating else 'aus', 'ein' if should_heat else 'aus'))
             else:
-                error_count = 0
+                consecutive_errors = 0
             
-            # if error_count >= TODO MAX RETRIES
+            # if consecutive_errors >= TODO MAX RETRIES
                 # self.keep_running = False #TODO should we retry?????
                 # break
 
