@@ -7,7 +7,7 @@ import logging
 import socketserver
 from urllib.parse import urlparse
 
-import helheimr_utils as hu
+import helu as hu
 
 #https://gist.github.com/nitaku/10d0662536f37a087e1b
 

@@ -6,7 +6,7 @@ import logging
 import requests
 import traceback
 
-import helheimr_utils as hu
+import helu as hu
 
 class PlugState:
     def __init__(self, display_name, deconz_plug):

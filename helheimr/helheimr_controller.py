@@ -10,7 +10,7 @@ import threading
 import time
 import traceback
 
-import helheimr_utils as hu
+import helu as hu
 import helheimr_bot as hb
 import helheimr_raspbee as hr
 import helheimr_weather as hw

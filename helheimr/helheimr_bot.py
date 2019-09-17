@@ -46,7 +46,7 @@ import threading
 # wilted_flower
 # cherry_blossom
 
-import helheimr_utils as hu
+import helu as hu
 import helheimr_weather as hw
 
 import logging
