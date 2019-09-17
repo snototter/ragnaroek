@@ -9,7 +9,7 @@ from pyowm import OWM
 
 import traceback
 
-import helheimr_utils as hu
+import helu as hu
 
 def degrees_to_compass(deg, num_directions=8):
     """:return: Compass direction (str, either 8 or 16) for the given angle (in degrees, 0 is north, 45 is east)."""
@@ -115,6 +115,11 @@ class WeatherReport:
         self.weather_code = w.get_weather_code()
 
         #TODO get rain, snow, change emoji during night
+        #TODO remove:
+        print(w.__dict__)
+        print(w.get_temperature('celsius'))
+        print(w.get_rain())
+        print()
         self.clouds = w.get_clouds()
         # self.weather_emoji = weather_code_emoji(self.weather_code)
         rain = w.get_rain()
@@ -278,7 +283,6 @@ class WeatherReport:
         self._sunset_time = value
 
 #TODO temp, min, max is only current reading!!!
-#TODO refactor everything, make sub-packages
 class WeatherForecastOwm:
     def __init__(self, config):
         self.owm = OWM(API_key=config['openweathermap']['api_token'],
@@ -294,6 +298,18 @@ class WeatherForecastOwm:
         try:
             obs = self.owm.weather_at_coords(self.latitude, self.longitude)
             w = obs.get_weather()
+
+            #TODO remove
+            f=self.owm.three_hours_forecast()#TODO must be a string "city,countrycode"!
+            lst = f.get_forecast().get_weathers()
+            import datetime
+            for weather in lst:
+                print (hu.datetime_as_local(weather.get_reference_time(timeformat='date')), weather.get_status(), weather.get_temperature('celsius')['temp'])
+            temps = [w.get_temperature('celsius')['temp'] for w in lst]
+            temps = temps[:8]
+            print(temps)
+            print('min/max temp 24h: ', min(temps), max(temps))
+
             return WeatherReport(w)
         except:
             logging.getLogger().error('###############################################################################'
@@ -306,5 +322,13 @@ if __name__ == '__main__':
     #TODO try without internet connection
     wcfg = hu.load_configuration('configs/owm.cfg')
     weather_service = WeatherForecastOwm(wcfg)
-    print(weather_service.query().format_message(True, True))
+    print(weather_service.query().format_message(True, True)) #TODO query may return None!
+
+    #TODO remove
+    # def foo():
+    #     print('test')
+    # job = hu.Job.every().minute.do(foo)
+    # print(job)
+    # print('Next UTC: ', job.next_run, ' vs local ', hu.datetime_as_local(job.next_run))
+    # print(job.should_run)
     

@@ -1,150 +1,20 @@
 #!/usr/bin/python
 # coding=utf-8
 
-import libconf
-from emoji import emojize
-import datetime
-from dateutil import tz
 try:
     from collections.abc import Hashable
 except ImportError:
     from collections import Hashable
+import datetime
+from dateutil import tz
 import functools
 import logging
-import os
-import random
 import re
-import requests
-import subprocess
 import time
 import threading
 import traceback
-# import urllib3
 
-#TODO refactor into separate scripts (network, scheduling, controller, text)
-
-#######################################################################
-# Utilities
-# def slurp_stripped_lines(filename):
-#     with open(filename) as f:
-#         return [s.strip() for s in f.readlines()]
-
-# def load_api_token(filename='.api-token'):
-#     return slurp_stripped_lines(filename)
-#     #with open(filename) as f:
-#         #f.read().strip()
-#         #return [s.strip() for s in f.readlines()] 
-
-
-# def load_authorized_user_ids(filename='.authorized-ids'):
-#     return [int(id) for id in slurp_stripped_lines(filename)]
-
-def emo(txt):
-    """Simply wrapping emoji.emojize() since I often need/forget the optional parameter ;-)"""
-    return emojize(txt, use_aliases=True)
-
-
-def load_configuration(filename):
-    """Loads a libconfig configuration file."""
-    with open(filename) as f:
-        return libconf.load(f)
-
-
-def http_get_request(url, timeout=2.0):
-    """
-    Performs a GET request at the given url (string) and returns the response if one
-    was received within timeout (float) seconds. Otherwise, returns None.
-    """
-    try:
-        r = requests.get(url, timeout=timeout)
-        return r
-    except:
-        err_msg = traceback.format_exc(limit=3)
-        logging.getLogger().error("Error connecting to '{}':\n{}".format(url, err_msg))
-        return None
-
-
-def http_put_request(url, data, timeout=5.0):
-    try:
-        r = requests.put(url, data=data, timeout=timeout)
-        return r
-    except:
-        err_msg = traceback.format_exc(limit=3)
-        logging.getLogger().error("Error connecting to '{}':\n{}".format(url, err_msg))
-        return None
-
-
-def ping(host, timeout=2):
-    """Returns True if the host (string) responds to ICMP requests within timeout (int) seconds."""
-    # Ping 1 package with timeout 1 second
-    with open(os.devnull, 'wb') as devnull:
-        return subprocess.call(['ping', '-c', '1', '-w', str(timeout), host], stdout=devnull, stderr=subprocess.STDOUT) == 0
-
-
-def check_url(url, timeout=2):
-    """Returns true if the given URL (string) can be retrieved via GET."""
-    return http_get_request(url, timeout) is not None
-
-
-def check_internet_connection(timeout=2):
-    """Pings common DNS server to check, if we are online."""
-    hosts = ['1.0.0.1', # Cloudflare DNS (usually fastest ping for me)
-        '1.1.1.1', # Also Cloudfare,
-        '8.8.8.8', # Google DNS
-        '8.8.8.4' # Google again
-        ]
-    for host in hosts:
-        if ping(host, timeout):
-            return True
-    return False
-    
-
-#######################################################################
-# Time stuff
-
-
-def as_timezone(dt_object, tz_from, tz_to):
-    if dt_object.tzinfo is None or dt_object.tzinfo.utcoffset(dt_object) is None:
-        dt_object = dt_object.replace(tzinfo=tz_from)
-    #TODO check if tzinfo matches tz_from!
-    return dt_object.astimezone(tz_to)
-
-def datetime_as_local(dt_object):
-    return as_timezone(dt_object, tz.tzutc(), tz.tzlocal())
-
-
-def datetime_as_utc(dt_object):
-    """Convert datetime object from local timezone to UTC (for 
-    scheduling, we have to take care of daylight savings time).
-    """
-    return as_timezone(dt_object, tz.tzlocal(), tz.tzutc())
-    #     from_zone = tz.tzlocal() #tz.gettz('Europe/Vienna')
-
-
-def time_as_utc(t):
-    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzlocal())
-    else:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
-    return datetime_as_utc(dt).timetz()
-
-
-def time_as_local(t):
-    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
-    else:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
-    return datetime_as_local(dt).timetz()
-
-
-def datetime_now():
-    return datetime_as_utc(datetime.datetime.now())
-
-
-def datetime_difference(dt_object_start, dt_object_end):
-    """Converts times to UTC and returns the time delta."""
-    return datetime_as_utc(dt_object_end) - datetime_as_utc(dt_object_start)
-
+from . import time_utils as tu
 
 #######################################################################
 ## Schedulable jobs (based on https://github.com/dbader/schedule, but
@@ -196,7 +66,7 @@ class Job(object):
             "args={}, "
             "kwargs={})"
         ).format(self.interval,
-                 self.unit[-1] if self.interval == 1 else self.unit,
+                 self.unit[:-1] if self.interval == 1 else self.unit,
                  '' if self.at_time is None else self.at_time,
                  self.job_func.__name__,
                  self.job_func.args,
@@ -204,7 +74,7 @@ class Job(object):
 
     def __repr__(self):
         def format_time(t):
-            return datetime_as_local(t).strftime('%Y-%m-%d %H:%M:%S') if t else '[never]'
+            return tu.datetime_as_local(t).strftime('%Y-%m-%d %H:%M:%S') if t else '[never]'
 
         def is_repr(j):
             return not isinstance(j, Job)
@@ -225,7 +95,7 @@ class Job(object):
             return 'Every %s %s at %s do %s %s' % (
                    self.interval,
                    self.unit[:-1] if self.interval == 1 else self.unit,
-                   time_as_local(self.at_time), call_repr, timestats)
+                   tu.time_as_local(self.at_time), call_repr, timestats)
         else:
             fmt = (
                 'Every %(interval)s ' +
@@ -412,7 +282,7 @@ class Job(object):
             minute = 0
         minute = int(minute)
         second = int(second)
-        self.at_time = time_as_utc(datetime.time(hour, minute, second))
+        self.at_time = tu.time_as_utc(datetime.time(hour, minute, second))
         return self
 
     def do(self, job_func, *args, **kwargs):
@@ -440,7 +310,7 @@ class Job(object):
         """
         :return: ``True`` if the job should be run now.
         """
-        return datetime_now() >= self.next_run
+        return tu.datetime_now() >= self.next_run
     
     @property
     def should_be_removed(self):
@@ -455,7 +325,7 @@ class Job(object):
             self.keep_running = True
             self.worker_thread = threading.Thread(target=self._run_blocking, daemon=True)
             self.worker_thread.start()
-            self.last_run = datetime_now()
+            self.last_run = tu.datetime_now()
             self._schedule_next_run()
 
     def _run_blocking(self):
@@ -478,9 +348,9 @@ class Job(object):
         self.period = datetime.timedelta(**{self.unit: interval})
         if self.last_run is None and self.start_after_creation:
             # print('will start myself immediately!', self)
-            self.next_run = datetime_now()
+            self.next_run = tu.datetime_now()
         else:
-            self.next_run = datetime_now() + self.period
+            self.next_run = tu.datetime_now() + self.period
         if self.start_day is not None:
             if self.unit != 'weeks':
                 raise ScheduleValueError('`unit` should be \'weeks\'')
@@ -517,7 +387,7 @@ class Job(object):
             # If we are running for the first time, make sure we run
             # at the specified time *today* (or *this hour*) as well
             if not self.last_run:
-                now = datetime_now()
+                now = tu.datetime_now()
                 if (self.unit == 'days' and self.at_time > now.timetz() and
                         self.interval == 1):
                     self.next_run = self.next_run - datetime.timedelta(days=1)
@@ -532,61 +402,5 @@ class Job(object):
                                     datetime.timedelta(minutes=1)
         if self.start_day is not None and self.at_time is not None:
             # Let's see if we will still make that time we specified today
-            if (self.next_run - datetime_now()).days >= 7:
+            if (self.next_run - tu.datetime_now()).days >= 7:
                 self.next_run -= self.period
-
-
-#######################################################################
-## Basic controlling stuff
-
-class OnOffController:
-    """Bang bang controller with hysteresis."""
-    def __init__(self):
-        self.desired_value = None
-        self.hysteresis_threshold = None
-        self.prev_response = None
-
-    
-    def set_desired_value(self, desired_value):
-        self.desired_value = desired_value
-
-
-    def set_hysteresis(self, threshold):
-        self.hysteresis_threshold = threshold
-
-
-    def update(self, actual_value):
-        if self.desired_value is None:
-            logging.getLogger().error('OnOffController.update() called without setting a desired value first!')
-            return False
-
-        minv = self.desired_value if self.hysteresis_threshold is None else self.desired_value - self.hysteresis_threshold
-        maxv = self.desired_value if self.hysteresis_threshold is None else self.desired_value + self.hysteresis_threshold
-
-        response = False
-        if actual_value < minv:
-            response = True
-        elif actual_value > maxv:
-            response = False
-        else:
-            # Inside upper/lower threshold, keep doing what you did  
-            if self.prev_response is None:
-                response = False
-            else:
-                response = self.prev_response
-        self.prev_response = response
-        return response
-
-
-#######################################################################
-## Message formatting
-
-# def value(value, default=''):
-#     """Returns the value if not none, otherwise an empty string."""
-#     return default if value is None else value
-
-def format_num(fmt, num, use_markdown=True):
-        s = '{:' + fmt + '}'
-        if use_markdown:
-            s = '`' + s + '`'
-        return s.format(num)

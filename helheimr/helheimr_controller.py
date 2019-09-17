@@ -67,6 +67,8 @@ class HeatingJob(hu.Job):
             if temperature_hysteresis is not None and ((target_temperature-temperature_hysteresis) < 10 or (target_temperature+temperature_hysteresis) > 30):
                 raise HeatingConfigurationError('Temperatur +/- Hysterese muss zwischen 10 und 30 Grad eingestellt werden')
         #TODO check if tz aware or not
+        if heating_duration is not None:
+            print('\nTODO check if tz aware or not: ', heating_duration, ' vs ', datetime.timedelta)
         if heating_duration is not None and heating_duration < datetime.timedelta(minutes=15):
             raise HeatingConfigurationError('Heizung muss für mindestens 15 Minuten eingeschalten werden')
 
