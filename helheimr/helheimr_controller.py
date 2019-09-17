@@ -66,9 +66,6 @@ class HeatingJob(hu.Job):
             raise HeatingConfigurationError('Temperatur muss zwischen 10 und 30 Grad eingestellt werden')
             if temperature_hysteresis is not None and ((target_temperature-temperature_hysteresis) < 10 or (target_temperature+temperature_hysteresis) > 30):
                 raise HeatingConfigurationError('Temperatur +/- Hysterese muss zwischen 10 und 30 Grad eingestellt werden')
-        #TODO check if tz aware or not
-        if heating_duration is not None:
-            print('\nTODO check if tz aware or not: ', heating_duration, ' vs ', datetime.timedelta)
         if heating_duration is not None and heating_duration < datetime.timedelta(minutes=15):
             raise HeatingConfigurationError('Heizung muss für mindestens 15 Minuten eingeschalten werden')
 
@@ -354,6 +351,8 @@ class HelheimrController:
         # Load pre-configured heating jobs
         self.filename_job_list = 'configs/scheduled-jobs.cfg'
         self.deserialize_jobs()
+
+        self.temperature_readings = hu.circularlist(100) #TODO make param
 
         self.worker_thread = threading.Thread(target=self._scheduling_loop) # The scheduler runs in a separate thread
         self.worker_thread.start()
@@ -651,6 +650,10 @@ class HelheimrController:
     def _scheduling_loop(self):
         self.condition_var.acquire()
         while self.run_loop:
+            # Query temperature
+            self.temperature_readings.append(self.query_temperature_for_heating())
+            print('TODO ', self.temperature_readings)
+
             # Filter finished one-time jobs
             for job in [job for job in self.job_list if job.should_be_removed]:
                 self._cancel_job(job)
