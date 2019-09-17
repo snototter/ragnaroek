@@ -148,7 +148,7 @@ class HeatingJob(hu.Job):
 
             # Check if heating is actually on/off
             is_heating, _ = self.controller.query_heating_state()
-            if is_heating != should_heat:
+            if is_heating is not None and is_heating != should_heat:
                 consecutive_errors += 1
                 self.controller.broadcast_error("Heizung reagiert nicht - Status '{}', sollte aber '{}' sein!".format('ein' if is_heating else 'aus', 'ein' if should_heat else 'aus'))
             else:
@@ -333,8 +333,8 @@ class HelheimrController:
     def __init__(self):
         # The wrapper which is actually able to turn stuff on/off
         ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-        self.raspbee_wrapper = hr.DummyRaspBeeWrapper(ctrl_cfg)
-        # self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg) #TODO/FIXME!!!!!!
+        # self.raspbee_wrapper = hr.DummyRaspBeeWrapper(ctrl_cfg)
+        self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg) #TODO/FIXME!!!!!!
 
         # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
         self.lock = threading.Lock()
@@ -348,9 +348,6 @@ class HelheimrController:
         self.poll_interval = ctrl_cfg['scheduler']['idle_time']
         self.active_heating_job = None # References the currently active heating job (for convenience)
 
-        # Load pre-configured heating jobs
-        self.filename_job_list = 'configs/scheduled-jobs.cfg'
-        self.deserialize_jobs()
 
         self.temperature_readings = hu.circularlist(100) #TODO make param
 
@@ -389,6 +386,10 @@ class HelheimrController:
         self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
         self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
         self.known_url_raspbee = self.raspbee_wrapper.api_url
+
+        # Load pre-configured heating jobs
+        self.filename_job_list = 'configs/scheduled-jobs.cfg'
+        self.deserialize_jobs()
 
     
     def _load_known_hosts(self, libconf_attr_dict):

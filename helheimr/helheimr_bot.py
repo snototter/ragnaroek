@@ -75,7 +75,7 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
             '*' if use_markdown else '',
             '*' if use_markdown else '',
             'ein' if is_heating else 'aus',
-            ('.' if not include_state_details else ':') if not use_emoji else (' :sunny:' if is_heating else ' :snowman:')
+            ('.' if not include_state_details else ':') if not use_emoji else (' :thermometer:' if is_heating else ' :snowman:')
         )
     # #TODO later on, I probably only want to know the states if the plug states differ:
     # include_state_details = False
@@ -265,7 +265,7 @@ class HelheimrBot:
             text=hu.emo("Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower())))
 
 
-    def query_status(self, chat_id, detailed_report=False):
+    def query_status(self, chat_id, detailed_report=True):
         # Query heating status
         is_heating, plug_states = self.controller.query_heating_state()
         txt = format_msg_heating(is_heating, plug_states, 
@@ -315,7 +315,7 @@ class HelheimrBot:
 
         if is_heating:
             self.is_modifying_heating = False
-            txt = '*Heizung* läuft schon :sunny:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)
+            txt = '*Heizung* läuft schon :thermometer:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)
             context.bot.send_message(
                 chat_id=update.message.chat_id, 
                 text=hu.emo(txt), 

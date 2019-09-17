@@ -287,7 +287,8 @@ class WeatherForecastOwm:
     def __init__(self, config):
         self.owm = OWM(API_key=config['openweathermap']['api_token'],
             language='de', version='2.5')
-        # self.city_id = config['openweathermap']['city_id']
+        self.city_id = config['openweathermap']['city_id']
+        self.city_name = config['openweathermap']['city_name']
         self.latitude = config['openweathermap']['latitude']
         self.longitude = config['openweathermap']['longitude']
         
@@ -300,7 +301,7 @@ class WeatherForecastOwm:
             w = obs.get_weather()
 
             #TODO remove
-            f=self.owm.three_hours_forecast()#TODO must be a string "city,countrycode"!
+            f=self.owm.three_hours_forecast(self.city_name)#TODO must be a string "city,countrycode"!
             lst = f.get_forecast().get_weathers()
             import datetime
             for weather in lst:

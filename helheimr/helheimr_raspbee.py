@@ -76,7 +76,11 @@ class TemperatureState:
             self.pressure = other.pressure
         if self.temperature is None:
             self.temperature = other.temperature
-        self.battery_level = min(self.battery_level, other.battery_level)
+        
+        if self.battery_level is None:
+            self.battery_level = other.battery_level
+        elif other.battery_level is not None:
+            self.battery_level = min(self.battery_level, other.battery_level)
         return self
 
 
@@ -90,10 +94,11 @@ class TemperatureState:
                 hu.format_num('d', int(self.humidity), use_markdown),
                 hu.format_num('d', self.pressure, use_markdown))
 
-        if detailed_information or self.battery_level < 20:
+        if detailed_information or (self.battery_level is not None and self.battery_level < 20):
             txt += ', {}\u200a% Akku{:s}'.format(
-                hu.format_num('d', int(self.battery_level), use_markdown),
-                ' :warning:' if use_markdown and self.battery_level < 20 else '')
+                '?' if self.battery_level is None else hu.format_num('d', int(self.battery_level),
+                use_markdown),
+                ' :warning:' if use_markdown and (self.battery_level is not None and self.battery_level < 20) else '')
         return txt
 
     @staticmethod
@@ -250,7 +255,7 @@ class RaspBeeWrapper:
                 is_heating = (is_heating if is_heating is not None else False) or plug.on
         
         if is_heating is not None:
-            msg.insert(1, '\u2022 Heizung ist {}'.format('ein :sunny:' if is_heating else 'aus :snowman:'))
+            msg.insert(1, '\u2022 Heizung ist {}'.format('ein :thermometer:' if is_heating else 'aus :snowman:'))
         else:
             msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
 
@@ -271,7 +276,7 @@ class RaspBeeWrapper:
 
 
     def query_heating(self):
-        """:return: flag (True if heating currently heating), list of PlugState"""
+        """:return: flag (True if currently heating), list of PlugState"""
         status = list()
         is_heating = False
         logger = logging.getLogger()
