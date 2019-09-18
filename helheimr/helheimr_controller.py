@@ -365,7 +365,10 @@ class HelheimrController:
 
         # #TODO remove dummy job:
         # self.condition_var.acquire()
-        # self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove
+        # # self.job_list.append(hu.Job.every(120).seconds.do(self.stop))#TODO remove
+        # self.job_list.append( add this job on the pi
+        #     hu.Job.every(5).minutes.do(self.update_display)
+        # )
         # self.condition_var.notify()
         # self.condition_var.release()
 
@@ -492,20 +495,22 @@ class HelheimrController:
                     at_time = hu.time_as_local(j.at_time)
                     duration_hrs = int(j.heating_duration.seconds/3600)
                     duration_min = int((j.heating_duration.seconds - duration_hrs*3600)/60)
-                    msg.append('\u2022 {}, tgl. um {} für {:02d}\u200ah {:02d}\u200amin, nächster Start am `{}.{}.`'.format(
+                    msg.append('\u2022 {}, tgl. um {} für {:02d}\u200ah {:02d}\u200amin, nächster Start am `{}.{}.` ({})'.format(
                         'Aktiv' if j.is_running else 'Inaktiv',
                         at_time.strftime('%H:%M'), 
                         duration_hrs, duration_min,
                         next_run.day, 
-                        next_run.month
+                        next_run.month,
+                        j.created_by
                         ))
                 elif isinstance(j, ManualHeatingJob):
                     duration_hrs = 0 if j.heating_duration is None else int(j.heating_duration.seconds/3600)
                     duration_min = 0 if j.heating_duration is None else int((j.heating_duration.seconds - duration_hrs*3600)/60)
-                    msg.append('\u2022 {}, einmalig heizen{}{}'.format(
+                    msg.append('\u2022 {}, einmalig heizen{}{} ({})'.format(
                         'aktiv' if j.is_running else 'inaktiv',
                         ', {}\u200a°' if j.target_temperature is not None else '',
-                        ', für {:02d}\u200ah {:02d}\u200amin'.format(duration_hrs, duration_min) if j.heating_duration is not None else ''
+                        ', für {:02d}\u200ah {:02d}\u200amin'.format(duration_hrs, duration_min) if j.heating_duration is not None else '',
+                        j.created_by
                     ))
         
         return '\n'.join(msg)
