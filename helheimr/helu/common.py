@@ -59,3 +59,29 @@ def format_num(fmt, num, use_markdown=True):
         if use_markdown:
             s = '`' + s + '`'
         return s.format(num)
+
+
+# https://stackoverflow.com/a/40784706
+class circularlist(object):
+    def __init__(self, size):
+        self.index = 0
+        self.size = size
+        self._data = list()
+
+    def append(self, value):
+        if len(self._data) == self.size:
+            self._data[self.index] = value
+        else:
+            self._data.append(value)
+        self.index = (self.index + 1) % self.size
+
+    def __getitem__(self, key):
+        """Get element by index, relative to the current index"""
+        if len(self._data) == self.size:
+            return(self._data[(key + self.index) % self.size])
+        else:
+            return(self._data[key])
+
+    def __repr__(self):
+        """Return string representation"""
+        return self._data.__repr__() + ' (' + str(len(self._data))+' items)'

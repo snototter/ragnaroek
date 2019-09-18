@@ -66,9 +66,6 @@ class HeatingJob(hu.Job):
             raise HeatingConfigurationError('Temperatur muss zwischen 10 und 30 Grad eingestellt werden')
             if temperature_hysteresis is not None and ((target_temperature-temperature_hysteresis) < 10 or (target_temperature+temperature_hysteresis) > 30):
                 raise HeatingConfigurationError('Temperatur +/- Hysterese muss zwischen 10 und 30 Grad eingestellt werden')
-        #TODO check if tz aware or not
-        if heating_duration is not None:
-            print('\nTODO check if tz aware or not: ', heating_duration, ' vs ', datetime.timedelta)
         if heating_duration is not None and heating_duration < datetime.timedelta(minutes=15):
             raise HeatingConfigurationError('Heizung muss für mindestens 15 Minuten eingeschalten werden')
 
@@ -151,7 +148,7 @@ class HeatingJob(hu.Job):
 
             # Check if heating is actually on/off
             is_heating, _ = self.controller.query_heating_state()
-            if is_heating != should_heat:
+            if is_heating is not None and is_heating != should_heat:
                 consecutive_errors += 1
                 self.controller.broadcast_error("Heizung reagiert nicht - Status '{}', sollte aber '{}' sein!".format('ein' if is_heating else 'aus', 'ein' if should_heat else 'aus'))
             else:
@@ -336,8 +333,8 @@ class HelheimrController:
     def __init__(self):
         # The wrapper which is actually able to turn stuff on/off
         ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-        self.raspbee_wrapper = hr.DummyRaspBeeWrapper(ctrl_cfg)
-        # self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg) #TODO/FIXME!!!!!!
+        # self.raspbee_wrapper = hr.DummyRaspBeeWrapper(ctrl_cfg)
+        self.raspbee_wrapper = hr.RaspBeeWrapper(ctrl_cfg) #TODO/FIXME!!!!!!
 
         # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
         self.lock = threading.Lock()
@@ -351,9 +348,8 @@ class HelheimrController:
         self.poll_interval = ctrl_cfg['scheduler']['idle_time']
         self.active_heating_job = None # References the currently active heating job (for convenience)
 
-        # Load pre-configured heating jobs
-        self.filename_job_list = 'configs/scheduled-jobs.cfg'
-        self.deserialize_jobs()
+
+        self.temperature_readings = hu.circularlist(100) #TODO make param
 
         self.worker_thread = threading.Thread(target=self._scheduling_loop) # The scheduler runs in a separate thread
         self.worker_thread.start()
@@ -393,6 +389,10 @@ class HelheimrController:
         self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
         self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
         self.known_url_raspbee = self.raspbee_wrapper.api_url
+
+        # Load pre-configured heating jobs
+        self.filename_job_list = 'configs/scheduled-jobs.cfg'
+        self.deserialize_jobs()
 
     
     def _load_known_hosts(self, libconf_attr_dict):
@@ -656,6 +656,10 @@ class HelheimrController:
     def _scheduling_loop(self):
         self.condition_var.acquire()
         while self.run_loop:
+            # Query temperature
+            self.temperature_readings.append(self.query_temperature_for_heating())
+            print('TODO ', self.temperature_readings)
+
             # Filter finished one-time jobs
             for job in [job for job in self.job_list if job.should_be_removed]:
                 self._cancel_job(job)
