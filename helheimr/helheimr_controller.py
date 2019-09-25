@@ -656,9 +656,14 @@ class HelheimrController:
     def _scheduling_loop(self):
         self.condition_var.acquire()
         while self.run_loop:
-            # Query temperature
-            self.temperature_readings.append(self.query_temperature_for_heating())
-            print('TODO ', self.temperature_readings)
+            # # Query temperature
+            # self.temperature_readings.append(self.query_temperature_for_heating())
+            # print('TODO ', self.temperature_readings)
+            temp_states = self.query_temperature()
+            temps = [ts.temperature for ts in temp_states]
+            with open('temp-readings.csv','a+') as temp_file:
+                temp_file.write('{:s};{:s}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S'), ';'.join(map(str, temps))))
+
 
             # Filter finished one-time jobs
             for job in [job for job in self.job_list if job.should_be_removed]:
