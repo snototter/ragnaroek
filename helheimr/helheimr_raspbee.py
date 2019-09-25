@@ -141,7 +141,9 @@ class RaspBeeWrapper:
         ######## Temperature sensors
         # Map deconz sensor name to human-readable display name
         self._temperature_sensor_display_name_mapping = {
-            cfg['raspbee']['temperature']['sensor_names']['living_room'] : cfg['raspbee']['temperature']['display_names']['living_room']
+            cfg['raspbee']['temperature']['sensor_names']['living_room'] : cfg['raspbee']['temperature']['display_names']['living_room'],
+            cfg['raspbee']['temperature']['sensor_names']['kids'] : cfg['raspbee']['temperature']['display_names']['kids'],
+            cfg['raspbee']['temperature']['sensor_names']['bedroom'] : cfg['raspbee']['temperature']['display_names']['bedroom']
         }
 
         # Map deconz sensor name to deconz ID
@@ -196,7 +198,7 @@ class RaspBeeWrapper:
 
 
     def _map_deconz_temperature_sensors(self, cfg):
-        # Each of our sensors is takes up 3 separate raspbee IDs (temperature, humidity, pressure)
+        # Each of our sensors takes up 3 separate raspbee IDs (temperature, humidity, pressure)
         r = hu.http_get_request(self.api_url + '/sensors')
         if r is None:
             return dict()
@@ -205,7 +207,9 @@ class RaspBeeWrapper:
         logger = logging.getLogger()
 
         sensor_names = [
-            cfg['raspbee']['temperature']['sensor_names']['living_room']
+            cfg['raspbee']['temperature']['sensor_names']['living_room'],
+            cfg['raspbee']['temperature']['sensor_names']['kids'],
+            cfg['raspbee']['temperature']['sensor_names']['bedroom']
         ]
         mapping = dict()
 
