@@ -2,14 +2,75 @@
 # coding=utf-8
 """The main controlling script."""
 
+import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 import sys
 
 from helu import heating
+from helu import common
+from helu import telegram_bot
+# from helu import
 
-class MessageBroadcaster:
-    def __init__(self, telegram_bot):
-        self._telegram_bot = telegram_bot
+class Hel:
+    def __init__(self):
+        pass
+
+    def control_heating(self):
+        ## Set up logging
+        # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
+        logging.basicConfig(level=logging.INFO, #logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+        self._logger = logging.getLogger() # Adjust the root logger
+
+        log_handler = TimedRotatingFileHandler('helheimr.log', when="m", 
+                    interval=1, backupCount=5) # FIXME switch to days or weeks!
+        self._logger.addHandler(log_handler)
+
+
+        # TODO create a rotating log for temperature readings (create class with own logger, schedule periodic readings)
+
+        # Load configuration files
+        ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
+        telegram_cfg = common.load_configuration('configs/bot.cfg')
+        owm_cfg = common.load_configuration('configs/owm.cfg')
+        schedule_cfg = common.load_configuration('configs/scheduled-jobs.cfg')
+
+        # Create telegram bot (but do not start it yet, as it 
+        # tries to query the heating upon start up)
+        #TODO self._telegram_bot = telegram.HelheimrBot(bot_cfg, self)
+        self._telegram_bot = None
+
+        # Start the heater/heating controller
+        self._heating = heating.Heating.init_instance(ctrl_cfg, self)
+
+        # Now we can start the telegram bot    
+        #TODO self._telegram_bot.start()
+
+        # Then, start the job scheduler
+        #TODO
+
+        # Start the webserver for our e-ink display
+        #TODO
+
+        #TODO join scheduler (?)
+        # heating.instance().shutdown()
+
+        # load configs
+        # set up bot, server, scheduler, heating, weather forecast
+        #TODO:
+        #message_broadcaster = ...
+        
+        # controller = HelheimrController()
+        try:
+            self._heating.run_blocking()
+        except KeyboardInterrupt:
+            self._logger.info("Received keyboard interrupt")
+            
+        self._heating.shutdown()
+        self._logger.info("Shut down gracefully, good bye!")
+
+
 
     def error(self, message):
         self.__broadcast_message(text, 'error')
@@ -30,21 +91,12 @@ class MessageBroadcaster:
             telegram_msg = ':bangbang: ' + text
         else:
             raise RuntimeError('Invalid message type "{}"'.format(msg_type))
-
-        self._telegram_bot.broadcast_message(telegram_msg)
-
-
-def control_heating():
-    telegram_bot = None
-
-    message_broadcaster = MessageBroadcaster(telegram_bot)
-    heating.Heating.init_instance(config, message_broadcaster)
-    # load configs
-    # set up bot, server, scheduler, heating, weather forecast
-    #TODO:
-    #message_broadcaster = ...
-    pass
+        if self._telegram_bot is not None:
+            self._telegram_bot.broadcast_message(telegram_msg)
+        else:
+            self._logger.error('Telegram bot is not available to broadcast:\n' + telegram_msg)
 
 
 if __name__ == '__main__':
-    control_heating()
+    hel = Hel()
+    hel.control_heating()

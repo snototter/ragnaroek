@@ -40,8 +40,11 @@ def emo(txt):
 
 def load_configuration(filename):
     """Loads a libconfig configuration file."""
-    with open(filename) as f:
-        return libconf.load(f)
+    try:
+        with open(filename) as f:
+            return libconf.load(f)
+    except FileNotFoundError:
+        return None
 
 
 #######################################################################

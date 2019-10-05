@@ -16,10 +16,6 @@ help - Liste verfügbarer Befehle
 """
 
 
-
-# import argparse
-# import os
-# import sys
 import datetime
 import time
 import traceback
@@ -38,16 +34,10 @@ import threading
 # Telegram emojis: 
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 # https://k3a.me/telegram-emoji-list-codes-descriptions/
-# hibiscus
-# fire
-# sign_of_the_horns
-# tulip
-# rose
-# wilted_flower
-# cherry_blossom
 
-import helu as hu
-import helheimr_weather as hw
+
+#FIXME for rewrite we need to adjust weather and co...
+# from . import weather as hw
 
 import logging
 import random
@@ -100,10 +90,11 @@ def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, inc
             '*' if use_markdown else '',
             '\n\u2022 '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
 
+#FIXME needs a thorough rewrite!!! instead of controller
 #######################################################################
 # Main bot workflow
 class HelheimrBot:
-    WAIT_TIME_HEATING_TOGGLE = 3
+    WAIT_TIME_HEATING_TOGGLE = 1.5
 
     CALLBACK_TURN_ON_OFF_CANCEL = '0'
     CALLBACK_TURN_ON_CONFIRM = '1'
@@ -111,9 +102,9 @@ class HelheimrBot:
     CALLBACK_CONFIG_CANCEL = '3'
     CALLBACK_CONFIG_CONFIRM = '4'
 
-
     USE_MARKDOWN = True
     USE_EMOJI = True
+    
 
     def __init__(self, bot_cfg, controller):
         self.controller = controller # The controller takes care of "everything" (turn heating on/off, query states/weather, etc.)
@@ -460,23 +451,3 @@ class HelheimrBot:
             logging.getLogger().warn('Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
             context.bot.send_message(chat_id=update.message.chat_id, text=hu.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
 
-
-# def main():
-#     logging.basicConfig(level=logging.INFO, #logging.DEBUG,
-#                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        
-#     ctrl_cfg = hu.load_configuration('configs/ctrl.cfg')
-#     deconz_wrapper = hr.RaspBeeWrapper(ctrl_cfg)
-
-#     weather_cfg = hu.load_configuration('configs/owm.cfg')
-#     weather_forecast = hw.WeatherForecastOwm(weather_cfg)
-
-#     bot_cfg = hu.load_configuration('configs/bot.cfg')
-    
-#     bot = HelheimrBot(bot_cfg, deconz_wrapper, weather_forecast)
-#     bot.start()
-#     bot.idle()
-
-
-# if __name__ == '__main__':
-#     main()

@@ -19,6 +19,11 @@ def dt_offset(delta):
     return dt_now() + delta
 
 
+def format(dt, fmt="%Y-%m-%d %H:%M:%S"):
+    """Returns the string representation localized to the user's timezone."""
+    return dt.astimezone(tz.tzlocal()).strftime(fmt)
+
+
 
 def as_timezone(dt_object, tz_from, tz_to):
     if dt_object.tzinfo is None or dt_object.tzinfo.utcoffset(dt_object) is None:

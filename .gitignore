@@ -2,6 +2,7 @@
 **/.authorized-ids
 **.api-token*
 **.cfg
+**.log*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

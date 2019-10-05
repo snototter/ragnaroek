@@ -40,7 +40,7 @@ class Heating:
         :param broadcaster: object to broadcast info/warning/error messages
         """
         if Heating.__instance is None:
-            Heating(config)
+            Heating(config, broadcaster)
         return Heating.__instance
 
 
@@ -89,12 +89,12 @@ class Heating:
         if self._is_terminating:
             return
 
-        if target_temperature is not None and 
+        if target_temperature is not None and \
             (target_temperature < Heating.__MIN_TEMPERATURE or target_temperature > Heating.__MAX_TEMPERATURE):
             raise ValueError("Target temperature must be within [{}, {}], you requested {}".format(
                 Heating.__MIN_TEMPERATURE, Heating.__MAX_TEMPERATURE, target_temperature))
 
-        if temperature_hysteresis < Heating.__MIN_HYSTERESIS or temperature_hysteresis > Heating.__MAX_HYSTERESIS):
+        if temperature_hysteresis < Heating.__MIN_HYSTERESIS or temperature_hysteresis > Heating.__MAX_HYSTERESIS:
             raise ValueError("Hysteresis must be within [{}, {}], you requested {}".format(
                 Heating.__MIN_HYSTERESIS, Heating.__MAX_HYSTERESIS, temperature_hysteresis))
 
@@ -136,6 +136,10 @@ class Heating:
         self._heating_system.turn_off()
 
 
+    def run_blocking(self):
+        self._heating_loop_thread.join()
+
+
     def shutdown(self):
         """Shut down gracefully."""
         self._is_terminating = True
@@ -169,14 +173,17 @@ class Heating:
                     self._controller.set_desired_value(self._target_temperature)
                     self._controller.set_hysteresis(self._temperature_hysteresis)
                     use_controller = True
+                    logging.getLogger().info("[Heating] Starting BangBang to reach {:.1f} +/- {:.1f}°".format(self._target_temperature, self._temperature_hysteresis))
                 else:
                     use_controller = False
+                    logging.getLogger().info("[Heating] Starting manually (i.e. always on)")
 
                 if self._heating_duration is None:
                     end_time = None
+                    logging.getLogger().info("[Heating] This heating request can only be stopped manually!")
                 else:
                     end_time = time_utils.dt_offset(self._heating_duration)
-                    logging.getLogger().info("[Heating] Start heating until {}".format(end_time))
+                    logging.getLogger().info("[Heating] This heating request will end at {}".format(time_utils.format(end_time)))
 
             # If we're heating and there is no error, this plug state list will be 
             # populated within the following if-branch.
