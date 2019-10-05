@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # coding=utf-8
-"""Bang bang controller implementation (as our heating is either on or off)."""
 
 import logging
 
@@ -24,7 +23,6 @@ class OnOffController:
 
 
     def update(self, actual_value):
-        """Returns True/False indicating whether to turn the heater on or off."""
         if self.desired_value is None:
             logging.getLogger().error('OnOffController.update() called without setting a desired value first!')
             return False

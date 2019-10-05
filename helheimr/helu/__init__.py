@@ -1,5 +1,9 @@
-from .common import *
-from .controller import *
-from .job_scheduling import *
-from .network_utils import *
-from .time_utils import *
+#!/usr/bin/python
+# coding=utf-8
+"""Utilities which allow me to automate our heating system."""
+
+__all__ = ['common', 'controller', 'heating', 
+    'job_scheduling', 'network_utils', 'raspbee', 
+    'telegram_bot', 'time_utils']
+__version__ = '1.0'
+__author__ = 'snototter'

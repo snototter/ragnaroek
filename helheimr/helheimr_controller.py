@@ -57,6 +57,7 @@ class HeatingJob(hu.Job):
         self.cv_loop_idle = threading.Condition(self.lock)
 
 
+
     def do_heat_up(self, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None, controller=None, created_by=None):
         """Call this method to schedule this heating task."""
         # Sanity checks
