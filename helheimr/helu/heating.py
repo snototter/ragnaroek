@@ -55,17 +55,18 @@ class Heating:
                 common.format_num('.1f', Heating.MAX_TEMPERATURE),
                 common.format_num('.1f', target_temperature))
 
-        if temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS:
+        if temperature_hysteresis is not None and \
+            (temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS):
             return False, "Hysterese muss zwischen [{}, {}] liegen, nicht {}.".format(
                 common.format_num('.1f', Heating.MIN_HYSTERESIS), 
                 common.format_num('.1f', Heating.MAX_HYSTERESIS), 
                 common.format_num('.1f', temperature_hysteresis))
 
         if request_type == HeatingRequest.SCHEDULED and duration is None:
-            return False, "Periodischer Heiztask muss eine Dauer angeben."
+            return False, "Ein Heizungsprogramm muss eine Dauer definieren."
 
         if duration is not None and not isinstance(duration, datetime.timedelta):
-            return False, "Falscher Datentyp für 'duration'."
+            return False, "Falscher Datentyp für Dauer des Heizungsprogrammes."
 
         if duration is not None and duration > Heating.MAX_HEATING_DURATION:
             return False, "Heizdauer kann nicht länger als {} Stunden betragen.".format(
@@ -85,8 +86,8 @@ class Heating:
         Heating.__instance = self
 
         #FIXME switch to real system
-        self._heating_system = raspbee.DummyRaspBeeWrapper(config)
-        # self._heating_system = raspbee.RaspBeeWrapper(config)
+        # self._heating_system = raspbee.DummyRaspBeeWrapper(config)
+        self._heating_system = raspbee.RaspBeeWrapper(config)
 
         self._controller = controller.OnOffController()
 
@@ -188,7 +189,8 @@ class Heating:
 
         # # List all jobs:
         # msg.append('')
-        # #TODO list other jobs
+        # #TODO list other jobs 
+        # 'Heizungsprogramme:' sort by at_time
         # self.condition_var.acquire()
         # heating_jobs = [j for j in self.job_list if isinstance(j, HeatingJob)]
         # self.condition_var.release()

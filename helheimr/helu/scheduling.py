@@ -8,6 +8,7 @@ except ImportError:
     from collections import Hashable
 import datetime
 import functools
+import libconf
 import logging
 import random
 import re
@@ -568,6 +569,7 @@ class PeriodicHeatingJob(Job):
 
     def do_heat_up(self, created_by, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None):
         """Call this method to schedule this heating task."""
+        
         # Reuse sanity checks from heating class:
         sane, txt = heating.Heating.sanity_check(heating.HeatingRequest.SCHEDULED, 
             target_temperature, temperature_hysteresis, heating_duration)
@@ -671,6 +673,7 @@ class NonHeatingJob(Job):
     def to_dict(self):
         """Return a dict for serialization via libconf."""
         d = {
+            'type':self.function_name,
             'interval': self.interval,
             'unit': self.unit
         }
@@ -802,31 +805,39 @@ class HelheimrScheduler(Scheduler):
 
     def schedule_heating_job(self, created_by, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
             day_interval=1, at_hour=6, at_minute=0, at_second=0):
-        job = PeriodicHeatingJob.every(day_interval).days.at(
-                '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
-                created_by,
-                target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
-                heating_duration=heating_duration)
-        ret = self.__schedule_heating_job(job)
-        if ret:
-            self.serialize_jobs()
-        return ret
+        ret = False
+        msg = ''
+        try:
+            job = PeriodicHeatingJob.every(day_interval).days.at(
+                    '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
+                    created_by,
+                    target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
+                    heating_duration=heating_duration)
+            ret, msg = self.__schedule_heating_job(job)
+            if ret:
+                self.serialize_jobs()
+            else:
+                msg = 'Ungültige Konfiguration des Heizungsprogrammes: ' + msg
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            logging.getLogger().error('[HelheimrScheduler] Error while scheduling a user-configured heating job:\n' + err_msg)
+            msg = 'Es ist eine Exception aufgetreten: ' + err_msg
+        return ret, msg
 
 
     def __schedule_heating_job(self, periodic_heating_job):
         ret_val = False
         msg = ''
         self._condition_var.acquire()
-        if any([j.overlaps(periodic_heating_job) for j in self.jobs]):
-            msg = 'The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job)
+        if any([j.overlaps(periodic_heating_job) for j in self.jobs if isinstance(j, PeriodicHeatingJob)]):
+            msg = 'Das gewünschte Heizungsprogramm überschneidet sich mit einem existierenden Programm.'
+            logging.getLogger().error('[HelheimrController] Error inserting new heating job: The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job))
         else:
             self.jobs.append(periodic_heating_job)
             self._condition_var.notify()
             ret_val = True
-        if not ret_val:
-            logging.getLogger().error('[HelheimrController] Error inserting new heating job: ' + msg)
         self._condition_var.release()
-        return ret_val
+        return ret_val, msg
 
 
     def __scheduling_loop(self):
@@ -839,7 +850,6 @@ class HelheimrScheduler(Scheduler):
 
             self.run_pending()
           
-            # print('TODO REMOVE IDLE_TIME: {}'.format(datetime.timedelta(seconds=self.idle_time)))
             poll_interval = max(1, self._poll_interval if len(self.jobs) == 0 else min(self._poll_interval, self.idle_time))
             logging.getLogger().info('[HelheimrScheduler] Going to sleep for {:.1f} seconds\n'.format(poll_interval))
             
@@ -852,7 +862,7 @@ class HelheimrScheduler(Scheduler):
         if jobs_config is None:
             return
 
-        heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING]
+        heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING] if type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING in jobs_config else None
         if heating_jobs is not None:
             for j in heating_jobs:
                 try:
@@ -862,7 +872,7 @@ class HelheimrScheduler(Scheduler):
                     err_msg = traceback.format_exc(limit=3)
                     logging.getLogger().error('[HelheimrScheduler] Error while loading heating jobs:\n' + err_msg)
 
-        non_heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING]
+        non_heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING] if type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING in jobs_config else None
         if non_heating_jobs is not None:
             for j in non_heating_jobs:
                 self._condition_var.acquire()

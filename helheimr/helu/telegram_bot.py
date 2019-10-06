@@ -28,6 +28,7 @@ import time
 
 from . import common
 from . import heating
+from . import scheduling
 from . import time_utils
 
 #TODOs:
@@ -67,9 +68,7 @@ def _format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tr
                 '*' if use_markdown else ''
             )
 
-    #TODO remove time
-    txt = '{}\n{}Heizung{} ist {}{}'.format(
-            time_utils.format(time_utils.dt_now()),
+    txt = '{}Heizung{} ist {}{}'.format(
             '*' if use_markdown else '',
             '*' if use_markdown else '',
             'ein' if is_heating else 'aus',
@@ -149,6 +148,12 @@ class HelheimrBot:
         # Test telegram token/connection
         self._bot = self._updater.bot
         logging.getLogger().info('HelheimrBot querying myself: {}'.format(self._bot.get_me()))
+
+        # Parameters to store configuration while waiting for user callback:
+        self._config_at_time = None
+        self._config_temperature = None
+        self._config_hysteresis = None
+        self._config_duration = None
 
         
         #######################################################################
@@ -267,7 +272,7 @@ class HelheimrBot:
                 parse_mode=telegram.ParseMode.MARKDOWN)
             return
         self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
-
+#TODO try/except everything - update.message.reply_text may throw exception! because it becomes none... (e.g. when editing a user's message)
         # Check if already heating
         is_heating, plug_states = self._heating.query_heating_state()
 
@@ -304,12 +309,12 @@ class HelheimrBot:
                 text=common.emo('Heizung ist schon *aus* :snowman:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)),
                 parse_mode=telegram.ParseMode.MARKDOWN)
         else:
-            self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_OFF_CONFIRM + ':' + ':'.join(context.args)),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
             update.message.reply_text('Heizung wirklich ausschalten?', reply_markup=reply_markup)
+            self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
 
 
     def __callback_handler(self, update, context):
@@ -340,7 +345,7 @@ class HelheimrBot:
                     hours = int(h)
                     minutes = int((h - hours) * 60)
                     duration = datetime.timedelta(hours=hours, minutes=minutes)
-
+#TODO sanity check user inputs!!!!
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
                 query.from_user.first_name,
@@ -373,8 +378,51 @@ class HelheimrBot:
             query.edit_message_text(text=common.emo(status_txt), parse_mode=telegram.ParseMode.MARKDOWN)
             self._is_modifying_heating = False
 
+        elif response == type(self).CALLBACK_CONFIG_CANCEL:
+            query.edit_message_text(text='Ok, dann ein andermal.')
+            self._is_modifying_heating = False
+
+            self._config_at_time = None
+            self._config_temperature = None
+            self._config_hysteresis = None
+            self._config_duration = None
+
+#TODO list programs /list scheduler.instance().list_heating_jobs()
+        elif response == type(self).CALLBACK_CONFIG_CONFIRM:
+            tokens = self._config_at_time.split(':')
+            at_hour = int(tokens[0])
+            at_minute, at_second = 0, 0
+            if len(tokens) > 1:
+                at_minute = int(tokens[1])
+                if len(tokens) > 2:
+                    at_second = int(tokens[2])
+            
+            res, msg = scheduling.HelheimrScheduler.instance().schedule_heating_job(
+                query.from_user.first_name, 
+                target_temperature=self._config_temperature, 
+                temperature_hysteresis=self._config_hysteresis, 
+                heating_duration=self._config_duration,
+                day_interval=1, 
+                at_hour=at_hour, at_minute=at_minute, at_second=at_second)
+            if res:
+                query.edit_message_text(text='Neues Heizungsprogramm ist gespeichert.')
+            else:
+                query.edit_message_text(text='Fehler! ' + msg)
+
+            self._is_modifying_heating = False
+            self._config_at_time = None
+            self._config_temperature = None
+            self._config_hysteresis = None
+            self._config_duration = None
+
 
     def __cmd_configure(self, update, context):
+        if self._is_modifying_heating:
+            self._bot.send_message(chat_id=update.message.chat_id, 
+                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
+                parse_mode=telegram.ParseMode.MARKDOWN)
+            return
+
         at_time = None
         temperature = None
         hysteresis = None
@@ -393,8 +441,30 @@ class HelheimrBot:
                 hours = int(h)
                 minutes = int((h - hours) * 60)
                 duration = datetime.timedelta(hours=hours, minutes=minutes)
-        #TODO make callback!!! CALLBACK_CONFIG_CANCEL CALLBACK_CONFIG_CONFIRM!!!
-        context.bot.send_message(chat_id=update.message.chat_id, text='Korrekt? Um {}, {}°+/-{}° für {}'.format(at_time, temperature, hysteresis, duration))
+
+
+        if at_time is None or duration is None:
+            self._bot.send_message(chat_id=update.message.chat_id, 
+                text='Fehler: du musst sowohl die Startzeit (z.B. 06:00) als auch eine Dauer (z.B. 2.5h) angeben!',
+                parse_mode=telegram.ParseMode.MARKDOWN)
+            return
+
+        self._config_at_time = at_time
+        self._config_temperature = temperature
+        self._config_hysteresis = hysteresis
+        self._config_duration = duration
+
+        msg = 'Neues Programm: täglich um {:s}, {:s} für {:s}\nBist du dir sicher?'.format(
+                at_time,
+                'Heizung an' if temperature is None else ' heize auf {}\u200a\u00b1\u200a{}\u200a°'.format(
+                    common.format_num('.1f', temperature), common.format_num('.1f', hysteresis)),
+                time_utils.format_timedelta(duration))
+
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_CONFIG_CONFIRM),
+                telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
+
+        update.message.reply_text(msg, reply_markup=telegram.InlineKeyboardMarkup(keyboard), parse_mode=telegram.ParseMode.MARKDOWN)
+        self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
 
 
     def __cmd_forecast(self, update, context):
