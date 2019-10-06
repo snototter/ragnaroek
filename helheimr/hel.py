@@ -57,7 +57,7 @@ class Hel:
     def control_heating(self):
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
-        log_handler = TimedRotatingFileHandler('helheimr.log', when="w6", # Rotate the logs each sunday
+        log_handler = TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
                     interval=1, backupCount=8)
         logging.basicConfig(level=logging.INFO, #logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -65,7 +65,6 @@ class Hel:
                         log_handler])
         self._logger = logging.getLogger() # Adjust the root logger
 
-        
         # TODO create a rotating log for temperature readings (create class with own logger, schedule periodic readings)
 
         # Load configuration files
@@ -108,6 +107,7 @@ class Hel:
         except KeyboardInterrupt:
             self._logger.info("[Hel] Received keyboard interrupt")
 
+        # Gracefully shut down
         self._logger.info("[Hel] Shutting down...")
         self._telegram_bot.shutdown()
         self._scheduler.shutdown()
