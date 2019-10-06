@@ -4,3 +4,4 @@ requests
 emoji
 pyowm
 python-dateutil
+pylint
