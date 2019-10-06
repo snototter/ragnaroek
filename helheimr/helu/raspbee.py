@@ -293,9 +293,8 @@ class RaspBeeWrapper:
         is_heating = False
         logger = logging.getLogger()
         if len(self._heating_plug_raspbee_name_mapping) == 0:
-            logger.error('Cannot query heating, as there are no known/reachable plugs!')
+            logger.error('[RaspbeeWrapper] Cannot query heating, as there are no known/reachable plugs!')
             return None, list()
-
         for plug_lbl, plug_id in self._heating_plug_raspbee_name_mapping.items():
             r = network_utils.http_get_request(self.api_url + '/lights/' + plug_id)
             if r is None:
@@ -311,7 +310,7 @@ class RaspBeeWrapper:
         status = list()
         logger = logging.getLogger()
         if len(self._temperature_sensor_raspbee_name_mapping) == 0:
-            logger.error('Cannot query temperature, as there are no known/reachable sensors!')
+            logger.error('[RaspbeeWrapper] Cannot query temperature, as there are no known/reachable sensors!')
             return None
 
         for sensor_lbl, sensor_ids in self._temperature_sensor_raspbee_name_mapping.items():

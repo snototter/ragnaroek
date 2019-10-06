@@ -89,30 +89,35 @@ class Heating:
         """
         # Sanity checks:
         if self._is_terminating:
-            return
+            return False, 'System wird gerade heruntergefahren.'
 
         if target_temperature is not None and \
             (target_temperature < Heating.__MIN_TEMPERATURE or target_temperature > Heating.__MAX_TEMPERATURE):
-            raise ValueError("Target temperature must be within [{}, {}], you requested {}".format(
-                Heating.__MIN_TEMPERATURE, Heating.__MAX_TEMPERATURE, target_temperature))
+            return False, "Temperatur muss zwischen [{}, {}] liegen, nicht {}.".format(
+                common.format_num('.1f', Heating.__MIN_TEMPERATURE), 
+                common.format_num('.1f', Heating.__MAX_TEMPERATURE),
+                common.format_num('.1f', target_temperature))
 
         if temperature_hysteresis < Heating.__MIN_HYSTERESIS or temperature_hysteresis > Heating.__MAX_HYSTERESIS:
-            raise ValueError("Hysteresis must be within [{}, {}], you requested {}".format(
-                Heating.__MIN_HYSTERESIS, Heating.__MAX_HYSTERESIS, temperature_hysteresis))
+            return False, "Hysterese muss zwischen [{}, {}] liegen, nicht {}.".format(
+                common.format_num('.1f', Heating.__MIN_HYSTERESIS), 
+                common.format_num('.1f', Heating.__MAX_HYSTERESIS), 
+                common.format_num('.1f', temperature_hysteresis))
 
         if request_type == HeatingRequest.SCHEDULED and duration is None:
             raise ValueError("A scheduled heating job must provide a valid duration!")
 
-        if duration is not None and duration > Heating.__MAX_HEATING_DURATION:
-            raise ValueError("Duration cannot be longer than {} hours!".format(Heating.__MAX_HEATING_DURATION))
-
         if duration is not None and not isinstance(duration, datetime.timedelta):
             raise TypeError("Duration must be of type datetime.timedelta")
+
+        if duration is not None and duration > Heating.__MAX_HEATING_DURATION:
+            return False, "Heizdauer kann nicht länger als {} Stunden betragen.".format(Heating.__MAX_HEATING_DURATION)
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
         if self._is_manual_request and request_type == HeatingRequest.SCHEDULED:
-            logging.getLogger().info("Ignoring the periodic heating request by '{:s}', because there is a manual request by '{:s}' currently active.".format(requested_by, self._latest_request_by))
+            logging.getLogger().info("[Heating] Ignoring the periodic heating request by '{:s}', because there is a manual request by '{:s}' currently active.".format(
+                requested_by, self._latest_request_by))
         else:
             self._latest_request_by = requested_by
             self._target_temperature = target_temperature
@@ -122,6 +127,7 @@ class Heating:
 
         self._condition_var.notify()
         self._condition_var.release()
+        return True, ''
 
 
     def stop_heating(self, requested_by):
@@ -132,6 +138,27 @@ class Heating:
         self.__stop_heating()
         self._condition_var.notify()
         self._condition_var.release()
+
+
+    def query_heating_state(self):
+        """:return: is_heating(bool), list(raspbee.PlugState)"""
+        return self._heating_system.query_heating()
+
+
+    def query_temperature(self):
+        """:return: list(raspbee.TemperatureState)"""
+        return self._heating_system.query_temperature()
+
+
+    def query_temperature_for_heating(self):
+        """To adjust the heating, we need a reference temperature reading.
+        However, sensors may be unreachable. Thus, we can configure a 
+        "preferred reference temperature sensor order" which we iterate
+        to obtain a valid reading. If no sensor is available, return None.
+
+        :return: current_temperature(double) or None
+        """
+        return self._heating_system.query_temperature_for_heating()
 
 
     def __stop_heating(self):
@@ -210,6 +237,7 @@ class Heating:
                 # Is heating duration over?
                 if end_time is not None and time_utils.dt_now() >= end_time:
                     self._is_heating = False
+                    end_time = None
                     should_heat = False
                     logging.getLogger().info("[Heating] Heating request by '{:s}' has timed out, turning off the heater.".format(self._latest_request_by))
 
@@ -221,7 +249,7 @@ class Heating:
 
                 # Error checking
                 if not ret:
-                    logging.getLogger().error('RaspBee wrapper could not execute turn on/off command:\n' + msg)
+                    logging.getLogger().error('[Heating] RaspBee wrapper could not execute turn on/off command:\n' + msg)
                     self._broadcaster.error('Heizung konnte nicht {}geschaltet werden:\n'.format('ein' if should_heat else 'aus') + msg)
                 else:
                     # Check if heating is actually on/off
@@ -244,6 +272,16 @@ class Heating:
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0
             
-            self._condition_var.wait(1)#self._max_idle_time) #FIXME min idle_time seconds to end_time
+            # Compute idle time
+            now = time_utils.dt_now()
+            idle_time = self._max_idle_time
+            if end_time is not None and end_time > now:
+                diff = end_time - now
+                idle_time = min(self._max_idle_time, diff.seconds)
+
+            # Send thread to sleep
+            self._condition_var.wait(idle_time)
+            
         self._condition_var.release()
+        logging.getLogger().info('[Heating] Heating system has been shut down.')
 
