@@ -10,7 +10,7 @@ import sys
 from helu import heating
 from helu import common
 from helu import telegram_bot
-# from helu import
+from helu import scheduling
 
 class MessageBroadcaster:
     def __init__(self):
@@ -72,7 +72,7 @@ class Hel:
         ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
         telegram_cfg = common.load_configuration('configs/bot.cfg')
         owm_cfg = common.load_configuration('configs/owm.cfg')
-        schedule_cfg = common.load_configuration('configs/scheduled-jobs.cfg')
+        schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
         # Start the heater/heating controller
         self._message_broadcaster = MessageBroadcaster()
@@ -92,25 +92,16 @@ class Hel:
 
         self._message_broadcaster.set_telegram_bot(self._telegram_bot)
 
-
-
         # Then, start the job scheduler
-        #TODO
+        self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)
 
         # Start the webserver for our e-ink display
         #TODO
 
         # Now we can start the telegram bot    
         self._telegram_bot.start()
-        #TODO join scheduler (?)
-        # heating.instance().shutdown()
-
-        # load configs
-        # set up bot, server, scheduler, heating, weather forecast
-        #TODO:
-        #message_broadcaster = ...
         
-        # controller = HelheimrController()
+        # Run the event loops forever:
         try:
             self._heating.run_blocking()
             # self._telegram_bot.idle()
@@ -119,6 +110,7 @@ class Hel:
 
         self._logger.info("[Hel] Shutting down...")
         self._telegram_bot.shutdown()
+        self._scheduler.shutdown()
         self._heating.shutdown()
         self._logger.info("[Hel] All sub-systems are on hold, good bye!")
 
@@ -128,3 +120,31 @@ class Hel:
 if __name__ == '__main__':
     hel = Hel()
     hel.control_heating()
+
+
+#TODO
+        # if not hu.check_internet_connection():
+        #     #TODO weather won't work, telegram neither - check what happens!
+        #     #TODO add warning message to display
+        #     self.logger.error('No internet connection!')
+        # # else:
+        # #     self.logger.info('Yes, WE ARE ONLINE!')
+
+        # # Weather forecast/service wrapper
+        # weather_cfg = hu.load_configuration('configs/owm.cfg')
+        # self.weather_service = hw.WeatherForecastOwm(weather_cfg)
+
+        # # Telegram bot for notifications and user input (heat on-the-go ;-)
+        # bot_cfg = hu.load_configuration('configs/bot.cfg')
+        # self.telegram_bot = hb.HelheimrBot(bot_cfg, self)
+        # self.telegram_bot.start()
+
+        # # Collect hosts we need to contact (weather service, telegram, local IPs, etc.)
+        # self.known_hosts_local = self._load_known_hosts(ctrl_cfg['network']['local'])
+        # self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
+        # self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
+        # self.known_url_raspbee = self.raspbee_wrapper.api_url
+
+    def _load_known_hosts(self, libconf_attr_dict):
+        return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
+

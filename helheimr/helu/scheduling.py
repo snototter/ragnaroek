@@ -47,6 +47,7 @@ import random
 import re
 import time
 
+from . import common
 from . import time_utils
 from . import heating
 
@@ -471,7 +472,8 @@ class Job(object):
             # call will fail.
             pass
         self._schedule_next_run()
-        self.scheduler.jobs.append(self)
+        if self.scheduler is not None:
+            self.scheduler.jobs.append(self) # HelheimrScheduler takes care of scheduling a job...
         return self
 
     @property
@@ -564,67 +566,6 @@ class Job(object):
                 self.next_run -= self.period
 
 
-#TODO remove
-# # The following methods are shortcuts for not having to
-# # create a Scheduler instance:
-
-# #: Default :class:`Scheduler <Scheduler>` object
-# default_scheduler = Scheduler()
-
-# #: Default :class:`Jobs <Job>` list
-# jobs = default_scheduler.jobs  # todo: should this be a copy, e.g. jobs()?
-
-
-# def every(interval=1):
-#     """Calls :meth:`every <Scheduler.every>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     return default_scheduler.every(interval)
-
-
-# def run_pending():
-#     """Calls :meth:`run_pending <Scheduler.run_pending>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     default_scheduler.run_pending()
-
-
-# def run_all(delay_seconds=0):
-#     """Calls :meth:`run_all <Scheduler.run_all>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     default_scheduler.run_all(delay_seconds=delay_seconds)
-
-
-# def clear(tag=None):
-#     """Calls :meth:`clear <Scheduler.clear>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     default_scheduler.clear(tag)
-
-
-# def cancel_job(job):
-#     """Calls :meth:`cancel_job <Scheduler.cancel_job>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     default_scheduler.cancel_job(job)
-
-
-# def next_run():
-#     """Calls :meth:`next_run <Scheduler.next_run>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     return default_scheduler.next_run
-
-
-# def idle_seconds():
-#     """Calls :meth:`idle_seconds <Scheduler.idle_seconds>` on the
-#     :data:`default scheduler instance <default_scheduler>`.
-#     """
-#     return default_scheduler.idle_seconds
-
-
-
 class PeriodicHeatingJob(Job):
     @staticmethod
     def every(interval=1):
@@ -632,7 +573,7 @@ class PeriodicHeatingJob(Job):
 
 
     def __init__(self, interval):
-        super(HeatingJob, self).__init__(interval)
+        super(PeriodicHeatingJob, self).__init__(interval, scheduler=None)
         self.created_by = None # User name of task creator
         self.target_temperature = None # Try to reach this temperature +/- temperature_hysteresis (if set)
         self.temperature_hysteresis = None
@@ -650,7 +591,6 @@ class PeriodicHeatingJob(Job):
         self.target_temperature = target_temperature
         self.temperature_hysteresis = temperature_hysteresis
         self.heating_duration = heating_duration
-        self.controller = controller
         self.created_by = created_by
         return self.do(self.__trigger_heating)
 
@@ -745,3 +685,172 @@ class PeriodicHeatingJob(Job):
                 target_temperature=temperature, temperature_hysteresis=hysteresis, 
                 heating_duration=duration)
         return job
+
+
+
+class HelheimrScheduler(Scheduler):
+    # libconfig++ key to look up scheduled heating jobs
+    JOB_LIST_CONFIG_KEY_PERIODIC_HEATING = 'periodic_heating_jobs'
+
+    __instance = None
+
+    @staticmethod
+    def instance():
+        """Returns the singleton."""
+        return HelheimrScheduler.__instance
+
+
+    @staticmethod
+    def init_instance(ctrl_config, job_list_filename):
+        """
+        Initialize the singleton.
+
+        :param ctrl_config:       libconfig++ system configuration
+        :param job_list_filename: filename where to load/store our jobs
+        """
+        if HelheimrScheduler.__instance is None:
+            HelheimrScheduler(ctrl_cfg, job_list_filename)
+        return HelheimrScheduler.__instance
+
+    
+    def __init__(self, ctrl_cfg, job_list_filename):
+        """:param ctrl_cfg: The system-wide configuration."""
+        super(HelheimrScheduler,self).__init__()
+
+        # We use a condition variable to sleep during scheduled tasks (in case we need to wake up earlier)
+        self._lock = threading.Lock()
+        self._condition_var = threading.Condition(self._lock)
+
+        self._run_loop = True # Flag to abort the scheduling/main loop
+
+        self._poll_interval = ctrl_cfg['scheduler']['idle_time']
+
+        self._job_list_filename = job_list_filename
+
+        # The actual scheduling runs in a separate thread
+        self._worker_thread = threading.Thread(target=self.__scheduling_loop) 
+        self._worker_thread.start()
+
+        # Load existing jobs:
+        job_config = common.load_configuration(self._job_list_filename)
+        self.deserialize_jobs(job_config)
+
+   
+    def shutdown(self):
+        logging.getLogger().info('[HelheimrScheduler] Preparing shutdown.')
+        self.condition_var.acquire()
+        self._run_loop = False
+        self.condition_var.notify()  # Wake up controller/scheduler
+        self.condition_var.release()
+        self.worker_thread.join()
+        logging.getLogger().info('[HelheimrScheduler] Scheduler has been shut down.')
+
+
+    @property
+    def next_run(self):
+        """:return: Datetime object indicating the time of the next scheduled job."""
+        if len(self.job_list) == 0:
+            return None
+        return min(self.job_list).next_run
+
+
+    @property
+    def idle_time(self):
+        """:return: Idle time in seconds before the next (scheduled) job is to be run."""
+        return hu.datetime_difference(hu.datetime_now(), self.next_run).total_seconds()
+
+
+    def _cancel_job(self, job):
+        # Delete a registered job - make sure to acquire the lock first!
+        try:
+            self.logger.info('[HelheimrController] Removing job "{}"'.format(job))
+            if job == self.active_heating_job:
+                self.active_heating_job = None
+            self.job_list.remove(job)
+        except ValueError:
+            self.logger.error('[HelheimrController] Could not cancel job "{}"'.format(job))
+
+
+    def schedule_heating_job(self, created_by, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
+            day_interval=1, at_hour=6, at_minute=0, at_second=0):
+        job = PeriodicHeatingJob.every(day_interval).days.at(
+                '{:02d}:{:02d}:{:02d}'.format(at_hour, at_minute, at_second)).do_heat_up(
+                created_by,
+                target_temperature=target_temperature, temperature_hysteresis=temperature_hysteresis, 
+                heating_duration=heating_duration)
+        ret = self.__schedule_heating_job(job)
+        if ret:
+            #TODO serialize!!!!
+            pass
+        return ret
+
+
+    def __schedule_heating_job(self, periodic_heating_job):
+        ret_val = False
+        msg = ''
+        self.condition_var.acquire()
+        if any([j.overlaps(periodic_heating_job) for j in self.job_list]):
+            msg = 'The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job)
+        else:
+            self.jobs.append(periodic_heating_job)
+            self.condition_var.notify()
+            ret_val = True
+        if not ret_val:
+            self.logger.error('[HelheimrController] Error inserting new heating job: ' + msg)
+        self.condition_var.release()
+        return ret_val
+
+
+    def __scheduling_loop(self):
+        self._condition_var.acquire()
+        while self._run_loop:
+            #TODO remove
+            print('SCHEDULER::::::::::::::::::::::::::::::')
+            for job in self.jobs:
+                print(job)
+
+            self.run_pending()
+          
+            poll_interval = max(1, self._poll_interval if len(self.jobs) == 0 else min(self._poll_interval, self.idle_time))
+            logging.getLogger().info('[HelheimrScheduler] Going to sleep for {:.1f} seconds\n'.format(poll_interval))
+            
+            # ret = 
+            self._condition_var.wait(timeout = poll_interval)
+            #TODO maybe remove output
+            # if ret:
+            #     self.logger.info('[HelheimrController] Woke up due to notification!')
+        self._condition_var.release()
+
+
+    def deserialize_jobs(self, jobs_config):
+        if jobs_config is None:
+            return
+        for j in jobs_cfg[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING]:
+            try:
+                job = PeriodicHeatingJob.from_libconf(j, self)
+                self.__schedule_heating_job(job)
+            except Exception as e:
+                err_msg = traceback.format_exc(limit=3)
+                logging.getLogger().error('[HelheimrScheduler] Error while loading jobs:\n' + err_msg)
+        #TODO add other tasks, too?
+
+
+    def serialize_jobs(self):
+        self.condition_var.acquire()
+        # Each job class (e.g. periodic heating) has a separate group within the configuration file:
+        # Periodic heating jobs:
+        phjs = [j for j in self.job_list if isinstance(j, PeriodicHeatingJob)]
+        # Sort them by at_time:
+        phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)] 
+        self.condition_var.release()
+        #TODO add other tasks (such as periodic display update) too!
+        try:
+            lcdict = {
+                    type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING : tuple(phds)
+                }
+            with open(self._job_list_filename, 'w') as f:
+                libconf.dump(lcdict, f)
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            logging.getLogger().error('[HelheimrController] Error while serializing:\n' + err_msg)
+
