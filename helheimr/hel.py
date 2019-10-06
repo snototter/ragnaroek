@@ -63,23 +63,29 @@ class Hel:
         
         # controller = HelheimrController()
         try:
+            #FIXME remove:
+            # import datetime
+            # self._heating.start_heating(heating.HeatingRequest.MANUAL, 'Horst', duration=datetime.timedelta(seconds=2))
+            # import time
+            # time.sleep(4)
+            # self._heating.stop_heating('blablabings')
             self._heating.run_blocking()
         except KeyboardInterrupt:
-            self._logger.info("Received keyboard interrupt")
+            self._logger.info("[Hel] Received keyboard interrupt")
             
         self._heating.shutdown()
-        self._logger.info("Shut down gracefully, good bye!")
+        self._logger.info("[Hel] Shut down gracefully, good bye!")
 
 
 
     def error(self, message):
-        self.__broadcast_message(text, 'error')
+        self.__broadcast_message(message, 'error')
 
     def warning(self, message):
-        self.__broadcast_message(text, 'warning')
+        self.__broadcast_message(message, 'warning')
 
     def info(self, message):
-        self.__broadcast_message(text, 'info')
+        self.__broadcast_message(message, 'info')
 
     def __broadcast_message(self, text, msg_type):
         #TODO broadcast to display!!!
@@ -90,11 +96,12 @@ class Hel:
         elif msg_type == 'error':
             telegram_msg = ':bangbang: ' + text
         else:
-            raise RuntimeError('Invalid message type "{}"'.format(msg_type))
+            telegram_msg = 'Unknown message type ({}): {}'.format(msg_type, text)
+            
         if self._telegram_bot is not None:
             self._telegram_bot.broadcast_message(telegram_msg)
         else:
-            self._logger.error('Telegram bot is not available to broadcast:\n' + telegram_msg)
+            self._logger.error('[Hel] Telegram bot is not available to broadcast:\n\n' + telegram_msg + '\n')
 
 
 if __name__ == '__main__':

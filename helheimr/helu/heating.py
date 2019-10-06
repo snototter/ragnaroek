@@ -66,6 +66,7 @@ class Heating:
         self._is_heating = False            # Used to notify the __heating_loop() that there was a stop_heating() request
 
         # Members related to the heating loop thread
+        self._latest_request_by = None   # Name of user who requested the most recent heating job
         self._num_consecutive_errors_before_broadcast = config['heating']['num_consecutive_errors_before_broadcast'] # Num of retrys before broadcasting a heating error
         self._max_idle_time = config['heating']['idle_time'] # Max. time to wait between __heating_loop() iterations
         self._is_terminating = False     # During shutdown, we want to prevent start_heating() calls
@@ -77,10 +78,11 @@ class Heating:
         self._heating_loop_thread.start()
 
 
-    def start_heating(self, request_type, target_temperature=None,
+    def start_heating(self, request_type, requested_by, target_temperature=None,
             temperature_hysteresis=0.5, duration=None):
         """
         :param request_type: HeatingRequest (manual takes precedence over scheduled)
+        :param requested_by: user name
         :param target_temperature: None or temperature to heat to
         :param target_hysteresis: hysteresis threshold
         :param duration: None or 
@@ -98,7 +100,7 @@ class Heating:
             raise ValueError("Hysteresis must be within [{}, {}], you requested {}".format(
                 Heating.__MIN_HYSTERESIS, Heating.__MAX_HYSTERESIS, temperature_hysteresis))
 
-        if request_type == HeatingRequest.PERIODIC and duration is None:
+        if request_type == HeatingRequest.SCHEDULED and duration is None:
             raise ValueError("A scheduled heating job must provide a valid duration!")
 
         if duration is not None and duration > Heating.__MAX_HEATING_DURATION:
@@ -109,9 +111,10 @@ class Heating:
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
-        if self._is_manual_request and request_type == HeatingRequest.PERIODIC:
-            logging.getLogger().info("Ignoring the periodic heating request, because there is a manual request currently active.")
+        if self._is_manual_request and request_type == HeatingRequest.SCHEDULED:
+            logging.getLogger().info("Ignoring the periodic heating request by '{:s}', because there is a manual request by '{:s}' currently active.".format(requested_by, self._latest_request_by))
         else:
+            self._latest_request_by = requested_by
             self._target_temperature = target_temperature
             self._temperature_hysteresis = temperature_hysteresis
             self._heating_duration = duration
@@ -121,9 +124,11 @@ class Heating:
         self._condition_var.release()
 
 
-    def stop_heating(self):
+    def stop_heating(self, requested_by):
         """Stops the heater (if currently active). Will be invoked by the user manually."""
         self._condition_var.acquire()
+        if self._is_heating:
+            logging.getLogger().info("[Heating] Stop heating as requested by '{:s}'".format(requested_by))
         self.__stop_heating()
         self._condition_var.notify()
         self._condition_var.release()
@@ -173,10 +178,11 @@ class Heating:
                     self._controller.set_desired_value(self._target_temperature)
                     self._controller.set_hysteresis(self._temperature_hysteresis)
                     use_controller = True
-                    logging.getLogger().info("[Heating] Starting BangBang to reach {:.1f} +/- {:.1f}°".format(self._target_temperature, self._temperature_hysteresis))
+                    logging.getLogger().info("[Heating] Starting BangBang to reach {:.1f} +/- {:.1f}° as requested by '{:s}'".format(
+                        self._target_temperature, self._temperature_hysteresis, self._latest_request_by))
                 else:
                     use_controller = False
-                    logging.getLogger().info("[Heating] Starting manually (i.e. always on)")
+                    logging.getLogger().info("[Heating] Starting manually (i.e. always on) as requested by '{:s}'".format(self._latest_request_by))
 
                 if self._heating_duration is None:
                     end_time = None
@@ -205,7 +211,7 @@ class Heating:
                 if end_time is not None and time_utils.dt_now() >= end_time:
                     self._is_heating = False
                     should_heat = False
-                    logging.getLogger().info("[Heating] End time of this heating request has passed, turning off the heater.")
+                    logging.getLogger().info("[Heating] Heating request by '{:s}' has timed out, turning off the heater.".format(self._latest_request_by))
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
@@ -238,6 +244,6 @@ class Heating:
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0
             
-            self._condition_var.wait(self._max_idle_time)
+            self._condition_var.wait(1)#self._max_idle_time) #FIXME min idle_time seconds to end_time
         self._condition_var.release()
 
