@@ -25,10 +25,10 @@ def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
     return dt.astimezone(tz.tzlocal()).strftime(fmt)
 
 
-def local_time_to_utc(hour, minute, second):
+def local_time_as_utc(hour, minute, second):
     t_local = datetime.time(hour=hour, minute=minute, second=second, tzinfo=tz.tzlocal())
     dt_local = datetime.datetime.combine(datetime.datetime.today(), t_local, tzinfo=tz.tzlocal())
-    return dt_local.astimezone(tz.tzutc())
+    return dt_local.astimezone(tz.tzutc()).timetz()
 
 
 def time_as_local(t):

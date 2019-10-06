@@ -159,6 +159,72 @@ class Heating:
         self._condition_var.release()
 
 
+    def query_detailed_status(self):
+        return 'TODO'
+    # def query_detailed_status(self):
+        # msg = list()
+        # # Check connectivity:
+        # msg.append('*Netzwerk:*')
+        # # Home network
+        # for name, host in self.known_hosts_local.items():
+        #     reachable = hu.ping(host)
+        #     msg.append('\u2022 {} [LAN] ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+
+        # # WWW
+        # for name, host in self.known_hosts_internet.items():
+        #     reachable = hu.ping(host)
+        #     msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+        # # Also check telegram
+        # reachable = hu.check_url(self.known_url_telegram_api)
+        # msg.append('\u2022 Telegram API ist {}'.format('online' if reachable else 'offline :bangbang:'))
+
+        # msg.append('') # Empty line to separate text content
+        
+        # # Query RaspBee state
+        # reachable = hu.check_url(self.known_url_raspbee)
+        # if reachable:
+        #     msg.append(self.raspbee_wrapper.query_full_state())
+        # else:
+        #     msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
+
+        # # List all jobs:
+        # msg.append('')
+        # #TODO list other jobs
+        # self.condition_var.acquire()
+        # heating_jobs = [j for j in self.job_list if isinstance(j, HeatingJob)]
+        # self.condition_var.release()
+        # hjs = sorted(heating_jobs)
+        # if len(hjs) == 0:
+        #     msg.append('*Kein Heizungsprogramm*')
+        # else:
+        #     msg.append('*Heizungsprogramm:*')
+        #     for j in hjs:
+        #         if isinstance(j, PeriodicHeatingJob):
+        #             next_run = hu.datetime_as_local(j.next_run)
+        #             at_time = hu.time_as_local(j.at_time)
+        #             duration_hrs = int(j.heating_duration.seconds/3600)
+        #             duration_min = int((j.heating_duration.seconds - duration_hrs*3600)/60)
+        #             msg.append('\u2022 {}, tgl. um {} für {:02d}\u200ah {:02d}\u200amin, nächster Start am `{}.{}.` ({})'.format(
+        #                 'Aktiv' if j.is_running else 'Inaktiv',
+        #                 at_time.strftime('%H:%M'), 
+        #                 duration_hrs, duration_min,
+        #                 next_run.day, 
+        #                 next_run.month,
+        #                 j.created_by
+        #                 ))
+        #         elif isinstance(j, ManualHeatingJob):
+        #             duration_hrs = 0 if j.heating_duration is None else int(j.heating_duration.seconds/3600)
+        #             duration_min = 0 if j.heating_duration is None else int((j.heating_duration.seconds - duration_hrs*3600)/60)
+        #             msg.append('\u2022 {}, einmalig heizen{}{} ({})'.format(
+        #                 'aktiv' if j.is_running else 'inaktiv',
+        #                 ', {}\u200a°' if j.target_temperature is not None else '',
+        #                 ', für {:02d}\u200ah {:02d}\u200amin'.format(duration_hrs, duration_min) if j.heating_duration is not None else '',
+        #                 j.created_by
+        #             ))
+        
+        # return '\n'.join(msg)
+
+
     def query_heating_state(self):
         """:return: is_heating(bool), list(raspbee.PlugState)"""
         return self._heating_system.query_heating()

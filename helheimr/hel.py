@@ -57,8 +57,8 @@ class Hel:
     def control_heating(self):
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
-        log_handler = TimedRotatingFileHandler('helheimr.log', when="m", 
-                    interval=1, backupCount=5) # FIXME switch to days or weeks!
+        log_handler = TimedRotatingFileHandler('helheimr.log', when="w6", # Rotate the logs each sunday
+                    interval=1, backupCount=8)
         logging.basicConfig(level=logging.INFO, #logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[logging.StreamHandler(),
@@ -121,6 +121,10 @@ if __name__ == '__main__':
     hel = Hel()
     hel.control_heating()
 
+#TODO periodic jobs:
+# Query & log temperature - make a singleton with circular buffer + rotating log (which can be queried from the e-ink display)
+#TODO check internet connection - maybe also periodically
+#TODO fix weather forecast
 
 #TODO
         # if not hu.check_internet_connection():
@@ -145,6 +149,6 @@ if __name__ == '__main__':
         # self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
         # self.known_url_raspbee = self.raspbee_wrapper.api_url
 
-    def _load_known_hosts(self, libconf_attr_dict):
-        return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
+    # def _load_known_hosts(self, libconf_attr_dict):
+    #     return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
 
