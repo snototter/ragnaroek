@@ -2,6 +2,8 @@
 # coding=utf-8
 """The broadcaster, taking care of broadcasting messages ;-)"""
 
+import logging
+
 class MessageBroadcaster:
     __instance = None
 

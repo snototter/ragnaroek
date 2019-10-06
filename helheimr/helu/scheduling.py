@@ -11,10 +11,12 @@ import functools
 import logging
 import random
 import re
+import sys
 import threading
 import time
 import traceback
 
+from . import broadcasting
 from . import common
 from . import time_utils
 from . import heating
@@ -355,6 +357,8 @@ class Job(object):
     def at(self, time_str):
         """
         Specify a particular time that the job should be run at.
+        The time_str has to be given in local timezone format and will be
+        converted to UTC.
 
         :param time_str: A string in one of the following formats: `HH:MM:SS`,
             `HH:MM`,`:MM`, `:SS`. The format must make sense given how often
@@ -383,13 +387,26 @@ class Job(object):
         time_values = time_str.split(':')
         if len(time_values) == 3:
             hour, minute, second = time_values
-        elif len(time_values) == 2 and self.unit == 'minutes':
-            hour = 0
-            minute = 0
-            _, second = time_values
+        elif len(time_values) == 2:
+            hour, minute, second = 0, 0, 0
+            if self.unit == 'days':
+                hour, minute = time_values
+            elif self.unit == 'hours':
+                minute, second = time_values
+            else:
+                _, second = time_values
+        elif len(time_values) == 1:
+            hour, minute, second = 0, 0, 0
+            if self.unit == 'days':
+                hour = time_values[0]
+            elif self.unit == 'hours':
+                minute = time_values[0]
+            else:
+                second = time_values[0]
         else:
-            hour, minute = time_values
-            second = 0
+            raise ScheduleValueError('Invalid time format')
+        
+
         if self.unit == 'days' or self.start_day:
             hour = int(hour)
             if not (0 <= hour <= 23):
@@ -581,7 +598,7 @@ class PeriodicHeatingJob(Job):
 
     def __trigger_heating(self):
         heating.Heating.instance().start_heating(
-            HeatingRequest.SCHEDULED,
+            heating.HeatingRequest.SCHEDULED,
             self.created_by,
             target_temperature = self.target_temperature,
             temperature_hysteresis = self.temperature_hysteresis,
@@ -606,7 +623,7 @@ class PeriodicHeatingJob(Job):
         """Return a dict for serialization via libconf."""
         d = {
             'day_interval': self.interval,
-            'at': hu.time_as_local(self.at_time).strftime('%H:%M:%S'), # Store as local time
+            'at': time_utils.time_as_local(self.at_time).strftime('%H:%M:%S'), # Store as local time
             'duration': str(self.heating_duration)
         }
         if self.target_temperature is not None:
@@ -623,28 +640,17 @@ class PeriodicHeatingJob(Job):
         day_interval = cfg['day_interval']
         # Not that he configuration file uses localtime! This time representation will be converted to proper UTC time by the Job class
         at = cfg['at']
-        #FIXME remove after confirming functionality
-        # # at_utc = hu.time_as_utc(datetime.datetime.strptime(cfg['at'], '%H:%M:%S').timetz())
-        # # at = str(at_utc) # should be loaded as string! hu.time_as_utc(datetime.datetime.strptime(cfg['at'], '%H:%M:%S').time())
-
+        
         # Parse duration string (using strptime doesn't work if duration > 24h)
         d = cfg['duration'].split(':')
         hours = int(d[0])
         minutes = 0 if len(d) == 1 else int(d[1])
         seconds = 0 if len(d) == 2 else int(d[2])
         duration = datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
-
-        def val_or_none(k):
-            return cfg[k] if k in cfg else None
         
-        def val_or_default(k, default):
-            v = val_or_none(k)
-            return default if v is None else v
-        
-        temperature = val_or_none('temperature')
-        hysteresis = val_or_none('hysteresis')
-        created_by = val_or_default('created_by', 'System')
-
+        temperature = common.cfg_val_or_none(cfg, 'temperature')
+        hysteresis = common.cfg_val_or_none(cfg, 'hysteresis')
+        created_by = common.cfg_val_or_default(cfg, 'created_by', 'System')
         
         job = PeriodicHeatingJob.every(day_interval).days.at(at).do_heat_up(
                 created_by,
@@ -654,9 +660,76 @@ class PeriodicHeatingJob(Job):
 
 
 
+class NonHeatingJob(Job):
+    """Used to distinguish PeriodicHeatingJobs from NonHeatingJobs (from generic Jobs that
+    someone just added into the scheduling list, without us knowing...)"""
+    def __init__(self, interval, function_name):
+        super(NonHeatingJob, self).__init__(interval)
+        self.function_name = function_name
+
+
+    def to_dict(self):
+        """Return a dict for serialization via libconf."""
+        d = {
+            'interval': self.interval,
+            'unit': self.unit
+        }
+        if self.at_time is not None:
+            fmt_str = '%H:%M:%S'
+            if self.unit == 'hours':
+                fmt_str = '%M:%S'
+            elif self.unit == 'minutes':
+                fmt_str = '%S'
+            d['at'] = time_utils.time_as_local(self.at_time).strftime(fmt_str)
+        return d
+
+
+    @staticmethod
+    def from_libconf(cfg):
+        job_type = common.cfg_val_or_none(cfg, 'type')
+        if job_type is None:
+            raise ValueError("Non-heating job is missing 'type = ...' Check the configuration file.")
+
+        # Use the configured name as function name to execute:
+        this_module = sys.modules[__name__]
+        target_function = getattr(this_module, job_type)
+
+        interval = int(common.cfg_val_or_default(cfg, 'interval', 1))
+        unit = common.cfg_val_or_none(cfg, 'unit')
+        job = NonHeatingJob(interval, job_type)
+        if unit == 'seconds' or (unit == 'second' and interval == 1):
+            job = job.seconds
+        elif unit == 'minutes' or (unit == 'minute' and interval == 1):
+            job = job.minutes
+        elif unit == 'hours' or (unit == 'hour' and interval == 1):
+            job = job.hours
+        elif unit == 'days' or (unit == 'day' and interval == 1):
+            job = job.days
+        elif unit == 'weeks' or (unit == 'week' and interval == 1):
+            job = job.days
+        else:
+            raise ScheduleValueError("Invalid unit '{}' or unit/interval combination with interval '{}'".format(unit, interval))
+        
+        at = common.cfg_val_or_none(cfg, 'at')
+        if at is not None:
+            job = job.at(at)
+
+        return job.do(target_function)
+
+
+
+def broadcast_dummy_message():
+    logging.getLogger().info('Periodic dummy task reporting for duty.')
+    broadcasting.MessageBroadcaster.instance().info('Periodic dummy task reporting for duty.')
+
+
+
 class HelheimrScheduler(Scheduler):
     # libconfig++ key to look up scheduled heating jobs
-    JOB_LIST_CONFIG_KEY_PERIODIC_HEATING = 'periodic_heating_jobs'
+    JOB_LIST_CONFIG_KEY_PERIODIC_HEATING = 'heating_jobs'
+
+    # ... and similarly, for non-heating jobs
+    JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING = 'non_heating_jobs'
 
     __instance = None
 
@@ -695,7 +768,7 @@ class HelheimrScheduler(Scheduler):
 
         self._poll_interval = ctrl_cfg['scheduler']['idle_time']
 
-        self._job_list_filename = job_list_filename
+        self._job_list_filename = job_list_filename # Filename to load/store the scheduled jobs
 
         # The actual scheduling runs in a separate thread
         self._worker_thread = threading.Thread(target=self.__scheduling_loop) 
@@ -736,8 +809,7 @@ class HelheimrScheduler(Scheduler):
                 heating_duration=heating_duration)
         ret = self.__schedule_heating_job(job)
         if ret:
-            #TODO serialize!!!!
-            pass
+            self.serialize_jobs()
         return ret
 
 
@@ -752,7 +824,7 @@ class HelheimrScheduler(Scheduler):
             self._condition_var.notify()
             ret_val = True
         if not ret_val:
-            self.logger.error('[HelheimrController] Error inserting new heating job: ' + msg)
+            logging.getLogger().error('[HelheimrController] Error inserting new heating job: ' + msg)
         self._condition_var.release()
         return ret_val
 
@@ -763,33 +835,47 @@ class HelheimrScheduler(Scheduler):
             #TODO remove
             print('TODO REMOVE JOB LIST DEBUG::::::::::::::::::::::::::::::')
             for job in self.jobs:
-                print(job)
+                print(job, time_utils.format(job.next_run))
 
             self.run_pending()
           
+            # print('TODO REMOVE IDLE_TIME: {}'.format(datetime.timedelta(seconds=self.idle_time)))
             poll_interval = max(1, self._poll_interval if len(self.jobs) == 0 else min(self._poll_interval, self.idle_time))
             logging.getLogger().info('[HelheimrScheduler] Going to sleep for {:.1f} seconds\n'.format(poll_interval))
             
-            # ret = 
+            # Go to sleep
             self._condition_var.wait(timeout = poll_interval)
-            #TODO maybe remove output
-            # if ret:
-            #     self.logger.info('[HelheimrController] Woke up due to notification!')
         self._condition_var.release()
 
 
     def deserialize_jobs(self, jobs_config):
         if jobs_config is None:
             return
-        for j in jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING]:
-            try:
-                job = PeriodicHeatingJob.from_libconf(j)
-                self.__schedule_heating_job(job)
-            except Exception as e:
-                err_msg = traceback.format_exc(limit=3)
-                logging.getLogger().error('[HelheimrScheduler] Error while loading jobs:\n' + err_msg)
-        #TODO add other tasks, too?
 
+        heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING]
+        if heating_jobs is not None:
+            for j in heating_jobs:
+                try:
+                    job = PeriodicHeatingJob.from_libconf(j)
+                    self.__schedule_heating_job(job)
+                except:
+                    err_msg = traceback.format_exc(limit=3)
+                    logging.getLogger().error('[HelheimrScheduler] Error while loading heating jobs:\n' + err_msg)
+
+        non_heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING]
+        if non_heating_jobs is not None:
+            for j in non_heating_jobs:
+                self._condition_var.acquire()
+                try:
+                    job = NonHeatingJob.from_libconf(j)
+                    self.jobs.append(job)
+                except:
+                    err_msg = traceback.format_exc(limit=3)
+                    logging.getLogger().error('[HelheimrScheduler] Error while loading non-heating jobs:\n' + err_msg)
+                finally:
+                    self._condition_var.notify()
+                    self._condition_var.release()
+        
 
     def serialize_jobs(self):
         self._condition_var.acquire()
@@ -797,12 +883,15 @@ class HelheimrScheduler(Scheduler):
         # Periodic heating jobs:
         phjs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
         # Sort them by at_time:
-        phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)] 
+        phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)]
+        # Periodic non-heating jobs:
+        pnhjs = [j.to_dict() for j in self.jobs if isinstance(j, NonHeatingJob)]
         self._condition_var.release()
-        #TODO add other tasks (such as periodic display update) too!
+        
         try:
             lcdict = {
-                    type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING : tuple(phds)
+                    type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING : tuple(phds),
+                    type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING : tuple(pnhjs)
                 }
             with open(self._job_list_filename, 'w') as f:
                 libconf.dump(lcdict, f)

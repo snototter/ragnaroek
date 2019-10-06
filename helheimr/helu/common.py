@@ -38,6 +38,13 @@ def emo(txt):
     return emojize(txt, use_aliases=True)
 
 
+def cfg_val_or_none(cfg, key):
+    return cfg[key] if key in cfg else None
+        
+def cfg_val_or_default(cfg, key, default):
+    v = cfg_val_or_none(cfg, key)
+    return default if v is None else v
+
 def load_configuration(filename):
     """Loads a libconfig configuration file."""
     try:

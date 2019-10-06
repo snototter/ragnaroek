@@ -22,6 +22,8 @@ class Hel:
     def control_heating(self):
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
+        # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         file_handler = TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
                     interval=1, backupCount=8)
         file_handler.setLevel(logging.INFO)
@@ -31,12 +33,9 @@ class Hel:
         stream_handler.setLevel(logging.INFO)
         stream_handler.setFormatter(formatter)
         
-        logging.basicConfig(level=logging.INFO, #logging.DEBUG,
-                    format='%(asctime)s - %(levelname)s - %(message)s',
-                    handlers=[logging.StreamHandler(),
-                        log_handler])
         logging.getLogger().addHandler(stream_handler)
         logging.getLogger().addHandler(file_handler)
+        logging.getLogger().setLevel(logging.INFO)
         self._logger = logging.getLogger() # Adjust the root logger
 
         # TODO create a rotating log for temperature readings (create class with own logger, schedule periodic readings)
