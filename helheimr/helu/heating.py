@@ -10,19 +10,22 @@ from . import common
 from . import controller
 from . import raspbee
 from . import time_utils
-
+from . import scheduling
 
 """Heating can be turned on via manual request or via a scheduled job."""
 HeatingRequest = common.enum(MANUAL=1, SCHEDULED=2)
 
+
+
 class Heating:
     __instance = None
 
-    __MIN_TEMPERATURE = 5.0
-    __MAX_TEMPERATURE = 30.0
-    __MIN_HYSTERESIS = 0.1
-    __MAX_HYSTERESIS = 10.0
-    __MAX_HEATING_DURATION = datetime.timedelta(hours=12)
+    MIN_TEMPERATURE = 5.0
+    MAX_TEMPERATURE = 30.0
+    MIN_HYSTERESIS = 0.1
+    MAX_HYSTERESIS = 10.0
+    MAX_HEATING_DURATION = datetime.timedelta(hours=12)
+    MIN_HEATING_DURATION = datetime.timedelta(minutes=15)
 
 
     @staticmethod
@@ -42,6 +45,38 @@ class Heating:
         if Heating.__instance is None:
             Heating(config, broadcaster)
         return Heating.__instance
+
+
+    @staticmethod
+    def sanity_check(request_type, target_temperature, temperature_hysteresis, duration):
+        if target_temperature is not None and \
+            (target_temperature < Heating.MIN_TEMPERATURE or target_temperature > Heating.MAX_TEMPERATURE):
+            return False, "Temperatur muss zwischen [{}, {}] liegen, nicht {}.".format(
+                common.format_num('.1f', Heating.MIN_TEMPERATURE), 
+                common.format_num('.1f', Heating.MAX_TEMPERATURE),
+                common.format_num('.1f', target_temperature))
+
+        if temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS:
+            return False, "Hysterese muss zwischen [{}, {}] liegen, nicht {}.".format(
+                common.format_num('.1f', Heating.MIN_HYSTERESIS), 
+                common.format_num('.1f', Heating.MAX_HYSTERESIS), 
+                common.format_num('.1f', temperature_hysteresis))
+
+        if request_type == HeatingRequest.SCHEDULED and duration is None:
+            return False, "Periodischer Heiztask muss eine Dauer angeben."
+
+        if duration is not None and not isinstance(duration, datetime.timedelta):
+            return False, "Falscher Datentyp für 'duration'."
+
+        if duration is not None and duration > Heating.MAX_HEATING_DURATION:
+            return False, "Heizdauer kann nicht länger als {} Stunden betragen.".format(
+                Heating.MAX_HEATING_DURATION.total_seconds()/3600)
+
+        if duration is not None and duration < Heating.MIN_HEATING_DURATION:
+            return False, "Heizdauer kann nicht kürzer als {} Minuten betragen.".format(
+                Heating.MIN_HEATING_DURATION.total_seconds/60)
+
+        return True, ''
 
 
     def __init__(self, config, broadcaster):
@@ -78,6 +113,7 @@ class Heating:
         self._heating_loop_thread.start()
 
 
+
     def start_heating(self, request_type, requested_by, target_temperature=None,
             temperature_hysteresis=0.5, duration=None):
         """
@@ -91,27 +127,10 @@ class Heating:
         if self._is_terminating:
             return False, 'System wird gerade heruntergefahren.'
 
-        if target_temperature is not None and \
-            (target_temperature < Heating.__MIN_TEMPERATURE or target_temperature > Heating.__MAX_TEMPERATURE):
-            return False, "Temperatur muss zwischen [{}, {}] liegen, nicht {}.".format(
-                common.format_num('.1f', Heating.__MIN_TEMPERATURE), 
-                common.format_num('.1f', Heating.__MAX_TEMPERATURE),
-                common.format_num('.1f', target_temperature))
-
-        if temperature_hysteresis < Heating.__MIN_HYSTERESIS or temperature_hysteresis > Heating.__MAX_HYSTERESIS:
-            return False, "Hysterese muss zwischen [{}, {}] liegen, nicht {}.".format(
-                common.format_num('.1f', Heating.__MIN_HYSTERESIS), 
-                common.format_num('.1f', Heating.__MAX_HYSTERESIS), 
-                common.format_num('.1f', temperature_hysteresis))
-
-        if request_type == HeatingRequest.SCHEDULED and duration is None:
-            raise ValueError("A scheduled heating job must provide a valid duration!")
-
-        if duration is not None and not isinstance(duration, datetime.timedelta):
-            raise TypeError("Duration must be of type datetime.timedelta")
-
-        if duration is not None and duration > Heating.__MAX_HEATING_DURATION:
-            return False, "Heizdauer kann nicht länger als {} Stunden betragen.".format(Heating.__MAX_HEATING_DURATION)
+        sane, txt = type(self).sanity_check(request_type, target_temperature, 
+            temperature_hysteresis, duration)
+        if not sane:
+            return sane, txt
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
@@ -277,11 +296,11 @@ class Heating:
             idle_time = self._max_idle_time
             if end_time is not None and end_time > now:
                 diff = end_time - now
-                idle_time = min(self._max_idle_time, diff.seconds)
+                idle_time = min(self._max_idle_time, diff.total_seconds())
 
             # Send thread to sleep
             self._condition_var.wait(idle_time)
-            
+
         self._condition_var.release()
         logging.getLogger().info('[Heating] Heating system has been shut down.')
 

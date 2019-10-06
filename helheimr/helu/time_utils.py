@@ -14,14 +14,37 @@ import time
 def dt_now():
     return datetime.datetime.now(tz=tz.tzutc())
 
+
 def dt_offset(delta):
     """Returns now(UTC) + delta, which must be a datetime.timedelta object."""
     return dt_now() + delta
 
 
-def format(dt, fmt="%Y-%m-%d %H:%M:%S"):
+def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
     """Returns the string representation localized to the user's timezone."""
     return dt.astimezone(tz.tzlocal()).strftime(fmt)
+
+
+def local_time_to_utc(hour, minute, second):
+    t_local = datetime.time(hour=hour, minute=minute, second=second, tzinfo=tz.tzlocal())
+    dt_local = datetime.datetime.combine(datetime.datetime.today(), t_local, tzinfo=tz.tzlocal())
+    return dt_local.astimezone(tz.tzutc())
+
+
+def time_as_local(t):
+    """
+    Returns the datetime.time t localized to the user's timezone.
+    If it has no tzinfo, we assume it is UTC.
+    """
+    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
+    else:
+        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
+    return dt.astimezone(tz.tzlocal()).timetz()
+
+
+
+
 
 
 ## TODO remove the rest?
@@ -52,12 +75,7 @@ def time_as_utc(t):
     return datetime_as_utc(dt).timetz()
 
 
-def time_as_local(t):
-    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
-    else:
-        dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
-    return datetime_as_local(dt).timetz()
+
 
 
 def datetime_now():

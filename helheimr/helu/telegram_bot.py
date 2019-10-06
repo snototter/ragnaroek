@@ -7,7 +7,7 @@ Telegram bot helheimr - controlling and querying our heating system.
 Commands (formating for @botfather):
 
 status - Statusabfrage
-on - :thermometer: Heizung einschalten
+on - :high_brightness: Heizung einschalten
 off - :snowflake: Heizung ausschalten
 forecast - :partly_sunny: Wettervorhersage
 details - Detaillierte Systeminformation
@@ -417,11 +417,12 @@ class HelheimrBot:
 
 
     def __cmd_unknown(self, update, context):
-        if update.message.chat_id in self.authorized_ids:
+        if update.message.chat_id in self._authorized_ids:
             context.bot.send_message(chat_id=update.message.chat_id, text=common.emo("Das habe ich nicht verstanden. :thinking_face:"))
         else:
             logging.getLogger().warn('[HelheimrBot] Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
             context.bot.send_message(chat_id=update.message.chat_id, text=common.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
+
 
     def __shutdown_helper(self):
         # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
@@ -473,3 +474,5 @@ class HelheimrBot:
         """Blocking call to run the updater's event loop."""
         self._updater.idle()
         logging.getLogger().info("[HelheimrBot] Telegram updater's idle() terminated")
+
+
