@@ -7,47 +7,12 @@ from logging.handlers import TimedRotatingFileHandler
 import os
 import sys
 
-from helu import heating
+from helu import broadcasting
 from helu import common
-from helu import telegram_bot
+from helu import heating
 from helu import scheduling
+from helu import telegram_bot
 
-class MessageBroadcaster:
-    def __init__(self):
-        self._telegram_bot = None
-
-
-    def set_telegram_bot(self, bot):
-        self._telegram_bot = bot
-
-
-    def error(self, message):
-        self.__broadcast_message(message, 'error')
-
-
-    def warning(self, message):
-        self.__broadcast_message(message, 'warning')
-
-
-    def info(self, message):
-        self.__broadcast_message(message, 'info')
-
-
-    def __broadcast_message(self, text, msg_type):
-        #TODO broadcast to display!!!
-        if msg_type == 'info':
-            telegram_msg = text
-        elif msg_type == 'warning':
-            telegram_msg = ':warning: ' + text
-        elif msg_type == 'error':
-            telegram_msg = ':bangbang: ' + text
-        else:
-            telegram_msg = 'Unknown message type ({}): {}'.format(msg_type, text)
-            
-        if self._telegram_bot is not None:
-            self._telegram_bot.broadcast_message(telegram_msg)
-        else:
-            logging.getLogger().error('[MessageBroadcaster] Telegram bot is not available to broadcast:\n\n' + telegram_msg + '\n')
 
 
 class Hel:
@@ -57,12 +22,21 @@ class Hel:
     def control_heating(self):
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
-        log_handler = TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
+        file_handler = TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
                     interval=1, backupCount=8)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(formatter)
+        
         logging.basicConfig(level=logging.INFO, #logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[logging.StreamHandler(),
                         log_handler])
+        logging.getLogger().addHandler(stream_handler)
+        logging.getLogger().addHandler(file_handler)
         self._logger = logging.getLogger() # Adjust the root logger
 
         # TODO create a rotating log for temperature readings (create class with own logger, schedule periodic readings)
@@ -74,9 +48,8 @@ class Hel:
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
         # Start the heater/heating controller
-        self._message_broadcaster = MessageBroadcaster()
         try:
-            self._heating = heating.Heating.init_instance(ctrl_cfg, self._message_broadcaster)
+            self._heating = heating.Heating.init_instance(ctrl_cfg)
         except Exception as e:
             self._logger.error('[Hel] Error while setting up heating system:\n{}'.format(e))
             raise e
@@ -89,7 +62,8 @@ class Hel:
             self._logger.error('[Hel] Error while setting up telegram bot:\n{}'.format(e))
             raise e
 
-        self._message_broadcaster.set_telegram_bot(self._telegram_bot)
+        # Register telegram bot for message broadcasting
+        broadcasting.MessageBroadcaster.instance().set_telegram_bot(self._telegram_bot)
 
         # Then, start the job scheduler
         self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)

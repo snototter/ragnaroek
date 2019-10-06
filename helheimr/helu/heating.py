@@ -6,6 +6,7 @@ import datetime
 import logging
 import threading
 
+from . import broadcasting
 from . import common
 from . import controller
 from . import raspbee
@@ -14,8 +15,6 @@ from . import scheduling
 
 """Heating can be turned on via manual request or via a scheduled job."""
 HeatingRequest = common.enum(MANUAL=1, SCHEDULED=2)
-
-
 
 class Heating:
     __instance = None
@@ -35,7 +34,7 @@ class Heating:
 
 
     @staticmethod
-    def init_instance(config, broadcaster):
+    def init_instance(config):
         """
         Initialize the singleton.
 
@@ -43,7 +42,7 @@ class Heating:
         :param broadcaster: object to broadcast info/warning/error messages
         """
         if Heating.__instance is None:
-            Heating(config, broadcaster)
+            Heating(config)
         return Heating.__instance
 
 
@@ -79,7 +78,7 @@ class Heating:
         return True, ''
 
 
-    def __init__(self, config, broadcaster):
+    def __init__(self, config):
         """Virtually private constructor, use Heating.init_instance() instead."""
         if Heating.__instance is not None:
             raise RuntimeError("Heating is a singleton!")
@@ -91,7 +90,7 @@ class Heating:
 
         self._controller = controller.OnOffController()
 
-        self._broadcaster = broadcaster
+        self._broadcaster = broadcasting.MessageBroadcaster.instance()
 
         # Parameters defining what we have to do when heating:
         self._target_temperature = None     # User wants a specific temperature...

@@ -682,7 +682,7 @@ class HelheimrScheduler(Scheduler):
     def __init__(self, ctrl_cfg, job_list_filename):
         """Virtually private constructor, use HelheimrScheduler.init_instance() instead."""
         if HelheimrScheduler.__instance is not None:
-            raise RuntimeError("Scheduler is a singleton!")
+            raise RuntimeError("HelheimrScheduler is a singleton!")
         HelheimrScheduler.__instance = self
 
         super(HelheimrScheduler,self).__init__()
