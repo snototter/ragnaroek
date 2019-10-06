@@ -28,6 +28,7 @@ import time
 
 from . import common
 from . import heating
+from . import time_utils
 
 #TODOs:
 #TODO botfather & help: heizung ein = thermo emo statt sonne
@@ -66,7 +67,9 @@ def _format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tr
                 '*' if use_markdown else ''
             )
 
-    txt = '{}Heizung{} ist {}{}'.format(
+    #TODO remove time
+    txt = '{}\n{}Heizung{} ist {}{}'.format(
+            time_utils.format(time_utils.dt_now()),
             '*' if use_markdown else '',
             '*' if use_markdown else '',
             'ein' if is_heating else 'aus',
@@ -423,17 +426,9 @@ class HelheimrBot:
             logging.getLogger().warn('[HelheimrBot] Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
             context.bot.send_message(chat_id=update.message.chat_id, text=common.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
 
-
-    def __shutdown_helper(self):
-        # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
-        logging.getLogger().info("[HelheimrBot] Stopping telegram updater...")
-        self._updater.stop()
-        self._updater.is_idle = False
-        logging.getLogger().info("[HelheimrBot] Telegram bot has been shut down.")
-
-
+    
     def __cmd_shutdown(self, update, context):
-        threading.Thread(target=self.__shutdown_helper, daemon=True).start()
+        threading.Thread(target=self.shutdown, daemon=True).start()
 
 
     def start(self):
@@ -453,6 +448,14 @@ class HelheimrBot:
                 text=common.emo(txt),
                 parse_mode=telegram.ParseMode.MARKDOWN)
 
+
+    def __shutdown_helper(self):
+        # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
+        logging.getLogger().info("[HelheimrBot] Stopping telegram updater...")
+        self._updater.stop()
+        self._updater.is_idle = False
+        logging.getLogger().info("[HelheimrBot] Telegram bot has been shut down.")
+        self._heating.shutdown()
 
     def shutdown(self):
         if not self._updater.running:
