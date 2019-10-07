@@ -637,6 +637,24 @@ class PeriodicHeatingJob(Job):
         return d
 
     
+    def to_msg_str(self, use_markdown=True):
+        """Return a human-readable representation for telegram, etc."""
+        next_run_str = time_utils.format_time(self.next_run)
+        at_time_str = time_utils.format_time(self.at_time)
+        duration_str = time_utils.format_timedelta(self.heating_duration)
+        
+        return 'Heize tgl. um {:s}{:s} für {:s}, nächster Start: {:s} ({:s})'.format(
+                at_time_str,
+                '' if target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
+                        common.format_num('.1f', self.target_temperature, use_markdown),
+                        common.format_num('.1f', self.temperature_hysteresis, use_markdown)
+                    ),
+                duration_str,
+                next_run_str,
+                self.created_by
+            )
+
+    
     @staticmethod
     def from_libconf(cfg):
         day_interval = cfg['day_interval']
@@ -661,13 +679,13 @@ class PeriodicHeatingJob(Job):
         return job
 
 
-
 class NonHeatingJob(Job):
     """Used to distinguish PeriodicHeatingJobs from NonHeatingJobs (from generic Jobs that
     someone just added into the scheduling list, without us knowing...)"""
-    def __init__(self, interval, function_name):
+    def __init__(self, interval, function_name, job_description):
         super(NonHeatingJob, self).__init__(interval)
         self.function_name = function_name
+        self.job_description = job_description
 
 
     def to_dict(self):
@@ -677,21 +695,63 @@ class NonHeatingJob(Job):
             'interval': self.interval,
             'unit': self.unit
         }
+        if self.job_description != self.function_name:
+            d['description'] = self.job_description
         if self.at_time is not None:
-            fmt_str = '%H:%M:%S'
-            if self.unit == 'hours':
-                fmt_str = '%M:%S'
-            elif self.unit == 'minutes':
-                fmt_str = '%S'
-            d['at'] = time_utils.time_as_local(self.at_time).strftime(fmt_str)
+            d['at'] = self._format_at_time()
         return d
 
+    def _format_at_time(self):
+        if self.at_time is None:
+            return ''
+        fmt_str = '%H:%M:%S'
+        if self.unit == 'hours':
+            fmt_str = '%M:%S'
+        elif self.unit == 'minutes':
+            fmt_str = '%S'
+        return time_utils.time_as_local(self.at_time).strftime(fmt_str)
 
+
+    def to_msg_str(self, use_markdown=True):
+        """Return a human-readable representation for telegram, etc."""
+        #FIXME impl
+        s = self.job_description + ', '
+
+        if self.unit == 'weeks':
+            s += 'wöchentlich' if self.interval == 1 else 'jede {:d}. Woche'.format(self.interval)
+            if self.start_day is not None:
+                lookup = { 'monday': 'Montag',
+                        'tuesday': 'Dienstag',
+                        'wednesday': 'Mittwoch',
+                        'thursday': 'Donnerstag',
+                        'friday': 'Freitag',
+                        'saturday': 'Samstag',
+                        'sunday': 'Sonntag'
+                    }
+                s += ' am ' + lookup[self.start_day]
+        elif self.unit == 'days':
+            s += 'tgl.' if self.interval == 1 else 'jeden {:d}. Tag'.format(self.interval)
+        elif self.unit == 'hours':
+            s += 'stündlich' if self.interval == 1 else 'jede {:d}. Stunde'.format(self.interval)
+        elif self.unit == 'minutes':
+            s += 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
+        elif self.unit == 'seconds':
+            s += 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
+        
+        if self.at_time is not None:
+            s += ' um ' + self._format_at_time()
+        
+        s += ', nächste Durchführung: ' + time_utils.format_time(self.next_run)
+        return s
+        
+ 
     @staticmethod
     def from_libconf(cfg):
         job_type = common.cfg_val_or_none(cfg, 'type')
         if job_type is None:
             raise ValueError("Non-heating job is missing 'type = ...' Check the configuration file.")
+
+        job_description = common.cfg_val_or_default(cfg, 'description', job_type)
 
         # Use the configured name as function name to execute:
         this_module = sys.modules[__name__]
@@ -699,7 +759,7 @@ class NonHeatingJob(Job):
 
         interval = int(common.cfg_val_or_default(cfg, 'interval', 1))
         unit = common.cfg_val_or_none(cfg, 'unit')
-        job = NonHeatingJob(interval, job_type)
+        job = NonHeatingJob(interval, job_type, job_description)
         if unit == 'seconds' or (unit == 'second' and interval == 1):
             job = job.seconds
         elif unit == 'minutes' or (unit == 'minute' and interval == 1):
@@ -914,7 +974,7 @@ class HelheimrScheduler(Scheduler):
 
 
 
-        def list_jobs(self):
+        def list_jobs(self, use_markdown):
             """Returns a string representation of scheduled jobs."""
             self._condition_var.acquire()
             heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
@@ -930,29 +990,16 @@ class HelheimrScheduler(Scheduler):
                 msg_lines.append('*Registrierte Heizungsprogramme:*')
                 
                 for j in heating_jobs:
-                    #TODO move to periodicheatingjbo
-                    next_run_str = time_utils.format_time(j.next_run)
-                    at_time_str = time_utils.format_time(j.at_time)
-                    duration_str = time_utils.format_timedelta(j.heating_duration)
-                    
-                    msg_lines.append('\u2022 Heize tgl. um {:s}{:s} für {:s}, nächster Start: {:s} ({:s})'.format(
-                        at_time_str,
-                        '' if j.target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
-                                common.format_num('.1f', j.target_temperature),
-                                common.format_num('.1f', j.temperature_hysteresis)
-                            ),
-                        duration_str,
-                        next_run_str,
-                        j.created_by
-                    ))
-
+                    msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
             
             msg_lines.append('')
             if len(non_heating_jobs) == 0:
                 msg_lines.append('*Keine anderen Aufgaben registriert*')
             else:
                 msg_lines.append('*Weitere periodische Aufgaben:*')
-                #TODO format non heating jobs
+                
+                for j in non_heating_jobs:
+                    msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
 
             if len(generic_jobs) > 0:
                 logging.getLogger().warning('[HelheimrScheduler] There are generic jobs in my task list, this should not happen:\n'
