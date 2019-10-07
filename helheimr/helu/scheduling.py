@@ -937,7 +937,7 @@ class HelheimrScheduler(Scheduler):
         if jobs_config is None:
             return
 
-        heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING] if type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING in jobs_config else None
+        heating_jobs = common.cfg_val_or_none(jobs_config, type(self).JOB_LIST_CONFIG_KEY_PERIODIC_HEATING)
         if heating_jobs is not None:
             for j in heating_jobs:
                 try:
@@ -947,7 +947,7 @@ class HelheimrScheduler(Scheduler):
                     err_msg = traceback.format_exc(limit=3)
                     logging.getLogger().error('[HelheimrScheduler] Error while loading heating jobs:\n' + err_msg)
 
-        non_heating_jobs = jobs_config[type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING] if type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING in jobs_config else None
+        non_heating_jobs = common.cfg_val_or_none(jobs_config, type(self).JOB_LIST_CONFIG_KEY_PERIODIC_NON_HEATING)
         if non_heating_jobs is not None:
             for j in non_heating_jobs:
                 self._condition_var.acquire()
@@ -986,39 +986,39 @@ class HelheimrScheduler(Scheduler):
 
 
 
-        def list_jobs(self, use_markdown=True):
-            """Returns a string representation of scheduled jobs."""
-            self._condition_var.acquire()
-            heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
-            non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
-            generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
-            self._condition_var.release()
+    def list_jobs(self, use_markdown=True):
+        """Returns a string representation of scheduled jobs."""
+        self._condition_var.acquire()
+        heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
+        non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
+        generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
+        self._condition_var.release()
 
-            msg_lines = list()
-            if len(heating_jobs) == 0:
-                msg_lines.append('*Keine Heizungsprogramme registriert*')
-            else:
-                heating_jobs = sorted(heating_jobs, key=lambda j: j.at_time)
-                msg_lines.append('*Registrierte Heizungsprogramme:*')
-                
-                for j in heating_jobs:
-                    msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+        msg_lines = list()
+        if len(heating_jobs) == 0:
+            msg_lines.append('*Keine Heizungsprogramme registriert*')
+        else:
+            heating_jobs = sorted(heating_jobs, key=lambda j: j.at_time)
+            msg_lines.append('*Registrierte Heizungsprogramme:*')
             
+            for j in heating_jobs:
+                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+        
+        msg_lines.append('')
+        if len(non_heating_jobs) == 0:
+            msg_lines.append('*Keine anderen Aufgaben registriert*')
+        else:
+            msg_lines.append('*Weitere periodische Aufgaben:*')
+            
+            for j in non_heating_jobs:
+                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+
+        if len(generic_jobs) > 0:
+            logging.getLogger().warning('[HelheimrScheduler] There are generic jobs in my task list, this should not happen:\n'
+                + '\n'.join(map(str, [j for j in generic_jobs])))
             msg_lines.append('')
-            if len(non_heating_jobs) == 0:
-                msg_lines.append('*Keine anderen Aufgaben registriert*')
-            else:
-                msg_lines.append('*Weitere periodische Aufgaben:*')
-                
-                for j in non_heating_jobs:
-                    msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+            msg_lines.append('*Unbekannte Aufgaben:*')
+            for j in generic_jobs:
+                msg_lines.append(str(j))
 
-            if len(generic_jobs) > 0:
-                logging.getLogger().warning('[HelheimrScheduler] There are generic jobs in my task list, this should not happen:\n'
-                    + '\n'.join(map(str, [j for j in generic_jobs])))
-                msg_lines.append('')
-                msg_lines.append('*Unbekannte Aufgaben:*')
-                for j in generic_jobs:
-                    msg_lines.append(str(j))
-
-            return '\n'.join(msg_lines)
+        return '\n'.join(msg_lines)
