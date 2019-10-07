@@ -31,8 +31,8 @@ class TemperatureLog:
         # Set up rotating log file
         self._logger = logging.getLogger("temperature.log")
         formatter = logging.Formatter('%(message)s')
-        file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
-                    interval=1, backupCount=104) # Keep up to two years
+        file_handler = logging.handlers.TimedRotatingFileHandler('logs/temperature.log', when="w6", # Rotate the logs each sunday
+                    interval=1, backupCount=104) # Keep up to two years TODO shorter period, we'll never going to check it anyways
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
         

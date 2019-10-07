@@ -19,6 +19,7 @@ import traceback
 
 from . import broadcasting
 from . import common
+from . import network_utils
 from . import time_utils
 from . import heating
 from . import temperature_log
@@ -785,8 +786,16 @@ def broadcast_dummy_message():
     logging.getLogger().info('Periodic dummy task reporting for duty.')
     broadcasting.MessageBroadcaster.instance().info('Periodic dummy task reporting for duty.')
 
+
 def log_temperature():
     temperature_log.TemperatureLog.instance().log_temperature()
+    #TODO make dummy broadcast, too
+
+
+def test_network_connectivity():
+    #TODO remove the broadcast!
+    msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
+    broadcasting.MessageBroadcaster.instance().info('*Periodic network connection test:*\n\n' + msg)
 
 
 def is_helheimr_job(job):

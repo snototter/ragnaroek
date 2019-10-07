@@ -9,6 +9,7 @@ import sys
 from helu import broadcasting
 from helu import common
 from helu import heating
+from helu import network_utils
 from helu import scheduling
 from helu import telegram_bot
 
@@ -62,6 +63,9 @@ class Hel:
 
         # Register telegram bot for message broadcasting
         broadcasting.MessageBroadcaster.instance().set_telegram_bot(self._telegram_bot)
+
+        # Set up network connectivity tester
+        network_utils.ConnectionTester.init_instance(ctrl_cfg)
 
         # Then, start the job scheduler
         self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)
