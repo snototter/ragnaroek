@@ -148,7 +148,11 @@ class HelheimrBot:
 
         # Test telegram token/connection
         self._bot = self._updater.bot
-        logging.getLogger().info('HelheimrBot querying myself: {}'.format(self._bot.get_me()))
+        try:
+            logging.getLogger().info('[HelheimrBot] querying myself: {}'.format(self._bot.get_me()))
+        except:
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while querying myself:\n' + err_msg)
 
         # Parameters to store configuration while waiting for user callback:
         self._config_at_time = None
@@ -198,9 +202,9 @@ class HelheimrBot:
         self._dispatcher.add_handler(unknown_handler)
 
 
-#TODO try/except everything - update.message.reply_text may throw exception! because it becomes none... (e.g. when editing a user's message)
     def __safe_send(self, chat_id, text, parse_mode=telegram.ParseMode.MARKDOWN):
-        """Exception-safe message sending."""
+        """Exception-safe message sending.
+        Especially needed for callback queries - we got a lot of exceptions whenever users edited a previously sent command/message."""
         try:
             self._bot.send_message(chat_id=chat_id, text, parse_mode=parse_mode)
             return True
