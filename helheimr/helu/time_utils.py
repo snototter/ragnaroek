@@ -59,6 +59,10 @@ def format_timedelta(td):
         s += '{:d}\u200amin'.format(minutes)
     return s
 
+def format_time(t):
+    """Convert to local time zone and return str representation."""
+    t = time_as_local(t)
+    return t.strftime('%H:%M')
 
 
 

@@ -726,6 +726,9 @@ def broadcast_dummy_message():
     broadcasting.MessageBroadcaster.instance().info('Periodic dummy task reporting for duty.')
 
 
+def is_helheimr_job(job):
+    return isinstance(job, PeriodicHeatingJob) or isinstance(job, NonHeatingJob)
+
 
 class HelheimrScheduler(Scheduler):
     # libconfig++ key to look up scheduled heating jobs
@@ -909,3 +912,54 @@ class HelheimrScheduler(Scheduler):
             err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrController] Error while serializing:\n' + err_msg)
 
+
+
+        def list_jobs(self):
+            """Returns a string representation of scheduled jobs."""
+            self._condition_var.acquire()
+            heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
+            non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
+            generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
+            self._condition_var.release()
+
+            msg_lines = list()
+            if len(heating_jobs) == 0:
+                msg_lines.append('*Keine Heizungsprogramme registriert*')
+            else:
+                heating_jobs = sorted(heating_jobs, key=lambda j: j.at_time)
+                msg_lines.append('*Registrierte Heizungsprogramme:*')
+                
+                for j in heating_jobs:
+                    #TODO move to periodicheatingjbo
+                    next_run_str = time_utils.format_time(j.next_run)
+                    at_time_str = time_utils.format_time(j.at_time)
+                    duration_str = time_utils.format_timedelta(j.heating_duration)
+                    
+                    msg_lines.append('\u2022 Heize tgl. um {:s}{:s} für {:s}, nächster Start: {:s} ({:s})'.format(
+                        at_time_str,
+                        '' if j.target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
+                                common.format_num('.1f', j.target_temperature),
+                                common.format_num('.1f', j.temperature_hysteresis)
+                            ),
+                        duration_str,
+                        next_run_str,
+                        j.created_by
+                    ))
+
+            
+            msg_lines.append('')
+            if len(non_heating_jobs) == 0:
+                msg_lines.append('*Keine anderen Aufgaben registriert*')
+            else:
+                msg_lines.append('*Weitere periodische Aufgaben:*')
+                #TODO format non heating jobs
+
+            if len(generic_jobs) > 0:
+                logging.getLogger().warning('[HelheimrScheduler] There are generic jobs in my task list, this should not happen:\n'
+                    + '\n'.join(map(str, [j for j in generic_jobs])))
+                msg_lines.append('')
+                msg_lines.append('*Unbekannte Aufgaben:*')
+                for j in generic_jobs:
+                    msg_lines.append(str(j))
+
+            return '\n'.join(msg_lines)
