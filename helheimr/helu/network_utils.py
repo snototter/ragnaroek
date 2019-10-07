@@ -6,6 +6,8 @@ import logging
 import requests
 import subprocess
 import traceback
+import logging
+
 
 def http_get_request(url, timeout=2.0):
     """
@@ -54,3 +56,56 @@ def check_internet_connection(timeout=2):
         if ping(host, timeout):
             return True
     return False
+
+
+
+class ConnectionTester:
+    __instance = None
+
+    @staticmethod
+    def instance():
+        """Returns the singleton."""
+        if ConnectionTester.__instance is None:
+            ConnectionTester(config)
+        return ConnectionTester.__instance
+
+    @staticmethod
+    def init_instance(ctrl_cfg):
+        if ConnectionTester.__instance is None:
+            ConnectionTester(ctrl_config)
+        return ConnectionTester.__instance        
+
+
+    def __init__(self, cfg):
+        """Virtually private constructor, use TemperatureLog.init_instance() instead."""
+        if ConnectionTester.__instance is not None:
+            raise RuntimeError("ConnectionTester is a singleton!")
+        ConnectionTester.__instance = self
+
+        #TODO store known hosts to query in _local, _internet
+
+
+    def list_known_connection_states(self, use_markdown=True):
+        # msg = list()
+        # # Check connectivity:
+        # msg.append('*Netzwerk:*')
+        # # Home network
+        # for name, host in self.known_hosts_local.items():
+        #     reachable = hu.ping(host)
+        #     msg.append('\u2022 {} [LAN] ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+        # # WWW
+        # for name, host in self.known_hosts_internet.items():
+        #     reachable = hu.ping(host)
+        #     msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+        # # Also check telegram
+        # reachable = hu.check_url(self.known_url_telegram_api)
+        # msg.append('\u2022 Telegram API ist {}'.format('online' if reachable else 'offline :bangbang:'))
+        # msg.append('') # Empty line to separate text content
+        # # Query RaspBee state
+        # reachable = hu.check_url(self.known_url_raspbee)
+        # if reachable:
+        #     msg.append(self.raspbee_wrapper.query_full_state())
+        # else:
+        #     msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
+        return 'TODO no known connections yet'
+        

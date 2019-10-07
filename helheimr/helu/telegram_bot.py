@@ -28,6 +28,7 @@ import time
 
 from . import common
 from . import heating
+from . import network_utils
 from . import scheduling
 from . import time_utils
 
@@ -197,6 +198,54 @@ class HelheimrBot:
         self._dispatcher.add_handler(unknown_handler)
 
 
+#TODO try/except everything - update.message.reply_text may throw exception! because it becomes none... (e.g. when editing a user's message)
+    def __safe_send(self, chat_id, text, parse_mode=telegram.ParseMode.MARKDOWN):
+        """Exception-safe message sending."""
+        try:
+            self._bot.send_message(chat_id=chat_id, text, parse_mode=parse_mode)
+            return True
+        except:
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while sending message to chat ID {}:\n'.format(chat_id) + err_msg + '\n\nMessage text was:\n' + text)
+            self._is_modifying_heating = False # Reset this flag upon error (or we won't be able to change anything)
+        return False
+
+
+    def __safe_message_reply(self, update, text, reply_markup, parse_mode=telegram.ParseMode.MARKDOWN):
+        """Exception-safe editing of messages."""
+        try:
+            update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+            return True
+        except:
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while sending reply message:\n' +\
+                err_msg + '\n\nMessage text was:\n' + text)
+            self._is_modifying_heating = False # Reset this flag upon error (or we won't be able to change anything)
+        return False
+
+
+    def __safe_edit_callback_query(self, query, text, parse_mode=telegram.ParseMode.MARKDOWN):
+        try:
+            query.edit_message_text(text=text, parse_mode=parse_mode)
+            return True
+        except:
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while editing callback query text:\n' +\
+                err_msg + '\n\nMessage text was:\n' + text)
+            self._is_modifying_heating = False # Reset this flag 
+        return False
+
+
+    def __safe_chat_action(self, chat_id, action=telegram.ChatAction.TYPING):
+        try:
+            self._bot.send_chat_action(chat_id=chat_id, action=action)
+            return True
+        except:
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while sending chat action to chat ID {}\n'.format(chat_id) + err_msg)
+        return False
+
+
     def __cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
@@ -219,13 +268,12 @@ class HelheimrBot:
 
 /shutdown - System herunterfahren.
 /help - Diese Hilfemeldung."""
-        context.bot.send_message(chat_id=update.message.chat_id, text=common.emo(txt),
-            parse_mode=telegram.ParseMode.MARKDOWN)
+        self.__safe_send(update.message.chat_id, common.emo(txt))
 
     
     def __cmd_start(self, update, context):
-        context.bot.send_message(chat_id=update.message.chat_id, 
-            text=common.emo("Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower())))
+        self.__safe_send(update.message.chat_id, 
+            common.emo("Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower())))
 
 
     def __query_status(self, chat_id, detailed_report=True):
@@ -246,8 +294,7 @@ class HelheimrBot:
         if chat_id is None:
             return txt
         else:
-            self._bot.send_message(chat_id=chat_id, text=common.emo(txt),
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(chat_id, common.emo(txt))
 
 
     def __cmd_status(self, update, context):
@@ -255,34 +302,36 @@ class HelheimrBot:
 
 
     def __cmd_details(self, update, context):
-        context.bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.TYPING)
-        txt = self._heating.query_detailed_status()
-        context.bot.send_message(
-            chat_id=update.message.chat_id, 
-            text=common.emo(txt), 
-            parse_mode=telegram.ParseMode.MARKDOWN)
-        #self.__query_status(update.message.chat_id, detailed_report=True)
+        self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
+        msg = list()
+        msg.append(self.__query_status(None, detailed_report=True))
+        
+        msg.append('')
+        msg.append(network_utils.ConnectionTester.instance().list_known_connections(use_markdown=True))
+
+        msg.append('')
+        msg.append(scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True))
+        txt = '\n'.join(msg)
+        
+        self.__safe_send(update.message.chat_id, common.emo(txt))
+
 
 
     def __cmd_on(self, update, context):
         # Check if another user is currently sending an on/off command:
         if self._is_modifying_heating:
-            context.bot.send_message(chat_id=update.message.chat_id, 
-                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\n\nBitte versuche es in ein paar Sekunden nochmal.',
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\n\nBitte versuche es in ein paar Sekunden nochmal.')
             return
         self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
-#TODO try/except everything - update.message.reply_text may throw exception! because it becomes none... (e.g. when editing a user's message)
+
         # Check if already heating
         is_heating, plug_states = self._heating.query_heating_state()
 
         if is_heating:
             self._is_modifying_heating = False
-            txt = '*Heizung* läuft schon :thermometer:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, 
-                text=common.emo(txt), 
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(update.message.chat_id,
+                '*Heizung* läuft schon :thermometer:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False))
         else:
             # If not, ask for confirmation
             # self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
@@ -291,31 +340,35 @@ class HelheimrBot:
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-            update.message.reply_text('Heizung wirklich einschalten?', reply_markup=reply_markup)
+            self._is_modifying_heating = self.__safe_message_reply(update, 
+                'Heizung wirklich einschalten?', reply_markup=reply_markup)
 
 
     def __cmd_off(self, update, context):
         # Check if another user is currently sending an on/off command:
         if self._is_modifying_heating:
-            self._bot.send_message(chat_id=update.message.chat_id, 
-                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
             return
+        self._is_modifying_heating = True
 
         # Check if already off
         is_heating, plug_states = self._heating.query_heating_state()
         if not is_heating:
-            self._bot.send_message(chat_id=update.message.chat_id, 
-                text=common.emo('Heizung ist schon *aus* :snowman:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)),
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self._is_modifying_heating = False
+            self.__safe_send(update.message.chat_id, 
+                common.emo('Heizung ist schon *aus* :snowman:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)))
         else:
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_OFF_CONFIRM + ':' + ':'.join(context.args)),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
             reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-            update.message.reply_text('Heizung wirklich ausschalten?', reply_markup=reply_markup)
-            self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
+            # Set flag to prevent other users from concurrently modifying 
+            # heating system via telegram (only if sending text succeeded)
+            self._is_modifying_heating = self.__safe_message_reply(update, 
+                'Heizung wirklich ausschalten?', reply_markup)
 
+    
 
     def __callback_handler(self, update, context):
         query = update.callback_query
@@ -323,7 +376,8 @@ class HelheimrBot:
         response = tokens[0]
         
         if response == type(self).CALLBACK_TURN_ON_OFF_CANCEL:
-            query.edit_message_text(text='Ok, dann ein andermal.')
+#TODO safe edit_callback_message  
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_ON_CONFIRM:
@@ -354,32 +408,33 @@ class HelheimrBot:
                 duration=duration)
 
             if not success:
-                query.edit_message_text(text=common.emo(':bangbang: Fehler: ' + txt))
+                self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
                 # Show user we do something
-                query.edit_message_text(text='Wird erledigt...')
-                context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
+                self.__safe_edit_callback_query(query, 'Wird erledigt...')
+          
+                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
                 # Query heating after this short break
                 status_txt = self.__query_status(None)
-                query.edit_message_text(text=common.emo(status_txt), parse_mode=telegram.ParseMode.MARKDOWN)
+                self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
             self._heating.stop_heating(query.from_user.first_name)
             # Show user we do something
-            query.edit_message_text(text='Wird erledigt...')
-            context.bot.send_chat_action(chat_id=query.from_user.id, action=telegram.ChatAction.TYPING)
+            self.__safe_edit_callback_query(query, 'Wird erledigt...')
+            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
             time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
             # Query heating after this short break
             status_txt = self.__query_status(None)
-            query.edit_message_text(text=common.emo(status_txt), parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_CONFIG_CANCEL:
-            query.edit_message_text(text='Ok, dann ein andermal.')
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
 
             self._config_at_time = None
@@ -405,9 +460,9 @@ class HelheimrBot:
                 day_interval=1, 
                 at_hour=at_hour, at_minute=at_minute, at_second=at_second)
             if res:
-                query.edit_message_text(text='Neues Heizungsprogramm ist gespeichert.')
+                self.__safe_edit_callback_query(query, 'Neues Heizungsprogramm ist gespeichert.')
             else:
-                query.edit_message_text(text='Fehler! ' + msg)
+                self.__safe_edit_callback_query(query, 'Fehler! ' + msg)
 
             self._is_modifying_heating = False
             self._config_at_time = None
@@ -418,9 +473,8 @@ class HelheimrBot:
 
     def __cmd_configure(self, update, context):
         if self._is_modifying_heating:
-            self._bot.send_message(chat_id=update.message.chat_id, 
-                text='Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.',
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
             return
 
         at_time = None
@@ -444,9 +498,8 @@ class HelheimrBot:
 
 
         if at_time is None or duration is None:
-            self._bot.send_message(chat_id=update.message.chat_id, 
-                text='Fehler: du musst sowohl die Startzeit (z.B. 06:00) als auch eine Dauer (z.B. 2.5h) angeben!',
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(update.message.chat_id, 
+                'Fehler: du musst sowohl die Startzeit (z.B. 06:00) als auch eine Dauer (z.B. 2.5h) angeben!')
             return
 
         self._config_at_time = at_time
@@ -463,8 +516,7 @@ class HelheimrBot:
         keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_CONFIG_CONFIRM),
                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
 
-        update.message.reply_text(msg, reply_markup=telegram.InlineKeyboardMarkup(keyboard), parse_mode=telegram.ParseMode.MARKDOWN)
-        self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
+        self._is_modifying_heating = self.__safe_message_reply(update, msg, telegram.InlineKeyboardMarkup(keyboard))
 
 
     def __cmd_forecast(self, update, context):
@@ -491,10 +543,10 @@ class HelheimrBot:
 
     def __cmd_unknown(self, update, context):
         if update.message.chat_id in self._authorized_ids:
-            context.bot.send_message(chat_id=update.message.chat_id, text=common.emo("Das habe ich nicht verstanden. :thinking_face:"))
+            self.__safe_send(update.message.chat_id, common.emo("Das habe ich nicht verstanden. :thinking_face:"))
         else:
             logging.getLogger().warn('[HelheimrBot] Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
-            context.bot.send_message(chat_id=update.message.chat_id, text=common.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
+            self.__safe_send(update.message.chat_id, common.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
 
     
     def __cmd_shutdown(self, update, context):
@@ -514,9 +566,7 @@ class HelheimrBot:
     def broadcast_message(self, txt):
         """Send given message to all authorized chat IDs."""
         for chat_id in self._broadcast_ids:
-            self._bot.send_message(chat_id=chat_id, 
-                text=common.emo(txt),
-                parse_mode=telegram.ParseMode.MARKDOWN)
+            self.__safe_send(chat_id, common.emo(txt))
 
 
     def __shutdown_helper(self):
@@ -526,6 +576,7 @@ class HelheimrBot:
         self._updater.is_idle = False
         logging.getLogger().info("[HelheimrBot] Telegram bot has been shut down.")
         self._heating.shutdown()
+
 
     def shutdown(self):
         if not self._updater.running:

@@ -21,6 +21,7 @@ from . import broadcasting
 from . import common
 from . import time_utils
 from . import heating
+from . import temperature_log
 
 logger = logging.getLogger('schedule')
 
@@ -714,7 +715,6 @@ class NonHeatingJob(Job):
 
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
-        #FIXME impl
         s = self.job_description + ', '
 
         if self.unit == 'weeks':
@@ -784,6 +784,9 @@ class NonHeatingJob(Job):
 def broadcast_dummy_message():
     logging.getLogger().info('Periodic dummy task reporting for duty.')
     broadcasting.MessageBroadcaster.instance().info('Periodic dummy task reporting for duty.')
+
+def log_temperature():
+    temperature_log.TemperatureLog.instance().log_temperature()
 
 
 def is_helheimr_job(job):
@@ -974,7 +977,7 @@ class HelheimrScheduler(Scheduler):
 
 
 
-        def list_jobs(self, use_markdown):
+        def list_jobs(self, use_markdown=True):
             """Returns a string representation of scheduled jobs."""
             self._condition_var.acquire()
             heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]

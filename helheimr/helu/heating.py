@@ -39,7 +39,6 @@ class Heating:
         Initialize the singleton.
 
         :param config:      libconfig++ system configuration
-        :param broadcaster: object to broadcast info/warning/error messages
         """
         if Heating.__instance is None:
             Heating(config)

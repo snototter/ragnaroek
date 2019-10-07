@@ -45,6 +45,7 @@ def days_hours_minutes(td):
     """Convert datetime.timedelta to days, hours, minutes"""
     return td.days, td.seconds//3600, (td.seconds//60)%60
 
+
 def format_timedelta(td):
     """Returns a simplified string representation of the datetime.timedelta object td."""
     days, hours, minutes = days_hours_minutes(td)
@@ -58,6 +59,7 @@ def format_timedelta(td):
             s += ' '
         s += '{:d}\u200amin'.format(minutes)
     return s
+
 
 def format_time(t):
     """Convert to local time zone and return str representation."""

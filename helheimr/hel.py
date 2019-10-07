@@ -3,7 +3,6 @@
 """The main controlling script."""
 
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 import sys
 
@@ -24,7 +23,7 @@ class Hel:
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler = TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
+        file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
                     interval=1, backupCount=8)
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
