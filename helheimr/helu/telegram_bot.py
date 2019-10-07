@@ -375,12 +375,14 @@ class HelheimrBot:
     
 
     def __callback_handler(self, update, context):
+        if not self._is_modifying_heating:
+            logging.getLogger().error('[HelheimrBot] __calback_handler called with _is_modifying_heating = False!')
+            self.__safe_send(update.query.chat_id, common.emo(':bangbang: Fehler: _is_modifying_heating wurde in der Zwischenzeit zurückgesetzt!'))
         query = update.callback_query
         tokens = query.data.split(':')
         response = tokens[0]
         
         if response == type(self).CALLBACK_TURN_ON_OFF_CANCEL:
-#TODO safe edit_callback_message  
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
 
