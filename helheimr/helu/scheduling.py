@@ -641,13 +641,14 @@ class PeriodicHeatingJob(Job):
     
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
-        next_run_str = time_utils.format_time(self.next_run)
+        next_run_str = time_utils.format(self.next_run)
         at_time_str = time_utils.format_time(self.at_time)
         duration_str = time_utils.format_timedelta(self.heating_duration)
         
+        #TODO shorten message tgl, 06:00, 20°+/-..., 2h (nächster Start...)
         return 'Heize tgl. um {:s}{:s} für {:s}, nächster Start: {:s} ({:s})'.format(
                 at_time_str,
-                '' if target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
+                '' if self.target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
                         common.format_num('.1f', self.target_temperature, use_markdown),
                         common.format_num('.1f', self.temperature_hysteresis, use_markdown)
                     ),
@@ -714,6 +715,10 @@ class NonHeatingJob(Job):
         return time_utils.time_as_local(self.at_time).strftime(fmt_str)
 
 
+    def __str__(self):
+        return self.to_msg_str(use_markdown=False)
+
+
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
         s = self.job_description + ', '
@@ -742,7 +747,7 @@ class NonHeatingJob(Job):
         if self.at_time is not None:
             s += ' um ' + self._format_at_time()
         
-        s += ', nächste Durchführung: ' + time_utils.format_time(self.next_run)
+        s += ', nächste Durchführung: ' + time_utils.format(self.next_run)
         return s
         
  
@@ -918,6 +923,7 @@ class HelheimrScheduler(Scheduler):
     def __scheduling_loop(self):
         self._condition_var.acquire()
         while self._run_loop:
+            #TODO add try block!
             #TODO remove
             print('TODO REMOVE JOB LIST DEBUG::::::::::::::::::::::::::::::')
             for job in self.jobs:

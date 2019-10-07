@@ -65,14 +65,12 @@ class ConnectionTester:
     @staticmethod
     def instance():
         """Returns the singleton."""
-        if ConnectionTester.__instance is None:
-            ConnectionTester(config)
         return ConnectionTester.__instance
 
     @staticmethod
     def init_instance(ctrl_cfg):
         if ConnectionTester.__instance is None:
-            ConnectionTester(ctrl_config)
+            ConnectionTester(ctrl_cfg)
         return ConnectionTester.__instance        
 
 

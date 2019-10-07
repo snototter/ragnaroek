@@ -206,7 +206,7 @@ class HelheimrBot:
         """Exception-safe message sending.
         Especially needed for callback queries - we got a lot of exceptions whenever users edited a previously sent command/message."""
         try:
-            self._bot.send_message(chat_id=chat_id, text, parse_mode=parse_mode)
+            self._bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
             return True
         except:
             err_msg = traceback.format_exc()
@@ -311,7 +311,7 @@ class HelheimrBot:
         msg.append(self.__query_status(None, detailed_report=True))
         
         msg.append('')
-        msg.append(network_utils.ConnectionTester.instance().list_known_connections(use_markdown=True))
+        msg.append(network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True))
 
         msg.append('')
         msg.append(scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True))
