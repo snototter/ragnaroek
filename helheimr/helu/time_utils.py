@@ -9,8 +9,23 @@ import time
 #######################################################################
 # Time stuff
 
+def dt_as_local(dt):
+    return dt.astimezone(tz.tzlocal())
+
+
 def dt_now():
+    """Current datetime in UTC"""
     return datetime.datetime.now(tz=tz.tzutc())
+
+
+def t_now():
+    """Current time in UTC"""
+    return dt_now().timetz()
+
+
+def t_now_local():
+    """Current time in local timezone"""
+    return time_as_local(t_now())
 
 
 def dt_offset(delta):
@@ -38,7 +53,7 @@ def time_as_local(t):
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
     else:
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)
-    return dt.astimezone(tz.tzlocal()).timetz()
+    return dt_as_local(dt).timetz()
 
 
 def days_hours_minutes(td):

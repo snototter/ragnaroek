@@ -12,6 +12,7 @@ from helu import heating
 from helu import network_utils
 from helu import scheduling
 from helu import telegram_bot
+from helu import weather
 
 
 
@@ -46,6 +47,11 @@ class Hel:
         owm_cfg = common.load_configuration('configs/owm.cfg')
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
+        self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
+        self._weather_service.query()
+        if True:
+            return
+
         # Start the heater/heating controller
         try:
             self._heating = heating.Heating.init_instance(ctrl_cfg)
@@ -72,6 +78,9 @@ class Hel:
 
         # Start the webserver for our e-ink display
         #TODO
+
+        # Initialize weather service
+        self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
 
         # Now we can start the telegram bot    
         self._telegram_bot.start()

@@ -106,6 +106,7 @@ class Heating:
         self._is_terminating = False     # During shutdown, we want to prevent start_heating() calls
         self._start_heating = False      # Used to notify the __heating_loop() that there was a start_heating() request
         self._run_heating_loop = True    # Flag to keep the heating thread alive
+        self._reach_temperature_only_once = False # In case you want to reach a specific temperature only once (stop heating after reaching it)
         self._lock = threading.Lock()    # Thread will wait on the condition variable (so we can notify
         self._condition_var = threading.Condition(self._lock) # it on shutdown or other changes
         self._heating_loop_thread = threading.Thread(target=self.__heating_loop)
@@ -114,7 +115,7 @@ class Heating:
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,
-            temperature_hysteresis=0.5, duration=None):
+            temperature_hysteresis=0.5, duration=None, reach_temperature_only_once=False):
         """
         :param request_type: HeatingRequest (manual takes precedence over scheduled)
         :param requested_by: user name
@@ -133,7 +134,7 @@ class Heating:
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
-        if self._is_manual_request and request_type == HeatingRequest.SCHEDULED:
+        if self._is_heating and self._is_manual_request and request_type == HeatingRequest.SCHEDULED:
             logging.getLogger().info("[Heating] Ignoring the periodic heating request by '{:s}', because there is a manual request by '{:s}' currently active.".format(
                 requested_by, self._latest_request_by))
         else:
@@ -142,6 +143,8 @@ class Heating:
             self._temperature_hysteresis = temperature_hysteresis
             self._heating_duration = duration
             self._start_heating = True
+            self._is_manual_request = request_type == HeatingRequest.MANUAL
+            self._reach_temperature_only_once = (target_temperature is not None) and reach_temperature_only_once
 
         self._condition_var.notify()
         self._condition_var.release()
@@ -150,6 +153,7 @@ class Heating:
 
     def stop_heating(self, requested_by):
         """Stops the heater (if currently active). Will be invoked by the user manually."""
+        self._reach_temperature_only_once = False
         self._condition_var.acquire()
         if self._is_heating:
             logging.getLogger().info("[Heating] Stop heating as requested by '{:s}'".format(requested_by))
@@ -159,7 +163,7 @@ class Heating:
 
 
     def query_detailed_status(self):
-        return 'TODO'
+        return 'TODO' #TODO
     # def query_detailed_status(self):
         # msg = list()
         # # Check connectivity:
@@ -291,15 +295,18 @@ class Heating:
                     self._controller.set_desired_value(self._target_temperature)
                     self._controller.set_hysteresis(self._temperature_hysteresis)
                     use_controller = True
-                    logging.getLogger().info("[Heating] Starting BangBang to reach {:.1f} +/- {:.1f}° as requested by '{:s}'".format(
-                        self._target_temperature, self._temperature_hysteresis, self._latest_request_by))
+                    logging.getLogger().info("[Heating] Starting BangBang to reach {:.1f} +/- {:.1f}° {}as requested by '{:s}'".format(
+                        self._target_temperature, self._temperature_hysteresis, 
+                        ' once (stop afterwards) ' if self._reach_temperature_only_once else '',
+                        self._latest_request_by))
                 else:
                     use_controller = False
                     logging.getLogger().info("[Heating] Starting manually (i.e. always on) as requested by '{:s}'".format(self._latest_request_by))
 
                 if self._heating_duration is None:
                     end_time = None
-                    logging.getLogger().info("[Heating] This heating request can only be stopped manually!")
+                    if not self._reach_temperature_only_once:
+                        logging.getLogger().info("[Heating] This heating request can only be stopped manually!")
                 else:
                     end_time = time_utils.dt_offset(self._heating_duration)
                     logging.getLogger().info("[Heating] This heating request will end at {}".format(time_utils.format(end_time)))
@@ -317,6 +324,18 @@ class Heating:
                         should_heat = True
                     else:
                         should_heat = self._controller.update(current_temperature)
+                        if self._reach_temperature_only_once and not should_heat:
+                            # If we want to heat the room up only once to reach a specific 
+                            # temperature, we keep heating until the bang bang tells us to
+                            # turn the heater off - this means, we reached temperature+hysteresis
+                            # and now we can stop this heating job.
+                            should_heat = False
+                            self._is_heating = False
+                            self._reach_temperature_only_once = False # Prevent future tasks (e.g. periodic onces from heating up only once)
+                            logging.getLogger().info("[Heating] Heat up once: Stop heating as we reached {:.1f}° (target was {:.1f}°).".format(
+                                    current_temperature,
+                                    self._target_temperature
+                                ))
                 else:
                     should_heat = True
 

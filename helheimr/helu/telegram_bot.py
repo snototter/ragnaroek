@@ -8,8 +8,9 @@ Commands (formating for @botfather):
 
 status - Statusabfrage
 on - :high_brightness: Heizung einschalten
+once - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
-forecast - :partly_sunny: Wettervorhersage
+weather - :partly_sunny: Wetterbericht
 details - Detaillierte Systeminformation
 config - Heizungsprogramm einrichten
 shutdown - System herunterfahren
@@ -31,18 +32,15 @@ from . import heating
 from . import network_utils
 from . import scheduling
 from . import time_utils
+from . import weather
 
 #TODOs:
-#TODO botfather & help: heizung ein = thermo emo statt sonne
-#TODO botfather cmd aktualisieren
 #TODO Unicode: black circle, medium black circle, bullet: \u23fa \u25cf \u2022
-#TODO als service einrichten (python venv?)
 #TODO forecast icons (w.get_weather_code(), weather condition codes, check emoji, make mapping)
 #TODO altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
 #TODO reminder alle config minuten, falls heizung laeuft (zB 12h)
-#TODO shutdown: raspberry herunterfahren!
 
-# Telegram emojis: 
+# List of telegram emojis: 
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 # https://k3a.me/telegram-emoji-list-codes-descriptions/
 
@@ -109,8 +107,9 @@ class HelheimrBot:
     CALLBACK_TURN_ON_OFF_CANCEL = '0'
     CALLBACK_TURN_ON_CONFIRM = '1'
     CALLBACK_TURN_OFF_CONFIRM = '2'
-    CALLBACK_CONFIG_CANCEL = '3'
-    CALLBACK_CONFIG_CONFIRM = '4'
+    CALLBACK_TURN_ON_ONCE_CONFIRM = '3'
+    CALLBACK_CONFIG_CANCEL = '4'
+    CALLBACK_CONFIG_CONFIRM = '5'
 
     USE_MARKDOWN = True
     USE_EMOJI = True
@@ -189,11 +188,14 @@ class HelheimrBot:
         cfg_handler = CommandHandler('config', self.__cmd_configure, self._user_filter)
         self._dispatcher.add_handler(cfg_handler)
 
+        forecast_handler = CommandHandler('weather', self.__cmd_weather, self._user_filter)
+        self._dispatcher.add_handler(forecast_handler)
+
+        heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
+        self._dispatcher.add_handler(heat_once_handler)
+
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
-
-        forecast_handler = CommandHandler('forecast', self.__cmd_forecast, self._user_filter)
-        self._dispatcher.add_handler(forecast_handler)
 
         # Filter unknown commands and text!
         unknown_handler = MessageHandler(Filters.command, self.__cmd_unknown, self._user_filter)
@@ -206,7 +208,7 @@ class HelheimrBot:
         """Exception-safe message sending.
         Especially needed for callback queries - we got a lot of exceptions whenever users edited a previously sent command/message."""
         try:
-            self._bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+            self._bot.send_message(chat_id=chat_id, text=common.emo(text), parse_mode=parse_mode)
             return True
         except:
             err_msg = traceback.format_exc()
@@ -218,7 +220,7 @@ class HelheimrBot:
     def __safe_message_reply(self, update, text, reply_markup, parse_mode=telegram.ParseMode.MARKDOWN):
         """Exception-safe editing of messages."""
         try:
-            update.message.reply_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+            update.message.reply_text(common.emo(text), reply_markup=reply_markup, parse_mode=parse_mode)
             return True
         except:
             err_msg = traceback.format_exc()
@@ -230,7 +232,7 @@ class HelheimrBot:
 
     def __safe_edit_callback_query(self, query, text, parse_mode=telegram.ParseMode.MARKDOWN):
         try:
-            query.edit_message_text(text=text, parse_mode=parse_mode)
+            query.edit_message_text(text=common.emo(text), parse_mode=parse_mode)
             return True
         except:
             err_msg = traceback.format_exc()
@@ -261,8 +263,10 @@ class HelheimrBot:
   Temperatur und Dauer: /on `23c` `2h`
   Alles: /on `22c` `0.5c` `1.5h`
 
+/once - :thermometer: Einmalig aufheizen.
+
 /off - :snowflake: Heizung ausschalten.
-/forecast - :partly_sunny: Wettervorhersage.
+/weather - :partly_sunny: Wetterbericht.
 /details - Detaillierte Systeminformation.
 
 /config - Heizungsprogramm einstellen.
@@ -391,6 +395,25 @@ class HelheimrBot:
             msg, reply_markup=reply_markup)
 
 
+    def __cmd_once(self, update, context):
+        # Check if another user is currently sending an on/off command:
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True
+
+
+        temp_buttons = [telegram.InlineKeyboardButton('{:d}'.format(t), 
+            callback_data=type(self).CALLBACK_TURN_ON_ONCE_CONFIRM + ':{:d}'.format(t)) for t in [19, 21, 23, 25]]
+        keyboard = [temp_buttons, # First row
+            [telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
+
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            "Bitte Temperatur auswählen:", reply_markup=reply_markup)
+
+
     def __cmd_off(self, update, context):
         # Check if another user is currently sending an on/off command:
         if self._is_modifying_heating:
@@ -461,6 +484,30 @@ class HelheimrBot:
             # Query heating after this short break
             status_txt = self.__query_status(None)
             self.__safe_edit_callback_query(query, common.emo(status_txt))
+            self._is_modifying_heating = False
+
+        elif response == type(self).CALLBACK_TURN_ON_ONCE_CONFIRM:
+            temperature = float(tokens[1])
+            success, txt = self._heating.start_heating(
+                heating.HeatingRequest.MANUAL,
+                query.from_user.first_name,
+                target_temperature = temperature,
+                temperature_hysteresis = 0.2,
+                duration = None,
+                reach_temperature_only_once = True)
+
+            if not success:
+                self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
+            else:
+                # Show user we do something
+                self.__safe_edit_callback_query(query, 'Wird erledigt...')
+          
+                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
+                time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
+
+                # Query heating after this short break
+                status_txt = self.__query_status(None)
+                self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_CONFIG_CANCEL:
@@ -548,9 +595,22 @@ class HelheimrBot:
         self._is_modifying_heating = self.__safe_message_reply(update, msg, telegram.InlineKeyboardMarkup(keyboard))
 
 
-    def __cmd_forecast(self, update, context):
-        pass
-        #FIXME implement
+    def __cmd_weather(self, update, context):
+        self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
+        try:
+            report = weather.WeatherForecastOwm.instance().query()
+            if report is None:
+                self.__safe_send(update.message.chat_id, ':bangbang: *Fehler* beim Einholen des Wetterberichts. Bitte Log überprüfen.')
+            else:    
+                txt = report.format_message(use_markdown = type(self).USE_MARKDOWN, use_emoji = type(self).USE_EMOJI)
+                self.__safe_send(update.message.chat_id, txt)
+        except:
+            # This will be a formating error (maybe some fields were not set, etc.)
+            # I keep this exception handling as long as I don't know what pyowm returns exactly for every weather condition
+            err_msg = traceback.format_exc()
+            logging.getLogger().error('[HelheimrBot] Error while querying weather report/forecast:\n' + err_msg)
+            self.__safe_send(update.message.chat_id, 'Fehler während der Wetterabfrage:\n\n' + err_msg)
+
         # try:
         #     forecast = self.controller.query_weather_forecast()
         #     if forecast is None:
@@ -562,11 +622,7 @@ class HelheimrBot:
         #             forecast.format_message(use_markdown=True, use_emoji=True)),
         #             parse_mode=telegram.ParseMode.MARKDOWN)
         # except:
-        #     # This will be a formating error (maybe some fields were not set, etc.)
-        #     # I keep this exception handling as long as I don't know what pyowm returns exactly for every weather condition
-        #     err_msg = traceback.format_exc()
-        #     logging.getLogger().error('Error while querying weather report/forecast:\n' + err_msg)
-        #     context.bot.send_message(chat_id=update.message.chat_id, text='Fehler während der Wetterabfrage:\n\n' + err_msg)
+        
 
 
 
