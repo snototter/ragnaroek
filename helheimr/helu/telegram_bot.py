@@ -329,23 +329,66 @@ class HelheimrBot:
             return
         self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
 
-        # Check if already heating
-        is_heating, plug_states = self._heating.query_heating_state()
-
-        if is_heating:
+        # Parse optional parameters
+        temperature = None
+        hysteresis = 0.5
+        duration = None
+        try:
+            for a in context.args:
+                if a[-1] == 'c':
+                    val = float(a[:-1].replace(',','.'))
+                    if temperature is None:
+                        temperature = val
+                    else:
+                        hysteresis = val
+                elif ':' in a:
+                    at_time = a
+                elif a[-1] == 'h':
+                    h = float(a[:-1].replace(',','.'))
+                    hours = int(h)
+                    minutes = int((h - hours) * 60)
+                    duration = datetime.timedelta(hours=hours, minutes=minutes)
+        except:
             self._is_modifying_heating = False
-            self.__safe_send(update.message.chat_id,
-                '*Heizung* läuft schon :thermometer:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False))
+            self.__safe_send(update.message.chat_id, 'Fehler beim Auslesen der Parameter!', parse_mode=telegram.ParseMode.MARKDOWN)
+            return
+
+        # Sanity check of configured parameter:
+        is_sane, err = heating.Heating.sanity_check(heating.HeatingRequest.MANUAL, temperature, hysteresis, duration)
+        if not is_sane:
+            self._is_modifying_heating = False
+            self.__safe_send(update.message.chat_id, 'Falsche Parameter: {}'.format(err), parse_mode=telegram.ParseMode.MARKDOWN)
+            return
+    
+        self._config_duration = duration
+        self._config_hysteresis = hysteresis
+        self._config_temperature = temperature
+        
+        if duration is None:
+            if temperature is None:
+                msg = 'Heizung manuell einschalten.'
+            else:
+                msg = 'Auf {}\u200a\u00b1\u200a{}\u200a° heizen.'.format(
+                    common.format_num('.1f', temperature, True),
+                    common.format_num('.1f', hysteresis, True),
+                )
         else:
-            # If not, ask for confirmation
-            # self.is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
-            keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", 
-                    callback_data=type(self).CALLBACK_TURN_ON_CONFIRM + ':' + ':'.join(context.args)),
+            msg = time_utils.format_timedelta(duration)
+            if temperature is None:
+                msg += ' lang heizen.'
+            else:
+                msg += ' lang auf {}\u200a\u00b1\u200a{}\u200a° heizen.'.format(
+                    common.format_num('.1f', temperature, True),
+                    common.format_num('.1f', hysteresis, True),
+                )
+        msg += ' Bist du dir sicher?'
+
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_ON_CONFIRM),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
 
-            reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-            self._is_modifying_heating = self.__safe_message_reply(update, 
-                'Heizung wirklich einschalten?', reply_markup=reply_markup)
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            msg, reply_markup=reply_markup)
 
 
     def __cmd_off(self, update, context):
@@ -387,31 +430,12 @@ class HelheimrBot:
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_ON_CONFIRM:
-            # Parse optional parameters
-            temperature = None
-            hysteresis = 0.5
-            duration = None
-            for idx in range(1, len(tokens)):
-                t = tokens[idx].lower()
-                if t.endswith('c'): # Temperature
-                    val = float(t[:-1].replace(',','.'))
-                    # The first ##c sets the temperature, the second ##c sets the hysteresis
-                    if temperature is None:
-                        temperature = val
-                    else:
-                        hysteresis = val
-                elif t.endswith('h'):
-                    h = float(t[:-1].replace(',','.'))
-                    hours = int(h)
-                    minutes = int((h - hours) * 60)
-                    duration = datetime.timedelta(hours=hours, minutes=minutes)
-#TODO sanity check user inputs!!!!
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
                 query.from_user.first_name,
-                target_temperature=temperature,
-                temperature_hysteresis=hysteresis,
-                duration=duration)
+                target_temperature = self._config_temperature,
+                temperature_hysteresis = self._config_hysteresis,
+                duration = self._config_duration)
 
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
@@ -448,7 +472,6 @@ class HelheimrBot:
             self._config_hysteresis = None
             self._config_duration = None
 
-#TODO list programs /list scheduler.instance().list_heating_jobs()
         elif response == type(self).CALLBACK_CONFIG_CONFIRM:
             tokens = self._config_at_time.split(':')
             at_hour = int(tokens[0])
@@ -485,7 +508,7 @@ class HelheimrBot:
 
         at_time = None
         temperature = None
-        hysteresis = None
+        hysteresis = 0.5
         duration = None
         for a in context.args:
             if a[-1] == 'c':

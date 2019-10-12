@@ -49,14 +49,14 @@ class Heating:
     def sanity_check(request_type, target_temperature, temperature_hysteresis, duration):
         if target_temperature is not None and \
             (target_temperature < Heating.MIN_TEMPERATURE or target_temperature > Heating.MAX_TEMPERATURE):
-            return False, "Temperatur muss zwischen [{}, {}] liegen, nicht {}.".format(
+            return False, "Temperatur muss zwischen {} und {} liegen, nicht {}.".format(
                 common.format_num('.1f', Heating.MIN_TEMPERATURE), 
                 common.format_num('.1f', Heating.MAX_TEMPERATURE),
                 common.format_num('.1f', target_temperature))
 
         if temperature_hysteresis is not None and \
             (temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS):
-            return False, "Hysterese muss zwischen [{}, {}] liegen, nicht {}.".format(
+            return False, "Hysterese muss zwischen {} und {} liegen, nicht {}.".format(
                 common.format_num('.1f', Heating.MIN_HYSTERESIS), 
                 common.format_num('.1f', Heating.MAX_HYSTERESIS), 
                 common.format_num('.1f', temperature_hysteresis))
@@ -69,11 +69,11 @@ class Heating:
 
         if duration is not None and duration > Heating.MAX_HEATING_DURATION:
             return False, "Heizdauer kann nicht länger als {} Stunden betragen.".format(
-                Heating.MAX_HEATING_DURATION.total_seconds()/3600)
+                int(Heating.MAX_HEATING_DURATION.total_seconds()/3600))
 
         if duration is not None and duration < Heating.MIN_HEATING_DURATION:
             return False, "Heizdauer kann nicht kürzer als {} Minuten betragen.".format(
-                Heating.MIN_HEATING_DURATION.total_seconds/60)
+                int(Heating.MIN_HEATING_DURATION.total_seconds()/60))
 
         return True, ''
 
@@ -366,6 +366,8 @@ class Heating:
                 idle_time = min(self._max_idle_time, diff.total_seconds())
 
             # Send thread to sleep
+            #TODO remove debug
+            logging.getLogger().info('[Heating] Heating loop goes to sleep for {} seconds'.format(idle_time))
             self._condition_var.wait(idle_time)
 
         self._condition_var.release()
