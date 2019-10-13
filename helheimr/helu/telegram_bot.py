@@ -100,8 +100,10 @@ def _format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, in
 
 #######################################################################
 # Main bot workflow
+from functools import wraps
+
 class HelheimrBot:
-    WAIT_TIME_HEATING_TOGGLE = 1.5  # Time to wait after turning heating on/off before checking the heating state (to see if it actually responded)
+    WAIT_TIME_HEATING_TOGGLE = 2  # Time to wait after turning heating on/off before checking the heating state (to see if it actually responded)
 
     # Identifiers used in message callbacks
     CALLBACK_TURN_ON_OFF_CANCEL = '0'
@@ -464,9 +466,9 @@ class HelheimrBot:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
                 # Show user we do something
+                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 self.__safe_edit_callback_query(query, 'Wird erledigt...')
           
-                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
                 # Query heating after this short break
@@ -477,8 +479,8 @@ class HelheimrBot:
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
             self._heating.stop_heating(query.from_user.first_name)
             # Show user we do something
-            self.__safe_edit_callback_query(query, 'Wird erledigt...')
             self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
+            self.__safe_edit_callback_query(query, 'Wird erledigt...')
             time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
             # Query heating after this short break
@@ -500,9 +502,9 @@ class HelheimrBot:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
                 # Show user we do something
+                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 self.__safe_edit_callback_query(query, 'Wird erledigt...')
           
-                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
                 # Query heating after this short break
@@ -617,20 +619,6 @@ class HelheimrBot:
             err_msg = traceback.format_exc()
             logging.getLogger().error('[HelheimrBot] Error while querying weather report/forecast:\n' + err_msg)
             self.__safe_send(update.message.chat_id, 'Fehler während der Wetterabfrage:\n\n' + err_msg)
-
-        # try:
-        #     forecast = self.controller.query_weather_forecast()
-        #     if forecast is None:
-        #         context.bot.send_message(chat_id=update.message.chat_id, text=common.emo(
-        #             ':bangbang: *Fehler* beim Abfragen des Wetterberichts. Log überprüfen!'
-        #             ),parse_mode=telegram.ParseMode.MARKDOWN)
-        #     else:
-        #         context.bot.send_message(chat_id=update.message.chat_id, text=common.emo(
-        #             forecast.format_message(use_markdown=True, use_emoji=True)),
-        #             parse_mode=telegram.ParseMode.MARKDOWN)
-        # except:
-        
-
 
 
     def __cmd_unknown(self, update, context):
