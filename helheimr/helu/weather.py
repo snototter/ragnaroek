@@ -29,7 +29,7 @@ def degrees_to_compass(deg, num_directions=8):
         raise ValueError('You can only convert angle to 8 or 16 compass directions!')
 
 
-def weather_code_emoji(code):
+def weather_code_emoji(code, ref_time=None):
     if code >= 200 and code < 300:
         # Thunderstorm
         return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:'
@@ -49,8 +49,9 @@ def weather_code_emoji(code):
         # Atmospheric stuff (fog, mist, volcanic ashes)
         return ':fog:'
     elif code == 800: # clear, check time-of-day
-        now = time_utils.t_now_local()
-        if now.hour >= 19 or now.hour < 5:
+        if ref_time is None:
+            ref_time = time_utils.t_now_local()
+        if ref_time.hour >= 19 or ref_time.hour < 5:
             return ':full_moon:'
         return ':sunny:'
     elif code == 801:
@@ -64,6 +65,7 @@ def weather_code_emoji(code):
         
     logging.getLogger().log(logging.ERROR, 'Weather code {} was not translated!'.format(code))
     return 'Wettercode {}'.format(code)
+
 
 def temperature_emoji(t):
     if t < 0.0:
@@ -93,19 +95,48 @@ def get_windchill(temperature, wind_speed):
 
 class Forecast:
     def __init__(self, three_hours_forecast):
-        lst = three_hours_forecast.get_forecast().get_weathers()
-        for weather in lst:
-            at_hour = time_utils.dt_as_local(weather.get_reference_time(timeformat='date')).hour
-            print (at_hour, time_utils.format(time_utils.dt_as_local(weather.get_reference_time(timeformat='date'))), weather.get_status(), common.emo(weather_code_emoji(weather.get_weather_code())), weather.get_temperature('celsius')['temp'])
-        temps = [w.get_temperature('celsius')['temp'] for w in lst]
-        temps = temps[:8]
-        print(temps)
-        print('min/max temp 24h: ', min(temps), max(temps))
-        #TODO
+        weathers = three_hours_forecast.get_forecast().get_weathers()[:9]
+        def at_time(w):
+            return time_utils.dt_as_local(w.get_reference_time(timeformat='date'))
+        self._reports = [WeatherReport(w, at_time(w)) for w in weathers]
+
+        # Extract temperature range
+        temps = [w.temperature for w in self._reports]
+        self._min_temp = int(math.floor(min(temps)))
+        self._max_temp = int(math.ceil(max(temps)))
+
+        # Get most prevalent weather status
+        states = dict()
+        emojis = dict()
+        for r in self._reports:
+            ds = r.detailed_status
+            if ds in states:
+                states[ds] += 1
+            else:
+                states[ds] = 1
+            emojis[ds] = r.weather_emoji()
+        sorted_states = [(s, e) for _, s, e in sorted(zip(states.values(), states.keys(), emojis.values()), reverse=True)]
+        self._prevalent_detailed_status = sorted_states[0][0]
+        self._prevalent_weather_emoji = sorted_states[0][1]
+    
+
+    def format_message(self, use_markdown=True, use_emoji=True):
+        lines = list()
+        lines.append('{}Vorhersage:{}'.format(
+            '*' if use_markdown else '', '*' if use_markdown else ''))
+        lines.append('{:s}{:s}, {} bis {}\u200a°'.format(
+            self._prevalent_detailed_status,
+            self._prevalent_weather_emoji if use_emoji else '',
+            common.format_num('d', self._min_temp, use_markdown=use_markdown),
+            common.format_num('d', self._max_temp, use_markdown=use_markdown)))
+        for r in self._reports:
+            lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
+        return '\n'.join(lines)
+
 
 
 class WeatherReport:
-    def __init__(self, weather=None):
+    def __init__(self, weather=None, reference_time=None):
         self._detailed_status = None
         self._weather_code = None
         self._temperature_current = None
@@ -118,8 +149,10 @@ class WeatherReport:
         self._atmospheric_pressure = None
         self._sunset_time = None
         self._sunrise_time = None
+        self._reference_time = reference_time
         if weather is not None:
             self.from_observation(weather)
+
 
     def from_observation(self, w):
         temp = w.get_temperature(unit='celsius')
@@ -132,23 +165,14 @@ class WeatherReport:
         self.detailed_status = w.get_detailed_status()
         self.weather_code = w.get_weather_code()
 
-        #TODO get rain, snow, change emoji during night
-        #TODO remove:
-        # print(w.__dict__)
-        # print(w.get_temperature('celsius'))
-        # print(w.get_rain())
-        # print()
         self.clouds = w.get_clouds()
-        # self.weather_emoji = weather_code_emoji(self.weather_code)
         rain = w.get_rain()
         if rain:
             self.rain = rain['3h']
-        #     # TODO!!
 
         snow = w.get_snow()
         if snow:
-            self.snow = snow['3h'] 
-        #     # TODO!!
+            self.snow = snow['3h']
 
         wind = w.get_wind(unit='meters_sec')
         if wind:
@@ -169,7 +193,29 @@ class WeatherReport:
         
         self.sunrise_time = time_utils.dt_as_local(w.get_sunrise_time(timeformat='date'))
         self.sunset_time = time_utils.dt_as_local(w.get_sunset_time(timeformat='date'))
-        
+
+
+    def teaser_message(self, use_markdown=True, use_emoji=True):
+        # msg = '{:s}{:s}, {:s}\u200a°'.format(
+        #         self.detailed_status,
+        #         ' ' + weather_code_emoji(self.weather_code) if use_emoji else '',
+        #         common.format_num('.1f', self.temperature, use_markdown))
+        msg = '{:s}\u200a°{:s}'.format(
+                common.format_num('.1f', self.temperature, use_markdown),
+                ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '')
+
+        if self.rain is not None:
+            msg += ', {:d}\200amm'.format(int(self.rain))
+
+        if self.snow is not None:
+            msg += ', {:d}\200amm'.format(int(self.snow))
+
+        if self.wind is not None and self.wind['speed'] is not None:
+            msg += ', {:d}\u200akm/h{}'.format(
+                    int(math.ceil(self.wind['speed'])),
+                    ' {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else '')
+        return msg
+
 
     def format_message(self, use_markdown=True, use_emoji=True):
         lines = list()
@@ -179,15 +225,9 @@ class WeatherReport:
             ))
         lines.append('{:s}{:s}, {:s}\u200a°'.format(
                 self.detailed_status,
-                ' ' + weather_code_emoji(self.weather_code) if use_emoji else '',
+                ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '',
                 common.format_num('.1f', self.temperature, use_markdown),
             ))
-        #We only get *current* min and max readings, not the daily forecast!
-        # lines.append('Temperaturverlauf: {:s}-{:s}\u200a°{:s}'.format(
-        #         common.format_num('d', int(self.temperature_range['min']), use_markdown),
-        #         common.format_num('d', int(self.temperature_range['max']), use_markdown),
-        #         ' ' + temperature_emoji((self.temperature_range['min'] + self.temperature_range['max']) / 2.0) if use_emoji else ''
-        #     ))
         windchill = int(get_windchill(self.temperature, self.wind['speed']))
         if int(self.temperature) > windchill:
             lines.append('Gefühlte Temperatur: {:s}\u200a°{:s}'.format(
@@ -233,6 +273,9 @@ class WeatherReport:
     @weather_code.setter
     def weather_code(self, value):
         self._weather_code = value
+
+    def weather_emoji(self):
+        return weather_code_emoji(self._weather_code, self._reference_time)
 
     @property
     def temperature(self):
@@ -304,6 +347,13 @@ class WeatherReport:
     def sunset_time(self, value):
         self._sunset_time = value
 
+    @property
+    def reference_time(self):
+        return self._reference_time
+    @reference_time.setter
+    def reference_time(self, value):
+        self._reference_time = value
+
 
 class WeatherForecastOwm:
     __instance = None
@@ -341,7 +391,9 @@ class WeatherForecastOwm:
             w = obs.get_weather()
 
             #TODO remove
-            Forecast(self._owm.three_hours_forecast(self._city_name))#TODO must be a string "city,countrycode"!
+            # Forecast(self._owm.three_hours_forecast(self._city_name))#TODO must be a string "city,countrycode"!
+            f = Forecast(self._owm.three_hours_forecast_at_coords(self._latitude, self._longitude))
+            print(f.format_message(True, True))
             
             return WeatherReport(w)
         except:
