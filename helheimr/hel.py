@@ -47,10 +47,10 @@ class Hel:
         owm_cfg = common.load_configuration('configs/owm.cfg')
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
-        self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
-        self._weather_service.query()
-        if True:
-            return
+        # self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
+        # self._weather_service.query()
+        # if True:
+        #     return
 
         # Start the heater/heating controller
         try:
