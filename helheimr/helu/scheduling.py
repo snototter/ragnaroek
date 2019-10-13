@@ -23,6 +23,7 @@ from . import network_utils
 from . import time_utils
 from . import heating
 from . import temperature_log
+from . import telegram_bot
 
 logger = logging.getLogger('schedule')
 
@@ -785,8 +786,20 @@ class NonHeatingJob(Job):
 
 
 def broadcast_dummy_message():
-    logging.getLogger().info('Periodic dummy task reporting for duty.')
-    broadcasting.MessageBroadcaster.instance().info('Periodic dummy task reporting for duty.')
+    is_heating, plug_states = heating.Heating.instance().query_heating_state()
+    txt = telegram_bot.format_msg_heating(is_heating, plug_states, 
+        use_markdown=True, 
+        use_emoji=True,
+        include_state_details=True)
+
+    # Query temperatures
+    sensors = heating.Heating.instance().query_temperature()
+    txt += '\n\n' + telegram_bot.format_msg_temperature(sensors,
+        use_markdown=True, 
+        use_emoji=True,
+        include_state_details=True)
+    broadcasting.MessageBroadcaster.instance().info('Periodic check:\n' + txt)
+    logging.getLogger().info('Periodic dummy task reporting for duty:\n' + txt)
 
 
 def log_temperature():

@@ -55,11 +55,11 @@ def _rand_flower():
     return random.choice([':sunflower:', ':hibiscus:', ':tulip:', ':rose:', ':cherry_blossom:'])
 
 
-def _format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
+def format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
     return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
 
 
-def _format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
+def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
     if is_heating is None:
         return '{}{}Fehler{} beim Abfragen der Heizung!'.format(
                 ':bangbang: ' if use_emoji else '',
@@ -80,11 +80,11 @@ def _format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tr
     #         include_state_details = True
     #         break
     if include_state_details:
-        txt += _format_details_plug_states(plug_states, use_markdown, include_state_details)
+        txt += format_details_plug_states(plug_states, use_markdown, include_state_details)
     return txt
 
 
-def _format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, include_state_details=False):
+def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, include_state_details=False):
     if sensor_states is None:
         return '{}{}Fehler{} beim Abfragen der Thermometer!'.format(
                 ':bangbang: ' if use_emoji else '',
@@ -287,14 +287,14 @@ class HelheimrBot:
     def __query_status(self, chat_id, detailed_report=True):
         # Query heating status
         is_heating, plug_states = self._heating.query_heating_state()
-        txt = _format_msg_heating(is_heating, plug_states, 
+        txt = format_msg_heating(is_heating, plug_states, 
             use_markdown=type(self).USE_MARKDOWN, 
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
 
         # Query temperatures
         sensors = self._heating.query_temperature()
-        txt += '\n\n' + _format_msg_temperature(sensors,
+        txt += '\n\n' + format_msg_temperature(sensors,
             use_markdown=type(self).USE_MARKDOWN, 
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
@@ -427,7 +427,7 @@ class HelheimrBot:
         if not is_heating:
             self._is_modifying_heating = False
             self.__safe_send(update.message.chat_id, 
-                common.emo('Heizung ist schon *aus* :snowman:\n' + _format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)))
+                common.emo('Heizung ist schon *aus* :snowman:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)))
         else:
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_OFF_CONFIRM + ':' + ':'.join(context.args)),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
