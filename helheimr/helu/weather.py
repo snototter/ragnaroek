@@ -124,9 +124,9 @@ class Forecast:
         lines = list()
         lines.append('{}Vorhersage:{}'.format(
             '*' if use_markdown else '', '*' if use_markdown else ''))
-        lines.append('{:s}{:s}, {} bis {}\u200a°'.format(
+        lines.append('{:s}{:s}\n{} bis {}\u200a°'.format(
             self._prevalent_detailed_status,
-            self._prevalent_weather_emoji if use_emoji else '',
+            ' ' + self._prevalent_weather_emoji if use_emoji else '',
             common.format_num('d', self._min_temp, use_markdown=use_markdown),
             common.format_num('d', self._max_temp, use_markdown=use_markdown)))
         for r in self._reports:
@@ -385,21 +385,20 @@ class WeatherForecastOwm:
 
     def query(self):
         # Either query by city ID or lat/lon
-        # obs = self.owm.weather_at_id(self.city_id)
         try:
             obs = self._owm.weather_at_coords(self._latitude, self._longitude)
-            w = obs.get_weather()
-
-            #TODO remove
-            # Forecast(self._owm.three_hours_forecast(self._city_name))#TODO must be a string "city,countrycode"!
-            f = Forecast(self._owm.three_hours_forecast_at_coords(self._latitude, self._longitude))
-            print(f.format_message(True, True))
-            
+            w = obs.get_weather()            
             return WeatherReport(w)
         except:
-            logging.getLogger().error('###############################################################################'
-                + '\nError while querying OpenWeatherMap:\n' + traceback.format_exc()
-                + '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+            logging.getLogger().error('[WeatherForecastOwm] Error querying OpenWeatherMap current weather:\n' + traceback.format_exc())
+            return None
+
+    def forecast(self):
+        try:
+            # Forecast(self._owm.three_hours_forecast(self._city_name)) # city name must be a string: "city,countrycode"!
+            return Forecast(self._owm.three_hours_forecast_at_coords(self._latitude, self._longitude))
+        except:
+            logging.getLogger().error('[WeatherForecastOwm] Error querying OpenWeatherMap forecast:\n' + traceback.format_exc())
             return None
 
 

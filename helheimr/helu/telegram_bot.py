@@ -599,10 +599,17 @@ class HelheimrBot:
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         try:
             report = weather.WeatherForecastOwm.instance().query()
-            if report is None:
+            forecast = weather.WeatherForecastOwm.instance().forecast()
+            if report is None or forecast is None:
                 self.__safe_send(update.message.chat_id, ':bangbang: *Fehler* beim Einholen des Wetterberichts. Bitte Log überprüfen.')
-            else:    
-                txt = report.format_message(use_markdown = type(self).USE_MARKDOWN, use_emoji = type(self).USE_EMOJI)
+            else:
+                msg = list()
+                if report is not None:
+                    msg.append(report.format_message(use_markdown = type(self).USE_MARKDOWN, use_emoji = type(self).USE_EMOJI))
+                if forecast is not None:
+                    msg.append('')
+                    msg.append(forecast.format_message(use_markdown = type(self).USE_MARKDOWN, use_emoji = type(self).USE_EMOJI))
+                txt = '\n'.join(msg)
                 self.__safe_send(update.message.chat_id, txt)
         except:
             # This will be a formating error (maybe some fields were not set, etc.)
