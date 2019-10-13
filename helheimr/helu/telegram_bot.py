@@ -100,8 +100,6 @@ def _format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, in
 
 #######################################################################
 # Main bot workflow
-from functools import wraps
-
 class HelheimrBot:
     WAIT_TIME_HEATING_TOGGLE = 2  # Time to wait after turning heating on/off before checking the heating state (to see if it actually responded)
 
@@ -257,6 +255,7 @@ class HelheimrBot:
     def __cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
+/details - Detaillierte Systeminformation.
 
 /on - :thermometer: Heizung einschalten.
   nur Temperatur: /on `21.7c`
@@ -268,8 +267,6 @@ class HelheimrBot:
 /once - :thermometer: Einmalig aufheizen.
 
 /off - :snowflake: Heizung ausschalten.
-/weather - :partly_sunny: Wetterbericht.
-/details - Detaillierte Systeminformation.
 
 /config - Heizungsprogramm einstellen.
   Uhrzeit + Dauer: /config 6:00 2h
@@ -277,6 +274,7 @@ class HelheimrBot:
   Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
 
 /shutdown - System herunterfahren.
+/weather - :partly_sunny: Wetterbericht.
 /help - Diese Hilfemeldung."""
         self.__safe_send(update.message.chat_id, common.emo(txt))
 

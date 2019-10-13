@@ -645,17 +645,14 @@ class PeriodicHeatingJob(Job):
         at_time_str = time_utils.format_time(self.at_time)
         duration_str = time_utils.format_timedelta(self.heating_duration)
         
-        #TODO shorten message tgl, 06:00, 20°+/-..., 2h (nächster Start...)
-        return 'Heize tgl. um {:s}{:s} für {:s}, nächster Start: {:s} ({:s})'.format(
+        return 'tgl. {:s}{:s}, {:s}, nächster Start: {:s}'.format(
                 at_time_str,
-                '' if self.target_temperature is None else ' auf {}\u200a\u00b1\u200a{}\u200a°'.format(
+                '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
                         common.format_num('.1f', self.target_temperature, use_markdown),
                         common.format_num('.1f', self.temperature_hysteresis, use_markdown)
                     ),
                 duration_str,
-                next_run_str,
-                self.created_by
-            )
+                next_run_str)
 
     
     @staticmethod
