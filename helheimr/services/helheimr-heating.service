@@ -1,0 +1,17 @@
+[Unit]
+Description=Helheimr Heating Service
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+
+WorkingDirectory=RAGNAROEKWORKDIR
+User=RAGNAROEKUSR
+ExecStart=RAGNAROEKWORKDIR/.venv3/bin/python RAGNAROEKWORKDIR/hel.py
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+

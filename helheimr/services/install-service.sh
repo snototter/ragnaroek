@@ -8,7 +8,7 @@ function register_service
 
   if [ -f "$sysvc" ]
   then
-    echo "Need to stop/disable previously registered instance ($sysvc)"
+    echo "Need to stop/disable previously registered instance ($sysvc):"
     # Stop and disable previously registered instances
     sudo systemctl disable $svc
     sudo systemctl stop $svc
@@ -16,8 +16,9 @@ function register_service
   
 
   # Create/replace the service file
-  workdir=$(pwd)
-  sudo cp services/$svc /etc/systemd/system
+  scriptdir=$(pwd)
+  workdir=$(realpath $scriptdir/..)
+  sudo cp $svc /etc/systemd/system
   sudo sed -i "s/RAGNAROEKUSR/$USER/g" "$sysvc"
   sudo sed -i "s|RAGNAROEKWORKDIR|$workdir|g" "$sysvc"
 
@@ -29,4 +30,4 @@ function register_service
   sudo systemctl start $svc
 }
 
-register_service helheimr-telegram-bot
+register_service helheimr-heating
