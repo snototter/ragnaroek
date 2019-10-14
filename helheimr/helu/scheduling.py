@@ -822,6 +822,7 @@ def broadcast_dummy_message():
 
 
 def log_temperature():
+    #FIXME TODO TypeError: 'NoneType' object is not iterable (sensors may be none/empty list!)
     temperature_log.TemperatureLog.instance().log_temperature()
     #TODO make dummy broadcast, too
 
