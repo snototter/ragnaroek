@@ -18,7 +18,7 @@ class TemperatureLog:
     def instance():
         """Returns the singleton."""
         if TemperatureLog.__instance is None:
-            TemperatureLog(config)
+            TemperatureLog()
         return TemperatureLog.__instance
 
 
@@ -39,12 +39,15 @@ class TemperatureLog:
         self._logger.addHandler(file_handler)
         self._logger.setLevel(logging.INFO)
 
-        # TODO Store the past 24 hours in a circular buffer
+        # TODO Store the past 24 hours in a circular buffer, TODO configure this via cfg file
         self._temperature_readings = common.circularlist(24*12) # One reading every 5 minutes
 
+    #TODO add get_latest_reading...
+    
     def log_temperature(self):
         sensors = heating.Heating.instance().query_temperature()
         temperatures = tuple([s.temperature for s in sensors])
         self._temperature_readings.append(temperatures)
+        #TODO timestamp!
         #TODO log sensor states (humidity)
         #self._logger.info('{:s};' + ';'.join(map(str, [tr for tr in readings])))
