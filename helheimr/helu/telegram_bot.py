@@ -119,6 +119,8 @@ class HelheimrBot:
     def __init__(self, bot_cfg):
         #TODO FIXME upon start up wait until api.telegram.org is reachable (ping with longer timeout?)
         #TODO best to do it in hel - wait until we can ping the router
+        #TODO best to do it via systemd: https://github.com/coreos/bugs/issues/1966
+        #execstartpre=...https://www.freedesktop.org/software/systemd/man/systemd.service.html
         self._heating = heating.Heating.instance()
 
         # Telegram API configuration
