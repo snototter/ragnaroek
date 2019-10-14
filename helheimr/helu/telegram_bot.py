@@ -566,12 +566,12 @@ class HelheimrBot:
 
     def __cmd_rm(self, update, context):
         self._is_modifying_heating = True
-        jobs = scheduling.HelheimrScheduler.instance().get_job_lists()
+        jobs = scheduling.HelheimrScheduler.instance().get_job_teasers(use_markdown=False)
         keyboard = list()
         for uid, teaser in jobs['heating_jobs']:
             # txt += '[{:d}] {:s}'.format(uid, teaser)
             keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
-                callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(uid, parse_mode=telegram.ParseMode.MARKDOWN))])
+                callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(uid), parse_mode=telegram.ParseMode.MARKDOWN)])
         
         # for i in range(3):
         #     keyboard.append([telegram.InlineKeyboardButton('Test R{} C1'.format(i), callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(i)),

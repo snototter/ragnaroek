@@ -1021,14 +1021,14 @@ class HelheimrScheduler(Scheduler):
 
 
 
-    def get_job_lists(self):
+    def get_job_teasers(self, use_markdown=False):
         self._condition_var.acquire()
         heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
         non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
         generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
         self._condition_var.release()
 
-        heating_jobs = [(j.unique_id, j.teaser()) for j in heating_jobs]
+        heating_jobs = [(j.unique_id, j.teaser(use_markdown)) for j in heating_jobs]
         return {
                 'heating_jobs': heating_jobs
             }
