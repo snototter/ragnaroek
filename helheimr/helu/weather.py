@@ -242,7 +242,7 @@ class WeatherReport:
             lines.append('Luftdruck: {}\u200ahPa'.format(common.format_num('d', self.atmospheric_pressure)))
 
         if self.rain is not None:
-            lines.append('Niederschlag: TODO {}\u200amm'.format(self.rain))
+            lines.append('Niederschlag: TODO {}\u200amm'.format(self.rain)) #TODO maybe round .1f
 
         if self.snow is not None:
             lines.append('Schneefall: TODO {}\u200amm'.format(self.rain))

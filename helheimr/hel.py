@@ -101,40 +101,6 @@ class Hel:
         self._logger.info("[Hel] All sub-systems are on hold, good bye!")
 
 
-
-
 if __name__ == '__main__':
     hel = Hel()
     hel.control_heating()
-
-#TODO periodic jobs:
-# Query & log temperature - make a singleton with circular buffer + rotating log (which can be queried from the e-ink display)
-#TODO check internet connection - maybe also periodically
-#TODO fix weather forecast
-
-#TODO
-        # if not hu.check_internet_connection():
-        #     #TODO weather won't work, telegram neither - check what happens!
-        #     #TODO add warning message to display
-        #     self.logger.error('No internet connection!')
-        # # else:
-        # #     self.logger.info('Yes, WE ARE ONLINE!')
-
-        # # Weather forecast/service wrapper
-        # weather_cfg = hu.load_configuration('configs/owm.cfg')
-        # self.weather_service = hw.WeatherForecastOwm(weather_cfg)
-
-        # # Telegram bot for notifications and user input (heat on-the-go ;-)
-        # bot_cfg = hu.load_configuration('configs/bot.cfg')
-        # self.telegram_bot = hb.HelheimrBot(bot_cfg, self)
-        # self.telegram_bot.start()
-
-        # # Collect hosts we need to contact (weather service, telegram, local IPs, etc.)
-        # self.known_hosts_local = self._load_known_hosts(ctrl_cfg['network']['local'])
-        # self.known_hosts_internet = self._load_known_hosts(ctrl_cfg['network']['internet'])
-        # self.known_url_telegram_api = 'https://t.me/' + bot_cfg['telegram']['bot_name']
-        # self.known_url_raspbee = self.raspbee_wrapper.api_url
-
-    # def _load_known_hosts(self, libconf_attr_dict):
-    #     return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
-

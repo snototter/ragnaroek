@@ -111,9 +111,6 @@ def format_time(t):
 #     return datetime_as_utc(dt).timetz()
 
 
-
-
-
 # def datetime_now():
 #     return datetime_as_utc(datetime.datetime.now())
 

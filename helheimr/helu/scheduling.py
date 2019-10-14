@@ -667,7 +667,7 @@ class PeriodicHeatingJob(Job):
                 duration_str,
                 next_run_str)
 
-    def teaser(self, use_markdown=True):
+    def teaser(self, use_markdown=False):
         at_time_str = time_utils.format_time(self.at_time)
         duration_str = time_utils.format_timedelta(self.heating_duration)
         return '{:s}, {:s}: {:s}'.format(at_time_str, duration_str,
@@ -940,7 +940,7 @@ class HelheimrScheduler(Scheduler):
         self._condition_var.acquire()
         if any([j.overlaps(periodic_heating_job) for j in self.jobs if isinstance(j, PeriodicHeatingJob)]):
             msg = 'Das gewünschte Heizungsprogramm überschneidet sich mit einem existierenden Programm.'
-            logging.getLogger().error('[HelheimrController] Error inserting new heating job: The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job))
+            logging.getLogger().error('[HelheimrScheduler] Error inserting new heating job: The requested periodic job "{}" overlaps with an existing one!'.format(periodic_heating_job))
         else:
             self.jobs.append(periodic_heating_job)
             self._condition_var.notify()
@@ -1015,25 +1015,44 @@ class HelheimrScheduler(Scheduler):
                 }
             with open(self._job_list_filename, 'w') as f:
                 libconf.dump(lcdict, f)
+            logging.getLogger().info('[HelheimrScheduler] Successfully serialized the job list to {:s}.'.format(self._job_list_filename))
         except:
             err_msg = traceback.format_exc(limit=3)
-            logging.getLogger().error('[HelheimrController] Error while serializing:\n' + err_msg)
+            logging.getLogger().error('[HelheimrScheduler] Error while serializing:\n' + err_msg)
 
+
+    def remove_job(self, uid):
+        uid = int(uid)
+        self._condition_var.acquire()
+        removed_job = None
+        for j in self.jobs:
+            if j.unique_id == uid:
+                removed_job = j
+                break
+        if removed_job is not None:
+            self.jobs = [j for j in self.jobs if j.unique_id != uid]
+            # Idle time might have changed, so wake up the scheduler thread:
+            self._condition_var.notify()
+        self._condition_var.release()
+        logging.getLogger().info('[HelheimrScheduler] Removed job [{:d}] "{}"'.format(uid, removed_job))
+        self.serialize_jobs()
+        return removed_job
 
 
     def get_job_teasers(self, use_markdown=False):
         self._condition_var.acquire()
         heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
         non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
-        generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
+        # generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
         self._condition_var.release()
 
         heating_jobs = [(j.unique_id, j.teaser(use_markdown)) for j in heating_jobs]
+        non_heating_jobs = [(j.unique_id, j.teaser(use_markdown)) for j in non_heating_jobs]
+        #TODO extend non_heating_jobs by generic jobs (need a teaser method first...)
         return {
-                'heating_jobs': heating_jobs
+                'heating_jobs': heating_jobs,
+                'non_heating_jobs': non_heating_jobs
             }
-            #TODO add other jobs
-
 
 
     def list_jobs(self, use_markdown=True):

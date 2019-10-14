@@ -46,11 +46,6 @@ from . import weather
 # https://k3a.me/telegram-emoji-list-codes-descriptions/
 
 
-#FIXME for rewrite we need to adjust weather and co...
-# from . import weather as hw
-
-
-
 def _rand_flower():
     """Return a random flower emoji."""
     return random.choice([':sunflower:', ':hibiscus:', ':tulip:', ':rose:', ':cherry_blossom:'])
@@ -114,7 +109,8 @@ class HelheimrBot:
     CALLBACK_CONFIG_CANCEL = '4'
     CALLBACK_CONFIG_CONFIRM = '5'
     CALLBACK_CONFIG_REMOVE = '6'
-    #TODO the python bot api wrapper supports pattern matching: https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
+    #TODO the python bot api wrapper supports pattern matching, so
+    # clean up the callback handler: https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
     USE_MARKDOWN = True
     USE_EMOJI = True
@@ -281,6 +277,7 @@ class HelheimrBot:
   Zusätzlich Temperatur: /config 6:00 23c 2h
   Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
 
+/rm - Heizungsprogramm löschen.
 /shutdown - System herunterfahren.
 /weather - :partly_sunny: Wetterbericht.
 /help - Diese Hilfemeldung."""
@@ -555,27 +552,23 @@ class HelheimrBot:
             self._config_duration = None
         elif response == type(self).CALLBACK_CONFIG_REMOVE:
             uid = tokens[1]
-            logging.getLogger().info('[HelheimrBot] Deleting uid {}'.format(uid))
             self._is_modifying_heating = False
-            #TODO rm from job list
-            #TODO serialize job list
-            #TODO return job/teaser
-            #TODO update message with :
-            self.__safe_edit_callback_query(query, 'Heizungsprogramm "TODO-teaser" wurde gelöscht.')
-
+            removed = scheduling.HelheimrScheduler.instance().remove_job(uid)
+            if removed is None:
+                self.__safe_edit_callback_query(query, 'Fehler beim Entfernen, bitte Logs überprüfen.')
+            else:
+                self.__safe_edit_callback_query(query, "Programm '{:s}' wurde entfernt.".format(removed.teaser(use_markdown=True)))
+            
 
     def __cmd_rm(self, update, context):
+        #TODO two-level menu: first select heating/non-heating, then remove job as following:
         self._is_modifying_heating = True
         jobs = scheduling.HelheimrScheduler.instance().get_job_teasers(use_markdown=False)
         keyboard = list()
         for uid, teaser in jobs['heating_jobs']:
-            # txt += '[{:d}] {:s}'.format(uid, teaser)
             keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
                 callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(uid), parse_mode=telegram.ParseMode.MARKDOWN)])
         
-        # for i in range(3):
-        #     keyboard.append([telegram.InlineKeyboardButton('Test R{} C1'.format(i), callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(i)),
-        #         telegram.InlineKeyboardButton('Test R{} C2'.format(i), callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(i))])
         keyboard.append([telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_CONFIG_CANCEL)])
 
         reply_markup = telegram.InlineKeyboardMarkup(keyboard)
