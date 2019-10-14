@@ -71,7 +71,8 @@ class Hel:
         broadcasting.MessageBroadcaster.instance().set_telegram_bot(self._telegram_bot)
 
         # Set up network connectivity tester
-        network_utils.ConnectionTester.init_instance(ctrl_cfg)
+        network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg, 
+            'control': ctrl_cfg})
 
         # Then, start the job scheduler
         self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)

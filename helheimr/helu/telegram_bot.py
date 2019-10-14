@@ -97,6 +97,8 @@ def format_msg_temperature(sensor_states, use_markdown=True, use_emoji=True, inc
             '\n\u2022 '.join([st.format_message(use_markdown=use_markdown, detailed_information=include_state_details) for st in sensor_states]))
 
 
+def get_bot_url(cfg):
+    return 'https://t.me/' + cfg['telegram']['bot_name']
 
 #######################################################################
 # Main bot workflow

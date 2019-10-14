@@ -124,14 +124,22 @@ class TemperatureState:
 
 
 
+def get_api_url(cfg):
+    gateway = cfg['raspbee']['deconz']['gateway']
+    tcp_port = cfg['raspbee']['deconz']['port']
+    token = cfg['raspbee']['deconz']['api_token']
+    return 'http://' + gateway + ':' + str(tcp_port) + '/api/' + token
+
+
 """ Communication with the zigbee/raspbee (deconz REST API) gateway """
 class RaspBeeWrapper:
     def __init__(self, cfg):
         # Deconz parameters
-        self._gateway = cfg['raspbee']['deconz']['gateway']
-        self._tcp_port = cfg['raspbee']['deconz']['port']
-        self._token = cfg['raspbee']['deconz']['api_token']
-        self._api_url = 'http://' + self._gateway + ':' + str(self._tcp_port) + '/api/' + self._token
+        # self._gateway = cfg['raspbee']['deconz']['gateway']
+        # self._tcp_port = cfg['raspbee']['deconz']['port']
+        # self._token = cfg['raspbee']['deconz']['api_token']
+        # self._api_url = 'http://' + self._gateway + ':' + str(self._tcp_port) + '/api/' + self._token
+        self._api_url = get_api_url(cfg)
 
         # Currently I don't want a generic approach but rather know 
         # exactly (hardcoded) which plugs I control programatically
