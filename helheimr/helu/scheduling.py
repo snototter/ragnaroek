@@ -151,6 +151,17 @@ class Scheduler(object):
 
 
 class Job(object):
+    __id_lock = threading.Lock()
+    __id_counter = 0
+
+    @staticmethod
+    def __unique_id():
+        Job.__id_lock.acquire()
+        ret = Job.__id_counter
+        Job.__id_counter += 1
+        Job.__id_lock.release()
+        return ret
+
     """
     A periodic job as used by :class:`Scheduler`.
 
@@ -179,6 +190,7 @@ class Job(object):
         self.start_day = None  # Specific day of the week to start on
         self.tags = set()  # unique set of tags for the job
         self.scheduler = scheduler  # scheduler to register with
+        self.unique_id = Job.__unique_id()
 
     def __lt__(self, other):
         """
@@ -655,6 +667,13 @@ class PeriodicHeatingJob(Job):
                 duration_str,
                 next_run_str)
 
+    def teaser(self, use_markdown=True):
+        at_time_str = time_utils.format_time(self.at_time)
+        duration_str = time_utils.format_timedelta(self.heating_duration)
+        return '{:s}, {:s}: {:s}'.format(at_time_str, duration_str,
+            'ein' if self.target_temperature is None else '{}\u200a°'.format(
+                    common.format_num('.1f', self.target_temperature, use_markdown)))
+
     
     @staticmethod
     def from_libconf(cfg):
@@ -999,6 +1018,21 @@ class HelheimrScheduler(Scheduler):
         except:
             err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrController] Error while serializing:\n' + err_msg)
+
+
+
+    def get_job_lists(self):
+        self._condition_var.acquire()
+        heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
+        non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
+        generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
+        self._condition_var.release()
+
+        heating_jobs = [(j.unique_id, j.teaser()) for j in heating_jobs]
+        return {
+                'heating_jobs': heating_jobs
+            }
+            #TODO add other jobs
 
 
 

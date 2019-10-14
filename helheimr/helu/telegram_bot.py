@@ -13,6 +13,7 @@ off - :snowflake: Heizung ausschalten
 weather - :partly_sunny: Wetterbericht
 details - Detaillierte Systeminformation
 config - Heizungsprogramm einrichten
+rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
 help - Liste verfügbarer Befehle
 """
@@ -112,6 +113,8 @@ class HelheimrBot:
     CALLBACK_TURN_ON_ONCE_CONFIRM = '3'
     CALLBACK_CONFIG_CANCEL = '4'
     CALLBACK_CONFIG_CONFIRM = '5'
+    CALLBACK_CONFIG_REMOVE = '6'
+    #TODO the python bot api wrapper supports pattern matching: https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
     USE_MARKDOWN = True
     USE_EMOJI = True
@@ -195,6 +198,9 @@ class HelheimrBot:
 
         heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
         self._dispatcher.add_handler(heat_once_handler)
+
+        rm_task_handler = CommandHandler('rm', self.__cmd_rm, self._user_filter)
+        self._dispatcher.add_handler(rm_task_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
@@ -547,6 +553,36 @@ class HelheimrBot:
             self._config_temperature = None
             self._config_hysteresis = None
             self._config_duration = None
+        elif response == type(self).CALLBACK_CONFIG_REMOVE:
+            uid = tokens[1]
+            logging.getLogger().info('[HelheimrBot] Deleting uid {}'.format(uid))
+            self._is_modifying_heating = False
+            #TODO rm from job list
+            #TODO serialize job list
+            #TODO return job/teaser
+            #TODO update message with :
+            self.__safe_edit_callback_query(query, 'Heizungsprogramm "TODO-teaser" wurde gelöscht.')
+
+
+    def __cmd_rm(self, update, context):
+        self._is_modifying_heating = True
+        jobs = scheduling.HelheimrScheduler.instance().get_job_lists()
+        keyboard = list()
+        for uid, teaser in jobs['heating_jobs']:
+            # txt += '[{:d}] {:s}'.format(uid, teaser)
+            keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
+                callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(uid, parse_mode=telegram.ParseMode.MARKDOWN))])
+        
+        # for i in range(3):
+        #     keyboard.append([telegram.InlineKeyboardButton('Test R{} C1'.format(i), callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(i)),
+        #         telegram.InlineKeyboardButton('Test R{} C2'.format(i), callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(i))])
+        keyboard.append([telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_CONFIG_CANCEL)])
+
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        # Set flag to prevent other users from concurrently modifying 
+        # heating system via telegram (only if sending text succeeded)
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            'Welches Programm soll gelöscht werden?', reply_markup)
 
 
     def __cmd_configure(self, update, context):
