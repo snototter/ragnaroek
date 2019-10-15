@@ -338,8 +338,9 @@ class HelheimrBot:
         # Add general process info
         pid, mem_used = common.proc_info()
         msg.append('')
-        msg.append('Prozess: `{}`'.format(pid))
-        msg.append('Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
+        msg.append('*Prozessinfo:*')
+        msg.append('\u2022 PID: `{}`'.format(pid))
+        msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
 
         txt = '\n'.join(msg)
         
