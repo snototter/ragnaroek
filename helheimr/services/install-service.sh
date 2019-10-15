@@ -31,5 +31,5 @@ function register_service
   sudo systemctl start $svc
 }
 
-register_service network-wait-online.service
+register_service network-wait-online
 register_service helheimr-heating
