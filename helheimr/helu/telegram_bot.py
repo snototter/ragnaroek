@@ -334,6 +334,13 @@ class HelheimrBot:
 
         msg.append('')
         msg.append(scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True))
+
+        # Add general process info
+        pid, mem_used = common.proc_info()
+        msg.append('')
+        msg.append('Prozess: `{}`'.format(pid))
+        msg.append('Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
+
         txt = '\n'.join(msg)
         
         self.__safe_send(update.message.chat_id, common.emo(txt))

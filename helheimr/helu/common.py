@@ -13,6 +13,7 @@ import io
 import re
 import sys
 import os
+import psutil
 import datetime
 import argparse
 
@@ -52,6 +53,15 @@ def load_configuration(filename):
             return libconf.load(f)
     except FileNotFoundError:
         return None
+
+
+def proc_info():
+    """Return process id and current memory usage."""
+    pid = os.getpid()
+    proc = psutil.Process(pid)
+    mem_bytes = proc.memory_info().rss
+    mb = mem_bytes/2**20
+    return (pid, mb)
 
 
 #######################################################################
