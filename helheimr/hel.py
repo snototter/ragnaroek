@@ -73,11 +73,11 @@ class Hel:
         network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg, 
             'control': ctrl_cfg})
 
-        # Set up the temperature log
-        temperature_log.TemperatureLog.init_instance(ctrl_cfg)
-
         # Then, start the job scheduler
         self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)
+
+        # Set up the temperature log (after the scheduler!)
+        temperature_log.TemperatureLog.init_instance(ctrl_cfg)
 
         # Start the webserver for our e-ink display
         #TODO

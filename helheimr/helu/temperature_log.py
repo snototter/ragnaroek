@@ -35,13 +35,6 @@ class TemperatureLog:
             raise RuntimeError("TemperatureLog is a singleton!")
         TemperatureLog.__instance = self
 
-# temperature_log = {
-    # log_file = "logs/temperature.log";
-    # rotation_when = "w6"; // Rotate log files on sunday...
-    # rotation_interval = 1; // ... each week
-    # rotation_backup_count = 104 // Up to two years - TODO shorter period!
-    # update_interval_minutes = 5; // Poll sensors every X minutes
-# };
         temp_cfg = cfg['temperature_log']
 
         # Set up rotating log file
@@ -56,23 +49,66 @@ class TemperatureLog:
         self._logger.addHandler(file_handler)
         self._logger.setLevel(logging.INFO)
 
-        #TODO move periodic job to temp_log config (but then we need to skip it during serialization)
-
         # Compute size of circular buffer to store readings of the past 24 hours
         polling_interval_min = temp_cfg['update_interval_minutes']
-        polling_job_label = 'Temperaturabfrage' #TODO Read from config?
+        polling_job_label = temp_cfg['job_label']
         buffer_capacity = int(math.ceil(24*60/polling_interval_min))
         self._temperature_readings = common.circularlist(buffer_capacity)
 
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
 
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries and scheduled job: "{:s}"'.format(buffer_capacity, str(polling_job)))
 
-    def recent_readings(self, index=0):
-        """Returns the latest sensor reading (index=0), the previous one (index=1), older ones (index=...) or None, if it doesn't exist."""
-        if index < len(self._temperature_readings):
-            return self._temperature_readings[-1 - index] #TODO test reverse indexing of circularlist!
-        return None
+        # Map internal display names of temperature sensors to their abbreviations
+        #TODO also load automagically from config in raspbee.py!
+        self._sensor_abbreviations = dict()
+        _sname2display = dict()
+        for k in cfg['raspbee']['temperature']['display_names']:
+            sensor_name = cfg['raspbee']['temperature']['sensor_names'][k]
+            display_name = cfg['raspbee']['temperature']['display_names'][k]
+            abbreviation = cfg['raspbee']['temperature']['abbreviations'][k]
+            _sname2display[sensor_name] = abbreviation
+            self._sensor_abbreviations[display_name] = abbreviation
+
+        self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
+        
+
+
+    def recent_readings(self, num_entries=1):
+        """Returns the latest num_entries sensor readings. A sensor reading 
+        may also be None if the sensor was unavailable during query."""
+        if num_entries < 1:
+            raise ValueError('Number of retrieved entries must be >= 1!')
+        num_entries = min(num_entries, len(self._temperature_readings))
+        # Our circular list doesn't yet support slicing, so we do it the slow way:
+        # tr[-num_entries:]
+        ls = list()
+        for i in range(num_entries):
+            ls.append(self._temperature_readings[-1-i])
+        return ls
+
+
+    def format_table(self, num_entries):
+        readings = self.recent_readings(num_entries)
+        msg = list()
+        # Make the 'table' header:
+        # ..:..  Col1   C2   Col3 ....
+        def _header(h):
+            if len(h) > 2:
+                return '{:4s}'.format(h[:4])
+            return ' {:3s}'.format(h)
+        msg.append('       {:s}'.format('  '.join([_header(h) for h in self._table_ordering])))
+
+        # Table content
+        for r in readings:
+            dt_local, sensors = r
+            if sensors is None:
+                temp_str = '  '.join(['----' for _ in range(len(self._table_ordering))])
+            else:
+                temp_str = '  '.join(['{:4.1f}'.format(sensors[k]) for k in self._table_ordering])
+            msg.append('{:02d}:{:02d}  {:s}'.format(dt_local.hour, dt_local.minute, temp_str))
+        return '\n'.join(msg)
 
 
     def log_temperature(self):
@@ -83,9 +119,9 @@ class TemperatureLog:
             self._logger.log(logging.INFO, '{:s}'.format(time_utils.format(dt_local)))
         else:
             def _tocsv(s):
-                return '{:s};{:s}'.format(s.display_name, s.temperature)
+                return '{:s};{:.1f}'.format(s.display_name, s.temperature)
 
-            self._temperature_readings.append((dt_local, [(s.display_name, s.temperature) for s in sensors]))
+            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
             self._logger.log(logging.INFO, '{:s};{:s}'.format(
                     time_utils.format(dt_local),
                     ';'.join(map(_tocsv, [s for s in sensors]))

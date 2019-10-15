@@ -22,7 +22,7 @@ class Heating:
     MIN_TEMPERATURE = 5.0
     MAX_TEMPERATURE = 30.0
     MIN_HYSTERESIS = 0.1
-    MAX_HYSTERESIS = 10.0
+    MAX_HYSTERESIS = 5.0
     MAX_HEATING_DURATION = datetime.timedelta(hours=12)
     MIN_HEATING_DURATION = datetime.timedelta(minutes=15)
 

@@ -698,14 +698,6 @@ class PeriodicHeatingJob(Job):
                 heating_duration=duration)
         return job
 
-#TODO scheduler.add_job(job)
-class NonSerializableNonHeatingJob(NonHeatingJob):
-    def __init__(self, interval, function_name, job_description):
-        super(NonSerializableNonHeatingJob, self).__init__(interval, function_name, job_description)
-
-    def to_dict(self):
-        raise RuntimeError('Cannot serialize a NonSerializableNonHeatingJob!')
-
 
 class NonHeatingJob(Job):
     """Used to distinguish PeriodicHeatingJobs from NonHeatingJobs (from generic Jobs that
@@ -743,6 +735,30 @@ class NonHeatingJob(Job):
     def __str__(self):
         return self.to_msg_str(use_markdown=False)
 
+    def teaser(self, use_markdown=True):
+        s = self.job_description + ', '
+        if self.unit == 'weeks':
+            s += 'wöchentlich' if self.interval == 1 else 'jede {:d}. Woche'.format(self.interval)
+            if self.start_day is not None:
+                lookup = { 'monday': 'Montag',
+                        'tuesday': 'Dienstag',
+                        'wednesday': 'Mittwoch',
+                        'thursday': 'Donnerstag',
+                        'friday': 'Freitag',
+                        'saturday': 'Samstag',
+                        'sunday': 'Sonntag'
+                    }
+                s += ' am ' + lookup[self.start_day]
+        elif self.unit == 'days':
+            s += 'tgl.' if self.interval == 1 else 'jeden {:d}. Tag'.format(self.interval)
+        elif self.unit == 'hours':
+            s += 'stündlich' if self.interval == 1 else 'jede {:d}. Stunde'.format(self.interval)
+        elif self.unit == 'minutes':
+            s += 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
+        elif self.unit == 'seconds':
+            s += 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
+            #TODO reuse this if-else madness
+        return s
 
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
@@ -810,6 +826,13 @@ class NonHeatingJob(Job):
 
         return job.do(target_function)
 
+
+class NonSerializableNonHeatingJob(NonHeatingJob):
+    def __init__(self, interval, function_name, job_description):
+        super(NonSerializableNonHeatingJob, self).__init__(interval, function_name, job_description)
+
+    def to_dict(self):
+        raise RuntimeError('Cannot serialize a NonSerializableNonHeatingJob!')
 
 
 def broadcast_dummy_message():
@@ -965,7 +988,7 @@ class HelheimrScheduler(Scheduler):
             #TODO remove
             print('TODO REMOVE JOB LIST DEBUG::::::::::::::::::::::::::::::')
             for job in self.jobs:
-                print(job, time_utils.format(job.next_run))
+                print(job, ' TU.format(next_run): ', time_utils.format(job.next_run))
 
             self.run_pending()
           
@@ -974,12 +997,6 @@ class HelheimrScheduler(Scheduler):
             
             # Go to sleep
             self._condition_var.wait(timeout = poll_interval)
-        self._condition_var.release()
-
-    def enqueue_job(self, job):
-        self._condition_var.acquire()
-        self.jobs.append(job)
-        self._condition_var.notify()
         self._condition_var.release()
 
 
@@ -1052,6 +1069,14 @@ class HelheimrScheduler(Scheduler):
         logging.getLogger().info('[HelheimrScheduler] Removed job [{:d}] "{}"'.format(uid, removed_job))
         self.serialize_jobs()
         return removed_job
+
+    
+    def enqueue_job(self, job):
+        self._condition_var.acquire()
+        self.jobs.append(job)
+        self._condition_var.notify()
+        self._condition_var.release()
+
 
 
     def get_job_teasers(self, use_markdown=False):

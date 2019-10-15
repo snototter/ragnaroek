@@ -6,16 +6,17 @@ Telegram bot helheimr - controlling and querying our heating system.
 
 Commands (formating for @botfather):
 
-status - Statusabfrage
+config - Heizungsprogramm einrichten
+details - Detaillierte Systeminformation
+help - Liste verfügbarer Befehle
 on - :high_brightness: Heizung einschalten
 once - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
-weather - :partly_sunny: Wetterbericht
-details - Detaillierte Systeminformation
-config - Heizungsprogramm einrichten
 rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
-help - Liste verfügbarer Befehle
+status - Statusabfrage
+temp - Aktueller Temperaturverlauf
+weather - :partly_sunny: Wetterbericht
 """
 
 
@@ -32,6 +33,7 @@ from . import common
 from . import heating
 from . import network_utils
 from . import scheduling
+from . import temperature_log
 from . import time_utils
 from . import weather
 
@@ -117,10 +119,6 @@ class HelheimrBot:
     
 
     def __init__(self, bot_cfg):
-        #TODO FIXME upon start up wait until api.telegram.org is reachable (ping with longer timeout?)
-        #TODO best to do it in hel - wait until we can ping the router
-        #TODO best to do it via systemd: https://github.com/coreos/bugs/issues/1966
-        #execstartpre=...https://www.freedesktop.org/software/systemd/man/systemd.service.html
         self._heating = heating.Heating.instance()
 
         # Telegram API configuration
@@ -201,6 +199,9 @@ class HelheimrBot:
 
         rm_task_handler = CommandHandler('rm', self.__cmd_rm, self._user_filter)
         self._dispatcher.add_handler(rm_task_handler)
+
+        temp_task_handler = CommandHandler('temp', self.__cmd_temp, self._user_filter)
+        self._dispatcher.add_handler(temp_task_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
@@ -600,7 +601,12 @@ class HelheimrBot:
                 else:
                     hysteresis = val
             elif ':' in a:
-                at_time = a
+                tokens = a.split(':')
+                if len(tokens) != 2:
+                    self.__safe_send(update.message.chat_id, 
+                        'Fehler: Startzeit muss als HH:MM angegeben werden!')
+                    return
+                at_time = '{:02d}:{:02d}'.format(int(tokens[0]), int(tokens[1]))
             elif a[-1] == 'h':
                 h = float(a[:-1].replace(',','.'))
                 hours = int(h)
@@ -611,6 +617,12 @@ class HelheimrBot:
         if at_time is None or duration is None:
             self.__safe_send(update.message.chat_id, 
                 'Fehler: du musst sowohl die Startzeit (z.B. 06:00) als auch eine Dauer (z.B. 2.5h) angeben!')
+            return
+
+        is_sane, err = heating.Heating.sanity_check(heating.HeatingRequest.SCHEDULED, temperature, hysteresis, duration)
+        if not is_sane:
+            self._is_modifying_heating = False
+            self.__safe_send(update.message.chat_id, 'Falsche Parameter: {}'.format(err), parse_mode=telegram.ParseMode.MARKDOWN)
             return
 
         self._config_at_time = at_time
@@ -652,6 +664,12 @@ class HelheimrBot:
             err_msg = traceback.format_exc()
             logging.getLogger().error('[HelheimrBot] Error while querying weather report/forecast:\n' + err_msg)
             self.__safe_send(update.message.chat_id, 'Fehler während der Wetterabfrage:\n\n' + err_msg)
+
+
+    def __cmd_temp(self, update, context):
+        # readings = temperature_log.TemperatureLog.instance().recent_readings(12)
+        msg = '```\n' + temperature_log.TemperatureLog.instance().format_table(12) + '\n```'
+        self.__safe_send(update.message.chat_id, msg)
 
 
     def __cmd_unknown(self, update, context):

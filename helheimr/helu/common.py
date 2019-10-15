@@ -68,7 +68,7 @@ def format_num(fmt, num, use_markdown=True):
         return s.format(num)
 
 
-# https://stackoverflow.com/a/40784706
+# Extended from https://stackoverflow.com/a/40784706
 class circularlist(object):
     def __init__(self, size):
         self.index = 0
