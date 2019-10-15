@@ -358,9 +358,11 @@ class WeatherReport:
 class WeatherForecastOwm:
     __instance = None
 
+
     @staticmethod
     def instance():
         return WeatherForecastOwm.__instance
+
 
     @staticmethod
     def init_instance(config):
@@ -368,12 +370,12 @@ class WeatherForecastOwm:
             WeatherForecastOwm(config)
         return WeatherForecastOwm.__instance
 
+
     def __init__(self, config):
         """Virtually private constructor."""
         if WeatherForecastOwm.__instance is not None:
             raise RuntimeError("WeatherForecastOwm is a singleton!")
         WeatherForecastOwm.__instance = self
-
 
         self._owm = OWM(API_key=config['openweathermap']['api_token'],
             language='de', version='2.5')
@@ -383,7 +385,7 @@ class WeatherForecastOwm:
         self._longitude = config['openweathermap']['longitude']
         
 
-    def query(self):
+    def report(self):
         # Either query by city ID or lat/lon
         try:
             obs = self._owm.weather_at_coords(self._latitude, self._longitude)
@@ -392,6 +394,7 @@ class WeatherForecastOwm:
         except:
             logging.getLogger().error('[WeatherForecastOwm] Error querying OpenWeatherMap current weather:\n' + traceback.format_exc())
             return None
+
 
     def forecast(self):
         try:
@@ -406,4 +409,4 @@ if __name__ == '__main__':
     #TODO try without internet connection
     wcfg = common.load_configuration('../configs/owm.cfg')
     weather_service = WeatherForecastOwm(wcfg)
-    print(weather_service.query().format_message(True, True)) #TODO query may return None!
+    print(weather_service.report().format_message(True, True)) # Note that the query may return None!

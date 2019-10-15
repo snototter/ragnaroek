@@ -76,13 +76,18 @@ class TemperatureLog:
 
 
     def recent_readings(self, num_entries=None):
-        """Returns the latest num_entries sensor readings. A sensor reading 
-        may also be None if the sensor was unavailable during query."""
+        """Returns the latest num_entries sensor readings, i.e. a
+        tuple (time_stamp_local_timezone, readings), where the
+        latter is None or a dict(abbreviation:temperature).
+        If num_entries is None, readings from the past hour will
+        be returned."""
         if num_entries is None:
             num_entries = self._num_readings_per_hour
+
         if num_entries < 1:
             raise ValueError('Number of retrieved entries must be >= 1!')
         num_entries = min(num_entries, len(self._temperature_readings))
+
         # Our circular list doesn't yet support slicing, so we do it the slow way:
         # tr[-num_entries:]
         ls = list()
@@ -91,9 +96,18 @@ class TemperatureLog:
         return ls
 
 
-    def format_table(self, num_entries=None):
-        """None: last hour"""
+    def format_table(self, num_entries=None, use_markdown=True):
+        """Returns an ASCII table showing the last
+        num_entries readings (or the last hour if
+        num_entries is None).
+               Wohn   KZ    SZ 
+        -----------------------
+        23:59  24.1  23.4  24.1
+        """
         readings = self.recent_readings(num_entries)
+        if len(readings) == 0:
+            return 'Noch sind keine Temperaturaufzeichnungen verfügbar'
+
         msg = list()
         # Make the 'table' header:
         # ..:..  Col1   C2   Col3 ....
@@ -101,7 +115,12 @@ class TemperatureLog:
             if len(h) > 2:
                 return '{:4s}'.format(h[:4])
             return ' {:3s}'.format(h)
+
+        if use_markdown:
+            msg.append('```')
+
         msg.append('       {:s}'.format('  '.join([_header(h) for h in self._table_ordering])))
+        msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]))
 
         # Table content
         for r in readings:
@@ -111,6 +130,9 @@ class TemperatureLog:
             else:
                 temp_str = '  '.join(['{:4.1f}'.format(sensors[k]) for k in self._table_ordering])
             msg.append('{:02d}:{:02d}  {:s}'.format(dt_local.hour, dt_local.minute, temp_str))
+
+        if use_markdown:
+            msg.append('```')
         return '\n'.join(msg)
 
 

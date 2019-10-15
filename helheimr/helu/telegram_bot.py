@@ -650,7 +650,7 @@ class HelheimrBot:
     def __cmd_weather(self, update, context):
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         try:
-            report = weather.WeatherForecastOwm.instance().query()
+            report = weather.WeatherForecastOwm.instance().report()
             forecast = weather.WeatherForecastOwm.instance().forecast()
             if report is None or forecast is None:
                 self.__safe_send(update.message.chat_id, ':bangbang: *Fehler* beim Einholen des Wetterberichts. Bitte Log überprüfen.')
@@ -679,7 +679,7 @@ class HelheimrBot:
             except:
                 self.__safe_send(update.message.chat_id, 'Parameterfehler: Anzahl der Messungen muss eine positive Ganzzahl sein!')
                 return
-        msg = '```\n' + temperature_log.TemperatureLog.instance().format_table(num_entries) + '\n```'
+        msg = temperature_log.TemperatureLog.instance().format_table(num_entries, use_markdown=True)
         self.__safe_send(update.message.chat_id, msg)
 
 
