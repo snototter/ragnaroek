@@ -35,11 +35,13 @@ class TemperatureLog:
             raise RuntimeError("TemperatureLog is a singleton!")
         TemperatureLog.__instance = self
 
-        #TODO add to cfg ['temperature_log' = { log_file=logs/temperature.log
-        # rotation_when = "w6"; // Rotate the logs each sunday
-        # rotation_interval = 1 // -x-
-        # rotation_backup_count = 104 // Up to two years - TODO shorter period!
-        # }
+# temperature_log = {
+    # log_file = "logs/temperature.log";
+    # rotation_when = "w6"; // Rotate log files on sunday...
+    # rotation_interval = 1; // ... each week
+    # rotation_backup_count = 104 // Up to two years - TODO shorter period!
+    # update_interval_minutes = 5; // Poll sensors every X minutes
+# };
         temp_cfg = cfg['temperature_log']
 
         # Set up rotating log file
@@ -57,21 +59,34 @@ class TemperatureLog:
         #TODO move periodic job to temp_log config (but then we need to skip it during serialization)
 
         # Compute size of circular buffer to store readings of the past 24 hours
-        polling_interval_min = 5 #TODO read from config
-        polling_job_label = 'Temperaturabfrage' #TODO Read from config
+        polling_interval_min = temp_cfg['update_interval_minutes']
+        polling_job_label = 'Temperaturabfrage' #TODO Read from config?
         buffer_capacity = int(math.ceil(24*60/polling_interval_min))
         self._temperature_readings = common.circularlist(buffer_capacity)
 
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
 
-    #TODO add get_latest_reading...
-    
+
+    def recent_readings(self, index=0):
+        """Returns the latest sensor reading (index=0), the previous one (index=1), older ones (index=...) or None, if it doesn't exist."""
+        if index < len(self._temperature_readings):
+            return self._temperature_readings[-1 - index] #TODO test reverse indexing of circularlist!
+        return None
+
+
     def log_temperature(self):
         sensors = heating.Heating.instance().query_temperature()
-        temperatures = tuple([s.temperature for s in sensors])
-        self._temperature_readings.append(temperatures)
-        #TODO timestamp!
         dt_local = time_utils.dt_now_local()
-        #TODO log sensor states (humidity); readings may be None!
-        #self._logger.info('{:s};' + ';'.join(map(str, [tr for tr in readings])))
+        if sensors is None:
+            self._temperature_readings.append((dt_local, None))
+            self._logger.log(logging.INFO, '{:s}'.format(time_utils.format(dt_local)))
+        else:
+            def _tocsv(s):
+                return '{:s};{:s}'.format(s.display_name, s.temperature)
+
+            self._temperature_readings.append((dt_local, [(s.display_name, s.temperature) for s in sensors]))
+            self._logger.log(logging.INFO, '{:s};{:s}'.format(
+                    time_utils.format(dt_local),
+                    ';'.join(map(_tocsv, [s for s in sensors]))
+                ))

@@ -93,6 +93,9 @@ class circularlist(object):
         """Return string representation"""
         return self._data.__repr__() + ' (' + str(len(self._data))+' items)'
 
+    def __len__(self):
+        return len(self._data)
+
 
 
 ################################################################################
