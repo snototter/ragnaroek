@@ -1,6 +1,0 @@
-libconf
-python-telegram-bot
-requests
-emoji
-pyowm
-python-dateutil
