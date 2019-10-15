@@ -12,6 +12,7 @@ from helu import heating
 from helu import network_utils
 from helu import scheduling
 from helu import telegram_bot
+from helu import temperature_log
 from helu import weather
 
 
@@ -38,8 +39,6 @@ class Hel:
         logging.getLogger().addHandler(file_handler)
         logging.getLogger().setLevel(logging.INFO)
         self._logger = logging.getLogger() # Adjust the root logger
-
-        # TODO create a rotating log for temperature readings (create class with own logger, schedule periodic readings)
 
         # Load configuration files
         ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
@@ -73,6 +72,9 @@ class Hel:
         # Set up network connectivity tester
         network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg, 
             'control': ctrl_cfg})
+
+        # Set up the temperature log
+        temperature_log.TemperatureLog.init_instance(ctrl_cfg)
 
         # Then, start the job scheduler
         self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)

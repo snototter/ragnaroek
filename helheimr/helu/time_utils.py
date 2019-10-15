@@ -18,6 +18,11 @@ def dt_now():
     return datetime.datetime.now(tz=tz.tzutc())
 
 
+def dt_now_local():
+    """Current datetime in local timezone"""
+    return dt_as_local(dt_now())
+
+
 def t_now():
     """Current time in UTC"""
     return dt_now().timetz()

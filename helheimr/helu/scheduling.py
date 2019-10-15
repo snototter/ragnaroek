@@ -698,6 +698,14 @@ class PeriodicHeatingJob(Job):
                 heating_duration=duration)
         return job
 
+#TODO scheduler.add_job(job)
+class NonSerializableNonHeatingJob(NonHeatingJob):
+    def __init__(self, interval, function_name, job_description):
+        super(NonSerializableNonHeatingJob, self).__init__(interval, function_name, job_description)
+
+    def to_dict(self):
+        raise RuntimeError('Cannot serialize a NonSerializableNonHeatingJob!')
+
 
 class NonHeatingJob(Job):
     """Used to distinguish PeriodicHeatingJobs from NonHeatingJobs (from generic Jobs that
@@ -968,6 +976,12 @@ class HelheimrScheduler(Scheduler):
             self._condition_var.wait(timeout = poll_interval)
         self._condition_var.release()
 
+    def enqueue_job(self, job):
+        self._condition_var.acquire()
+        self.jobs.append(job)
+        self._condition_var.notify()
+        self._condition_var.release()
+
 
     def deserialize_jobs(self, jobs_config):
         if jobs_config is None:
@@ -1006,7 +1020,7 @@ class HelheimrScheduler(Scheduler):
         # Sort them by at_time:
         phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)]
         # Periodic non-heating jobs:
-        pnhjs = [j.to_dict() for j in self.jobs if isinstance(j, NonHeatingJob)]
+        pnhjs = [j.to_dict() for j in self.jobs if isinstance(j, NonHeatingJob) and not isinstance(j, NonSerializableNonHeatingJob)] #TODO test if temp log is really left out
         self._condition_var.release()
         
         try:
