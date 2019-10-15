@@ -21,6 +21,7 @@ function register_service
   sudo cp $svc /etc/systemd/system
   sudo sed -i "s/RAGNAROEKUSR/$USER/g" "$sysvc"
   sudo sed -i "s|RAGNAROEKWORKDIR|$workdir|g" "$sysvc"
+  sudo sed -i "s|RAGNAROEKGATEWAYIP|192.168.0.1|g" "$sysvc"
 
   echo "Registering '$svc' for user '$USER'"
 
@@ -30,4 +31,5 @@ function register_service
   sudo systemctl start $svc
 }
 
+register_service network-wait-online.service
 register_service helheimr-heating

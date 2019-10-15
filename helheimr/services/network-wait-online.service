@@ -1,0 +1,36 @@
+#
+# Uses 'hostname --all-fqdns' to confirm that IP address[es] assigned and DNS
+# is operational. Additionally pings the local switch
+#
+# Adapted from: https://www.raspberrypi.org/forums/viewtopic.php?t=187225
+# This thread suggests to install in /lib/systemd, but we should move it to /etc/systemd 
+# according to https://unix.stackexchange.com/a/208352
+#TODO check hostname on pi
+#TODO check ping on pi
+
+[Unit]
+Description=Wait for Network to be Online
+Documentation=man:systemd.service(5) man:systemd.special(7)
+Conflicts=shutdown.target
+After=network.target
+Before=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart= \
+    /bin/bash -c ' \
+    HNs=$(hostname --all-fqdns); \
+    IPs=$(hostname --all-ip-addresses); \
+    PING=$(ping -c 1 192.168.1.1 |grep "1 received"); \
+    while [ -z "$HNs" -o -z "$IPs" -o -z "$PING" ]; \
+    do \
+        echo "network-wait-online: addresses=$IPs, hostnames=$HNs, ping=$PING"; \
+        sleep 0.1; \
+        HNs=$(hostname --all-fqdns); \
+        IPs=$(hostname --all-ip-addresses); \
+        PING=$(ping -c 1 RAGNAROEKGATEWAYIP | grep "1 received"); \
+    done'
+TimeoutStartSec=2min 30s
+
+[Install]
+WantedBy=network-online.target
