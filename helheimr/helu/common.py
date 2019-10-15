@@ -68,7 +68,8 @@ def format_num(fmt, num, use_markdown=True):
         return s.format(num)
 
 
-# Extended from https://stackoverflow.com/a/40784706
+# Adapted from https://stackoverflow.com/a/40784706
+# TODO: For more complex use cases, we need to support slicing
 class circularlist(object):
     def __init__(self, size):
         self.index = 0

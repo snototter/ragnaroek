@@ -735,10 +735,10 @@ class NonHeatingJob(Job):
     def __str__(self):
         return self.to_msg_str(use_markdown=False)
 
-    def teaser(self, use_markdown=True):
-        s = self.job_description + ', '
+
+    def __interval_unit_str(self):
         if self.unit == 'weeks':
-            s += 'wöchentlich' if self.interval == 1 else 'jede {:d}. Woche'.format(self.interval)
+            s = 'wöchentlich' if self.interval == 1 else 'jede {:d}. Woche'.format(self.interval)
             if self.start_day is not None:
                 lookup = { 'monday': 'Montag',
                         'tuesday': 'Dienstag',
@@ -749,41 +749,25 @@ class NonHeatingJob(Job):
                         'sunday': 'Sonntag'
                     }
                 s += ' am ' + lookup[self.start_day]
+            return s
         elif self.unit == 'days':
-            s += 'tgl.' if self.interval == 1 else 'jeden {:d}. Tag'.format(self.interval)
+            return 'tgl.' if self.interval == 1 else 'jeden {:d}. Tag'.format(self.interval)
         elif self.unit == 'hours':
-            s += 'stündlich' if self.interval == 1 else 'jede {:d}. Stunde'.format(self.interval)
+            return 'stdl.' if self.interval == 1 else 'jede {:d}. Stunde'.format(self.interval)
         elif self.unit == 'minutes':
-            s += 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
+            return 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
         elif self.unit == 'seconds':
-            s += 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
-            #TODO reuse this if-else madness
-        return s
+            return 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
+        raise RuntimeError('Unit unknown: {}'.format(self.unit))
+
+
+    def teaser(self, use_markdown=True):
+        return self.job_description + ', ' + self.__interval_unit_str()
+
 
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
-        s = self.job_description + ', '
-
-        if self.unit == 'weeks':
-            s += 'wöchentlich' if self.interval == 1 else 'jede {:d}. Woche'.format(self.interval)
-            if self.start_day is not None:
-                lookup = { 'monday': 'Montag',
-                        'tuesday': 'Dienstag',
-                        'wednesday': 'Mittwoch',
-                        'thursday': 'Donnerstag',
-                        'friday': 'Freitag',
-                        'saturday': 'Samstag',
-                        'sunday': 'Sonntag'
-                    }
-                s += ' am ' + lookup[self.start_day]
-        elif self.unit == 'days':
-            s += 'tgl.' if self.interval == 1 else 'jeden {:d}. Tag'.format(self.interval)
-        elif self.unit == 'hours':
-            s += 'stündlich' if self.interval == 1 else 'jede {:d}. Stunde'.format(self.interval)
-        elif self.unit == 'minutes':
-            s += 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
-        elif self.unit == 'seconds':
-            s += 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
+        s = self.job_description + ', ' + self.__interval_unit_str()
         
         if self.at_time is not None:
             s += ' um ' + self._format_at_time()
@@ -853,9 +837,7 @@ def broadcast_dummy_message():
 
 
 def log_temperature():
-    #FIXME TODO TypeError: 'NoneType' object is not iterable (sensors may be none/empty list!)
     temperature_log.TemperatureLog.instance().log_temperature()
-    #TODO make dummy broadcast, too
 
 
 def test_network_connectivity():
@@ -1037,7 +1019,7 @@ class HelheimrScheduler(Scheduler):
         # Sort them by at_time:
         phds = [j.to_dict() for j in sorted(phjs, key=lambda j: j.at_time)]
         # Periodic non-heating jobs:
-        pnhjs = [j.to_dict() for j in self.jobs if isinstance(j, NonHeatingJob) and not isinstance(j, NonSerializableNonHeatingJob)] #TODO test if temp log is really left out
+        pnhjs = [j.to_dict() for j in self.jobs if isinstance(j, NonHeatingJob) and not isinstance(j, NonSerializableNonHeatingJob)]
         self._condition_var.release()
         
         try:

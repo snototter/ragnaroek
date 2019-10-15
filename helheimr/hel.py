@@ -80,7 +80,7 @@ class Hel:
         temperature_log.TemperatureLog.init_instance(ctrl_cfg)
 
         # Start the webserver for our e-ink display
-        #TODO
+        #TODO flask + flask-json
 
         # Initialize weather service
         self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)

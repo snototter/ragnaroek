@@ -54,6 +54,7 @@ class TemperatureLog:
         polling_job_label = temp_cfg['job_label']
         buffer_capacity = int(math.ceil(24*60/polling_interval_min))
         self._temperature_readings = common.circularlist(buffer_capacity)
+        self._num_readings_per_hour = int(math.ceil(60/polling_interval_min))
 
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
@@ -61,7 +62,6 @@ class TemperatureLog:
         logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries and scheduled job: "{:s}"'.format(buffer_capacity, str(polling_job)))
 
         # Map internal display names of temperature sensors to their abbreviations
-        #TODO also load automagically from config in raspbee.py!
         self._sensor_abbreviations = dict()
         _sname2display = dict()
         for k in cfg['raspbee']['temperature']['display_names']:
@@ -75,9 +75,11 @@ class TemperatureLog:
         
 
 
-    def recent_readings(self, num_entries=1):
+    def recent_readings(self, num_entries=None):
         """Returns the latest num_entries sensor readings. A sensor reading 
         may also be None if the sensor was unavailable during query."""
+        if num_entries is None:
+            num_entries = self._num_readings_per_hour
         if num_entries < 1:
             raise ValueError('Number of retrieved entries must be >= 1!')
         num_entries = min(num_entries, len(self._temperature_readings))
@@ -89,7 +91,8 @@ class TemperatureLog:
         return ls
 
 
-    def format_table(self, num_entries):
+    def format_table(self, num_entries=None):
+        """None: last hour"""
         readings = self.recent_readings(num_entries)
         msg = list()
         # Make the 'table' header:

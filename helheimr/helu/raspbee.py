@@ -135,15 +135,13 @@ def get_api_url(cfg):
 class RaspBeeWrapper:
     def __init__(self, cfg):
         self._api_url = get_api_url(cfg)
-
-        # Currently I don't want a generic approach but rather know 
-        # exactly (hardcoded) which plugs I control programatically
         
+        #TODO this will be replaced by 433.92 MHz plugs and pilight...
         ######## Plugs to actually control the heating
         # Map deconz plug name to human-readable display name
         self._heating_plug_display_name_mapping = {
-            cfg['raspbee']['heating']['plug_names']['flat'] : cfg['raspbee']['heating']['display_names']['flat'],
-            cfg['raspbee']['heating']['plug_names']['basement'] : cfg['raspbee']['heating']['display_names']['basement']
+            cfg['raspbee']['heating']['plug_names'][k] : cfg['raspbee']['heating']['display_names'][k] \
+                for k in cfg['raspbee']['heating']['plug_names']
         }
 
         # Map deconz plug name to deconz ID
@@ -152,9 +150,8 @@ class RaspBeeWrapper:
         ######## Temperature sensors
         # Map deconz sensor name to human-readable display name
         self._temperature_sensor_display_name_mapping = {
-            cfg['raspbee']['temperature']['sensor_names']['living_room'] : cfg['raspbee']['temperature']['display_names']['living_room'],
-            cfg['raspbee']['temperature']['sensor_names']['kids'] : cfg['raspbee']['temperature']['display_names']['kids'],
-            cfg['raspbee']['temperature']['sensor_names']['bedroom'] : cfg['raspbee']['temperature']['display_names']['bedroom']
+            cfg['raspbee']['temperature']['sensor_names'][k]: cfg['raspbee']['temperature']['display_names'][k] \
+                for k in cfg['raspbee']['temperature']['display_names']
         }
 
         # Map deconz sensor name to deconz ID
@@ -194,10 +191,7 @@ class RaspBeeWrapper:
         lights = json.loads(r.content)
         logger = logging.getLogger()
 
-        plug_names = [
-            cfg['raspbee']['heating']['plug_names']['flat'],
-            cfg['raspbee']['heating']['plug_names']['basement']
-        ]
+        plug_names = [cfg['raspbee']['heating']['plug_names'][k] for k in cfg['raspbee']['heating']['plug_names']]
         mapping = dict()
 
         for raspbee_id, light in lights.items():
@@ -217,11 +211,7 @@ class RaspBeeWrapper:
         sensors = json.loads(r.content)
         logger = logging.getLogger()
 
-        sensor_names = [
-            cfg['raspbee']['temperature']['sensor_names']['living_room'],
-            cfg['raspbee']['temperature']['sensor_names']['kids'],
-            cfg['raspbee']['temperature']['sensor_names']['bedroom']
-        ]
+        sensor_names = [cfg['raspbee']['temperature']['sensor_names'][k] for k in cfg['raspbee']['temperature']['sensor_names']]
         mapping = dict()
 
         for raspbee_id, sensor in sensors.items():

@@ -283,6 +283,11 @@ class HelheimrBot:
   Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
 
 /rm - Heizungsprogramm löschen.
+
+/temp - Temperaturverlauf anzeigen.
+  Letzte Stunde: /temp
+  n Messungen: /temp 15
+
 /shutdown - System herunterfahren.
 /weather - :partly_sunny: Wetterbericht.
 /help - Diese Hilfemeldung."""
@@ -667,8 +672,14 @@ class HelheimrBot:
 
 
     def __cmd_temp(self, update, context):
-        # readings = temperature_log.TemperatureLog.instance().recent_readings(12)
-        msg = '```\n' + temperature_log.TemperatureLog.instance().format_table(12) + '\n```'
+        num_entries = None
+        if len(context.args) > 0:
+            try:
+                num_entries = int(context.args[0])
+            except:
+                self.__safe_send(update.message.chat_id, 'Parameterfehler: Anzahl der Messungen muss eine positive Ganzzahl sein!')
+                return
+        msg = '```\n' + temperature_log.TemperatureLog.instance().format_table(num_entries) + '\n```'
         self.__safe_send(update.message.chat_id, msg)
 
 
