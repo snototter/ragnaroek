@@ -59,7 +59,9 @@ class LpdDevice:
 
     def __send_code(self, code):
         try:
-            logging.getLogger().info("[LPD433] Sending '{}' to '{}'".format(code, self._display_name))
+            logging.getLogger().info("[LPD433] Sending '{} ({:s})' to '{}'".format(code, 
+                'on' if code == self._code_on else 'off',
+                self._display_name))
             rfdevice = RFDevice(self._gpio_pin)
             rfdevice.enable_tx()
             rfdevice.tx_repeat = self._send_repeat
@@ -82,7 +84,7 @@ class Lpd433Wrapper:
             print('Loaded device: ', h._display_name, h)
 
         #TODO initialize: turn off all (so the software state 'should' match the actual device state - there's no way to tell for sure...)
-        self.turn_off()
+        self.turn_on()
 
 
     def turn_on(self):
