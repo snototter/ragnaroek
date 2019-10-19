@@ -4,6 +4,7 @@ Since our OSRAM smart plugs were pretty unreliable (maybe due to
 controllable power plugs.
 Fortunately, pilight provides a REST API ;-)
 """
+#TODO remove
 
 def get_api_url(cfg):
     gateway = cfg['pilight']['gateway']

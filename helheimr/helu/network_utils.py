@@ -11,7 +11,7 @@ import logging
 
 
 from . import heating
-from . import pilight
+# from . import pilight
 from . import raspbee
 from . import telegram_bot
 
@@ -94,8 +94,9 @@ class ConnectionTester:
 
         self._known_service_urls = {
             'Telegram API': telegram_bot.get_bot_url(cfg['telegram']),
-            'deCONZ API': raspbee.get_api_url(cfg['control']),
-            'pilight': pilight.get_config_url(cfg['control'])
+            'deCONZ API': raspbee.get_api_url(cfg['control'])
+            # ,
+            # 'pilight': pilight.get_config_url(cfg['control'])
         }
         #TODO check status/list 433.92 MHz devices
 

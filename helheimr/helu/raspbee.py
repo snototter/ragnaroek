@@ -1,6 +1,17 @@
 #!/usr/bin/python
 # coding=utf-8
-"""Wrapper to access the RaspBee gateway."""
+"""Wrapper to access the RaspBee gateway.
+
+Initially, this was meant to control the power switch - but zigbee
+is very(!) sensitive to nearby WIFIs. So it became pretty much
+useless (deCONZ couldn't reach the plug 10/24h each day).
+The thermometers, however, worked fine all the time.
+
+So this is a hybrid solution: use zigbee to query temperature,
+but rely on LPD433 which reliably switches the (much cheaper)
+plugs. The only downside is, that we don't know the current
+state of the plug.
+"""
 
 import json
 import logging
@@ -136,16 +147,17 @@ class RaspBeeWrapper:
     def __init__(self, cfg):
         self._api_url = get_api_url(cfg)
         
-        #TODO this will be replaced by 433.92 MHz plugs and pilight...
-        ######## Plugs to actually control the heating
         # Map deconz plug name to human-readable display name
-        self._heating_plug_display_name_mapping = {
-            cfg['raspbee']['heating']['plug_names'][k] : cfg['raspbee']['heating']['display_names'][k] \
-                for k in cfg['raspbee']['heating']['plug_names']
-        }
+        if 'heating' in cfg['raspbee']:
+            self._heating_plug_display_name_mapping = {
+                cfg['raspbee']['heating']['plug_names'][k] : cfg['raspbee']['heating']['display_names'][k] \
+                    for k in cfg['raspbee']['heating']['plug_names']
+            }
 
-        # Map deconz plug name to deconz ID
-        self._heating_plug_raspbee_name_mapping = self.__map_deconz_heating_plugs(cfg)
+            # Map deconz plug name to deconz ID
+            self._heating_plug_raspbee_name_mapping = self.__map_deconz_heating_plugs(cfg)
+        else:
+            logging.getLogger().warning('[RaspbeeWrapper] No ZigBee heating plugs configured!')
 
         ######## Temperature sensors
         # Map deconz sensor name to human-readable display name
@@ -196,7 +208,7 @@ class RaspBeeWrapper:
 
         for raspbee_id, light in lights.items():
             if light['name'] in plug_names:
-                logger.info('Mapping {:s} ({:s}) to RaspBee ID {}'.format(light['name'],
+                logger.info('[RaspBeeWrapper] Mapping plug {:s} ({:s}) to RaspBee ID {}'.format(light['name'],
                     self._heating_plug_display_name_mapping[light['name']], raspbee_id))
                 mapping[light['name']] = raspbee_id
         return mapping
@@ -217,7 +229,7 @@ class RaspBeeWrapper:
         for raspbee_id, sensor in sensors.items():
             s = sensor['name']
             if s in sensor_names:
-                logger.info('Mapping {:s} ({:s}) to RaspBee ID {}'.format(s,
+                logger.info('[RaspBeeWrapper] Mapping sensor {:s} ({:s}) to RaspBee ID {}'.format(s,
                     self._temperature_sensor_display_name_mapping[s], raspbee_id))
                 if s in mapping:
                     mapping[s].append(raspbee_id)
@@ -286,7 +298,7 @@ class RaspBeeWrapper:
         is_heating = False
         logger = logging.getLogger()
         if len(self._heating_plug_raspbee_name_mapping) == 0:
-            logger.error('[RaspbeeWrapper] Cannot query heating, as there are no known/reachable plugs!')
+            logger.error('[RaspBeeWrapper] Cannot query heating, as there are no known/reachable plugs!')
             return None, list()
         for plug_lbl, plug_id in self._heating_plug_raspbee_name_mapping.items():
             r = network_utils.http_get_request(self.api_url + '/lights/' + plug_id)
@@ -294,7 +306,6 @@ class RaspBeeWrapper:
                 return None, status # Abort query
             state = PlugState(self._heating_plug_display_name_mapping[plug_lbl], json.loads(r.content))
             status.append(state)
-            # logger.info(state)
             is_heating = is_heating or state.on
         return is_heating, status
 
@@ -303,7 +314,7 @@ class RaspBeeWrapper:
         status = list()
         logger = logging.getLogger()
         if len(self._temperature_sensor_raspbee_name_mapping) == 0:
-            logger.error('[RaspbeeWrapper] Cannot query temperature, as there are no known/reachable sensors!')
+            logger.error('[RaspBeeWrapper] Cannot query temperature, as there are no known/reachable sensors!')
             return None
 
         for sensor_lbl, sensor_ids in self._temperature_sensor_raspbee_name_mapping.items():

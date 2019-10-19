@@ -9,6 +9,7 @@ import threading
 from . import broadcasting
 from . import common
 from . import controller
+from . import lpd433
 from . import raspbee
 from . import time_utils
 from . import scheduling
@@ -85,8 +86,10 @@ class Heating:
         Heating.__instance = self
 
         #FIXME switch to real system
-        # self._heating_system = raspbee.DummyRaspBeeWrapper(config)
-        self._heating_system = raspbee.RaspBeeWrapper(config)
+        # self._zigbee_gateway = raspbee.DummyRaspBeeWrapper(config)
+        self._zigbee_gateway = raspbee.RaspBeeWrapper(config)
+
+        self._lpd433_gateway = lpd433.Lpd433Wrapper(config)
 
         self._controller = controller.OnOffController()
 
@@ -164,16 +167,16 @@ class Heating:
 
     def query_detailed_status(self):
         """:return: Verbose multi-line string."""
-        return self._heating_system.query_full_state()
+        return 'TODO must be updated to LPD433' #self._heating_system.query_full_state()
 
     def query_heating_state(self):
         """:return: is_heating(bool), list(raspbee.PlugState)"""
-        return self._heating_system.query_heating()
+        return False, list() #TODO LPD433self._heating_system.query_heating()
 
 
     def query_temperature(self):
         """:return: list(raspbee.TemperatureState)"""
-        return self._heating_system.query_temperature()
+        return self._zigbee_gateway.query_temperature()
 
 
     def query_temperature_for_heating(self):
@@ -184,14 +187,14 @@ class Heating:
 
         :return: current_temperature(double) or None
         """
-        return self._heating_system.query_temperature_for_heating()
+        return self._zigbee_gateway.query_temperature_for_heating()
 
 
     def __stop_heating(self):
         """You must hold the lock before calling this method!"""
         self._is_manual_request = False
         self._is_heating = False
-        self._heating_system.turn_off()
+        self._lpd433_gateway.turn_off()
 
 
     def run_blocking(self):
@@ -255,7 +258,7 @@ class Heating:
             if self._is_heating:
                 # Should we turn the heater on or off?
                 if use_controller:
-                    current_temperature = self._heating_system.query_temperature_for_heating()
+                    current_temperature = self._zigbee_gateway.query_temperature_for_heating()
                     if current_temperature is None:
                         self._broadcaster.error('Ich konnte kein Thermometer abfragen - versuche jetzt, die Heizung einzuschalten.')
                         should_heat = True
@@ -285,27 +288,27 @@ class Heating:
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
-                    ret, msg = self._heating_system.turn_on()
+                    ret, msg = self._lpd433_gateway.turn_on()
                 else:
-                    ret, msg = self._heating_system.turn_off()
+                    ret, msg = self._lpd433_gateway.turn_off()
 
                 # Error checking
                 if not ret:
                     logging.getLogger().error('[Heating] RaspBee wrapper could not execute turn on/off command:\n' + msg)
                     self._broadcaster.error('Heizung konnte nicht {}geschaltet werden:\n'.format('ein' if should_heat else 'aus') + msg)
                 else:
-                    # Check if heating is actually on/off
-                    is_heating, plug_states = self._heating_system.query_heating()
+                    # Check if heating is actually on/off #TODO
+                    is_heating, plug_states = self._lpd433_gateway.query_heating()
                     if is_heating is not None and is_heating != should_heat:
                         # Increase error count, but retry before broadcasting:
                         consecutive_errors += 1
 
 
-            # Check if all plugs are reachable
-            if plug_states is None:
-                is_heating, plug_states = self._heating_system.query_heating()
-            if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
-                consecutive_errors += 1
+            # # Check if all plugs are reachable #TODO remove
+            # if plug_states is None:
+            #     is_heating, plug_states = self._heating_system.query_heating()
+            # if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
+            #     consecutive_errors += 1
 
             # Report error if the plug didn't respond until now
             if consecutive_errors >= self._num_consecutive_errors_before_broadcast:
