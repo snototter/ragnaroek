@@ -40,7 +40,7 @@ class LpdDevice:
         return '{:s} ist {:s}'.format(self._display_name, 'ein' if self._powered_on else 'aus')
 
 
-    @property powered_on
+    @property
     def powered_on(self):
         return self._powered_on
 
