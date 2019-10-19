@@ -6,6 +6,7 @@ import logging
 try:
     from rpi_rf import RFDevice
 except RuntimeError:
+    logging.getLogger().error('[LPD433] Can only be run on Raspberry Pi - declaring a dummy RFDevice for debugging now.')
     # Can only be run on Raspberry Pi ;-) 
     class RFDevice:
         def __init__(self, gpio):
@@ -34,8 +35,14 @@ class LpdDevice:
     def __str__(self):
         return '{:s} is {:s}'.format(self._display_name, 'on' if self._powered_on else 'off')
 
+
     def to_status_line(self):
         return '{:s} ist {:s}'.format(self._display_name, 'ein' if self._powered_on else 'aus')
+
+
+    @property powered_on
+    def powered_on(self):
+        return self._powered_on
 
 
     def turn_on(self):
@@ -75,12 +82,22 @@ class Lpd433Wrapper:
             print('Loaded device: ', h._display_name, h)
 
         #TODO initialize: turn off all (so the software state 'should' match the actual device state - there's no way to tell for sure...)
+        self.turn_off()
+
 
     def turn_on(self):
-        pass
-    #TODO return success, msg
+        success = [d.turn_on() for d in self._heating_plugs]
+        print(success, 'TODO build message, check results, etc.')
+        #TODO return success, msg
+
 
     def turn_off(self):
-        pass
+        success = [d.turn_off() for d in self._heating_plugs]
+        print(success, 'TODO build messsage, check results, etc.')
 
+
+    def query_heating(self):
+        is_on = [d.powered_on for d in self._heating_plugs]
+        print(is_on)
+        return True, 'TODO'
     #TODO query_heating
