@@ -819,7 +819,7 @@ class NonSerializableNonHeatingJob(NonHeatingJob):
         raise RuntimeError('Cannot serialize a NonSerializableNonHeatingJob!')
 
 
-def broadcast_dummy_message():
+def broadcast_dummy_message():#FIXME remove
     is_heating, plug_states = heating.Heating.instance().query_heating_state()
     txt = telegram_bot.format_msg_heating(is_heating, plug_states, 
         use_markdown=True, 

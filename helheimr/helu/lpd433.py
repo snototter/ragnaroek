@@ -19,6 +19,18 @@ except RuntimeError:
             pass
 
 
+class LpdDeviceState:
+    def __init__(self, display_name, powered_on):
+        self._display_name = display_name
+        self._powered_on = powered_on
+
+    def __str__(self):
+        return '{:s} is {:s}'.format(self._display_name, 'on' if self._powered_on else 'off')
+
+    def to_status_line(self):
+        return '{:s} ist {:s}'.format(self._display_name, 'ein' if self._powered_on else 'aus')
+
+
 class LpdDevice:
     def __init__(self, gpio_pin, cfg_entry):
         self._gpio_pin = gpio_pin
@@ -38,6 +50,11 @@ class LpdDevice:
 
     def to_status_line(self):
         return '{:s} ist {:s}'.format(self._display_name, 'ein' if self._powered_on else 'aus')
+
+
+    @property
+    def state(self):
+        return LpdDeviceState(self._display_name, self._powered_on)
 
 
     @property
@@ -77,29 +94,25 @@ class Lpd433Wrapper:
     def __init__(self, cfg):
         self._tx_gpio_pin = cfg['lpd433']['gpio_pin_tx']
 
-        print(type(self._tx_gpio_pin), ' GPIO pin: ', self._tx_gpio_pin)
-
         self._heating_plugs = [LpdDevice(self._tx_gpio_pin, cfg['lpd433']['heating']['plugs'][k]) for k in cfg['lpd433']['heating']['plugs']]
+        self.turn_off()
         for h in self._heating_plugs:
-            print('Loaded device: ', h._display_name, h)
-
-        #TODO initialize: turn off all (so the software state 'should' match the actual device state - there's no way to tell for sure...)
-        self.turn_on()
+            logging.getLogger().info('[LPD433] Configured plug: {}'.format(h))
 
 
     def turn_on(self):
         success = [d.turn_on() for d in self._heating_plugs]
-        print(success, 'TODO build message, check results, etc.')
-        #TODO return success, msg
+        return all(success)
 
 
     def turn_off(self):
         success = [d.turn_off() for d in self._heating_plugs]
-        print(success, 'TODO build messsage, check results, etc.')
+        return all(success)
 
 
     def query_heating(self):
         is_on = [d.powered_on for d in self._heating_plugs]
-        print(is_on)
-        return True, 'TODO'
-    #TODO query_heating
+        is_heating = any(is_on)
+
+        states = [d.state for d in self._heating_plugs]
+        return is_heating, states

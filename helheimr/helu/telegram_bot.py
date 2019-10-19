@@ -489,7 +489,7 @@ class HelheimrBot:
                 # Show user we do something
                 self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
                 self.__safe_edit_callback_query(query, 'Wird erledigt...')
-          
+          #TODO remove action, we can immediately return
                 time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
                 # Query heating after this short break

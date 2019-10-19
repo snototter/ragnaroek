@@ -133,7 +133,7 @@ class Heating:
         sane, txt = type(self).sanity_check(request_type, target_temperature, 
             temperature_hysteresis, duration)
         if not sane:
-            return sane, txt
+            return False, txt
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
@@ -168,10 +168,12 @@ class Heating:
     def query_detailed_status(self):
         """:return: Verbose multi-line string."""
         return 'TODO must be updated to LPD433' #self._heating_system.query_full_state()
+        #TODO need to query both lpd and raspbee!
+
 
     def query_heating_state(self):
-        """:return: is_heating(bool), list(raspbee.PlugState)"""
-        return False, list() #TODO LPD433self._heating_system.query_heating()
+        """:return: is_heating(bool), list(lpd433.LpdDeviceState)"""
+        return self._lpd433_gateway.query_heating()
 
 
     def query_temperature(self):
@@ -288,23 +290,24 @@ class Heating:
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
-                    ret, msg = self._lpd433_gateway.turn_on()
+                    ret = self._lpd433_gateway.turn_on()
                 else:
-                    ret, msg = self._lpd433_gateway.turn_off()
+                    ret = self._lpd433_gateway.turn_off()
 
                 # Error checking
                 if not ret:
-                    logging.getLogger().error('[Heating] RaspBee wrapper could not execute turn on/off command:\n' + msg)
-                    self._broadcaster.error('Heizung konnte nicht {}geschaltet werden:\n'.format('ein' if should_heat else 'aus') + msg)
+                    logging.getLogger().error('[Heating] LPD433 gateway could not execute turn {:s}'.format('on' if should_heat else 'off'))
+                    self._broadcaster.error('Fehler beim {}schalten!'.format('Ein' if should_heat else 'Aus'))
                 else:
-                    # Check if heating is actually on/off #TODO
-                    is_heating, plug_states = self._lpd433_gateway.query_heating()
+                    # Check if heating is actually on/off (with LPD this should never
+                    # yield an error - unless the RF transmission crashes)
+                    is_heating, _ = self._lpd433_gateway.query_heating()
                     if is_heating is not None and is_heating != should_heat:
                         # Increase error count, but retry before broadcasting:
                         consecutive_errors += 1
 
 
-            # # Check if all plugs are reachable #TODO remove
+            # # Check if all plugs are reachable #TODO remove - lpd433 don't transmit anything
             # if plug_states is None:
             #     is_heating, plug_states = self._heating_system.query_heating()
             # if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
@@ -312,7 +315,7 @@ class Heating:
 
             # Report error if the plug didn't respond until now
             if consecutive_errors >= self._num_consecutive_errors_before_broadcast:
-                is_heating, _ = self._heating_system.query_heating()
+                # is_heating, _ = self._heating_system.query_heating()
                 self._broadcaster.error("Heizung reagiert nicht, bitte kontrollieren!")
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0

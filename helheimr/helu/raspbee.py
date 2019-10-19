@@ -156,8 +156,10 @@ class RaspBeeWrapper:
 
             # Map deconz plug name to deconz ID
             self._heating_plug_raspbee_name_mapping = self.__map_deconz_heating_plugs(cfg)
+            self._heating_disabled = False
         else:
             logging.getLogger().warning('[RaspbeeWrapper] No ZigBee heating plugs configured!')
+            self._heating_disabled = True
 
         ######## Temperature sensors
         # Map deconz sensor name to human-readable display name
@@ -258,23 +260,24 @@ class RaspBeeWrapper:
         state = json.loads(r.content)
         # print(json.dumps(state, indent=2))
 
-        msg = ['*Heizung:*']
+        msg = ['*ZigBee/RaspBee:*']
         msg.append('\u2022 deCONZ API Version: {}'.format(common.format_num('s', state['config']['apiversion'])))
         msg.append('\u2022 deCONZ SW Version: {}'.format(common.format_num('s', state['config']['swversion'])))
         msg.append('\u2022 ZigBee Kanal: {}'.format(common.format_num('d', state['config']['zigbeechannel'])))
 
-        # Iterate over reported lights (this group contains our power plugs)
-        is_heating = None
-        for raspbee_id in state['lights']:
-            if raspbee_id in self.known_power_plug_ids:
-                plug = PlugState(self.__lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
-                msg.append('\u2022 Steckdose für ' + plug.format_message(use_markdown=True, detailed_information=True))
-                is_heating = (is_heating if is_heating is not None else False) or plug.on
+        #TODO LPD433 replaced the zigbee lights
+        # # Iterate over reported lights (this group contains our power plugs)
+        # is_heating = None
+        # for raspbee_id in state['lights']:
+        #     if raspbee_id in self.known_power_plug_ids:
+        #         plug = PlugState(self.__lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
+        #         msg.append('\u2022 Steckdose für ' + plug.format_message(use_markdown=True, detailed_information=True))
+        #         is_heating = (is_heating if is_heating is not None else False) or plug.on
         
-        if is_heating is not None:
-            msg.insert(1, '\u2022 Heizung ist {}'.format('ein :thermometer:' if is_heating else 'aus :snowman:'))
-        else:
-            msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
+        # if is_heating is not None:
+        #     msg.insert(1, '\u2022 Heizung ist {}'.format('ein :thermometer:' if is_heating else 'aus :snowman:'))
+        # else:
+        #     msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
 
 
         sensors = list()
@@ -294,6 +297,10 @@ class RaspBeeWrapper:
 
     def query_heating(self):
         """:return: flag (True if currently heating), list of PlugState"""
+        if self._heating_disabled:
+            logging.getLogger().error('[RaspBeeWrapper] ZigBee plugs have been replaced by LPD433, so you should not call query_heating()!')
+            return None, list()
+
         status = list()
         is_heating = False
         logger = logging.getLogger()
@@ -367,6 +374,9 @@ class RaspBeeWrapper:
             
 
     def turn_on(self):
+        if self._heating_disabled:
+            return False, 'ZigBee Stecker wurden durch LPD433 ersetzt.'
+
         is_heating, _ = self.query_heating()
         if is_heating:
             return True, 'Heizung läuft schon.'
@@ -384,6 +394,9 @@ class RaspBeeWrapper:
 
 
     def turn_off(self):
+        if self._heating_disabled:
+            return False, 'ZigBee Stecker wurden durch LPD433 ersetzt.'
+
         is_heating, _ = self.query_heating()
         if not is_heating:
             return True, 'Heizung ist schon aus.'
