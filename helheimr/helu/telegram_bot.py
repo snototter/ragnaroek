@@ -54,7 +54,8 @@ def _rand_flower():
 
 
 def format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
-    return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
+    # return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
+    return '\n\u2022 ' + '\n\u2022 '.join([plug.to_status_line() for plug in plug_states])
 
 
 def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=True, include_state_details=False):
@@ -72,6 +73,7 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
             ('.' if not include_state_details else ':') if not use_emoji else (' :thermometer:' if is_heating else ' :snowman:')
         )
     # #TODO later on, I probably only want to know the states if the plug states differ:
+    #TODO LPD has no states...
     # include_state_details = False
     # for i in range(1, len(plug_states)):
     #     if plug_states[i].on != plug_states[i-1].on:
@@ -476,6 +478,8 @@ class HelheimrBot:
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_ON_CONFIRM:
+            # Show user we do something
+            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
                 query.from_user.first_name,
@@ -485,31 +489,33 @@ class HelheimrBot:
 
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
-            else:
-                # Show user we do something
-                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
-                self.__safe_edit_callback_query(query, 'Wird erledigt...')
-          #TODO remove action, we can immediately return
-                time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
+            else:    
+                self.__safe_edit_callback_query(query, 'Ist erledigt.')
+        #   #TODO remove action, we can immediately return
+        #         time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
-                # Query heating after this short break
-                status_txt = self.__query_status(None)
-                self.__safe_edit_callback_query(query, common.emo(status_txt))
+        #         # Query heating after this short break
+                # status_txt = self.__query_status(None)
+                # self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
+
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
-            self._heating.stop_heating(query.from_user.first_name)
             # Show user we do something
             self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
-            self.__safe_edit_callback_query(query, 'Wird erledigt...')
-            time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
+            self._heating.stop_heating(query.from_user.first_name)
+            self.__safe_edit_callback_query(query, 'Ist erledigt.')
+            # time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
-            # Query heating after this short break
-            status_txt = self.__query_status(None)
-            self.__safe_edit_callback_query(query, common.emo(status_txt))
+            # # Query heating after this short break
+            # status_txt = self.__query_status(None)
+            # self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_ON_ONCE_CONFIRM:
+            # Show user we do something
+            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
+
             temperature = float(tokens[1])
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
@@ -522,15 +528,13 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
-                # Show user we do something
-                self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
-                self.__safe_edit_callback_query(query, 'Wird erledigt...')
+                self.__safe_edit_callback_query(query, 'Wird erledigt.')
           
-                time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
+                # time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
 
-                # Query heating after this short break
-                status_txt = self.__query_status(None)
-                self.__safe_edit_callback_query(query, common.emo(status_txt))
+                # # Query heating after this short break
+                # status_txt = self.__query_status(None)
+                # self.__safe_edit_callback_query(query, common.emo(status_txt))
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_CONFIG_CANCEL:
