@@ -230,9 +230,9 @@ class HelheimrBot:
             self._bot.send_message(chat_id=chat_id, text=common.emo(text), parse_mode=parse_mode)
             return True
         except:
-            err_msg = traceback.format_exc()
+            err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while sending message to chat ID {}:\n'.format(chat_id) + err_msg + '\n\nMessage text was:\n' + text)
-            self._is_modifying_heating = False # Reset this flag upon error (or we won't be able to change anything)
+            self._is_modifying_heating = False # Reset flag to allow editing again
         return False
 
 
@@ -242,10 +242,10 @@ class HelheimrBot:
             update.message.reply_text(common.emo(text), reply_markup=reply_markup, parse_mode=parse_mode)
             return True
         except:
-            err_msg = traceback.format_exc()
+            err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while sending reply message:\n' +\
                 err_msg + '\n\nMessage text was:\n' + text)
-            self._is_modifying_heating = False # Reset this flag upon error (or we won't be able to change anything)
+            self._is_modifying_heating = False # Reset flag to allow editing again
         return False
 
 
@@ -254,12 +254,24 @@ class HelheimrBot:
             query.edit_message_text(text=common.emo(text), parse_mode=parse_mode)
             return True
         except:
-            err_msg = traceback.format_exc()
+            err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while editing callback query text:\n' +\
                 err_msg + '\n\nMessage text was:\n' + text)
-            self._is_modifying_heating = False # Reset this flag 
+            self._is_modifying_heating = False # Reset flag to allow editing again
         return False
 
+    def __safe_edit_message_text(self, query, txt, reply_markup=None, parse_mode=telegram.ParseMode.MARKDOWN):
+        try:
+            self._bot.edit_message_text(chat_id=query.message.chat_id,
+                message_id=query.message.message_id, text=common.emo(txt),
+                reply_markup=reply_markup, parse_mode=parse_mode)
+            return True
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            logging.getLogger().error('[HelheimrBot] Error while editing message text:\n' +\
+                err_msg + '\n\nMessage text was:\n' + text)
+            self._is_modifying_heating = False # Reset flag to allow editing again
+        return False
 
     def __safe_chat_action(self, chat_id, action=telegram.ChatAction.TYPING):
         try:
@@ -576,9 +588,9 @@ class HelheimrBot:
             # Don't change modifying heating!
             jobs = scheduling.HelheimrScheduler.instance().get_job_teasers(use_markdown=False)
             job_type = tokens[1]
-            qstr = 'Welches Programm soll gelöscht werden?' if job_type == 'heating_jobs' else 'Welche Aufgabe soll gelöscht werden?'
-            self.__helper_rm_select_job(update, context, qstr, jobs[job_type])
-            
+            txt, reply_markup = self.__rm_helper_keyboard_job_select(jobs, job_type)
+            self._is_modifying_heating = self.__safe_edit_message_text(query, txt, reply_markup=reply_markup)
+
 
         elif response == type(self).CALLBACK_CONFIG_REMOVE_JOB_SELECT:
             uid = tokens[1]
@@ -587,20 +599,28 @@ class HelheimrBot:
             if removed is None:
                 self.__safe_edit_callback_query(query, 'Fehler beim Entfernen, bitte Logs überprüfen.')
             else:
-                self.__safe_edit_callback_query(query, "Programm '{:s}' wurde entfernt.".format(removed.teaser(use_markdown=True)))
+                self.__safe_edit_callback_query(query, "Programm ({:s}) wurde entfernt.".format(removed.teaser(use_markdown=True)))
 
 
-    def __helper_rm_select_job(self, update, context, question_str, select_jobs):
+    def __rm_helper_keyboard_type_select(self):
+        keyboard = [[telegram.InlineKeyboardButton('Heizungsprogramme',
+            callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'heating_jobs')],
+            [telegram.InlineKeyboardButton('Andere Aufgaben',
+            callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'non_heating_jobs')],
+            [telegram.InlineKeyboardButton('Abbrechen', callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
+        return 'Bitte Typ auswählen:', telegram.InlineKeyboardMarkup(keyboard)
+
+    def __rm_helper_keyboard_job_select(self, jobs, job_type):
+        qstr = 'Welches Programm soll gelöscht werden?' \
+            if job_type == 'heating_jobs' else 'Welche Aufgabe soll gelöscht werden?'
         keyboard = list()
-        for uid, teaser in select_jobs:
+        for uid, teaser in jobs[job_type]:
             keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
                 callback_data=type(self).CALLBACK_CONFIG_REMOVE_JOB_SELECT + ':' + str(uid), parse_mode=telegram.ParseMode.MARKDOWN)])
         # Always include a 'cancel' option
         keyboard.append([telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_CONFIG_CANCEL)])
         # Send menu to user:
-        reply_markup = telegram.InlineKeyboardMarkup(keyboard)            
-        self._is_modifying_heating = self.__safe_message_reply(update, 
-            question_str, reply_markup)
+        return qstr, telegram.InlineKeyboardMarkup(keyboard)            
 
 
     def __cmd_rm(self, update, context):
@@ -611,26 +631,19 @@ class HelheimrBot:
         heating_jobs = jobs['heating_jobs']
         non_heating_jobs = jobs['non_heating_jobs']
         if len(heating_jobs) > 0 and len(non_heating_jobs) > 0:
-            keyboard = [[telegram.InlineKeyboardButton('Heizungsprogramme',
-                callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'heating_jobs')],
-                [telegram.InlineKeyboardButton('Andere Aufgaben',
-                callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'non_heating_jobs')],
-                [telegram.InlineKeyboardButton('Abbrechen', callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
-            reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-            self._is_modifying_heating = self.__safe_message_reply(update, 'Bitte Typ auswählen:', reply_markup)
+            txt, reply_markup = self.__rm_helper_keyboard_type_select()
         else:
-            select_jobs = None
+            selected_type = None
             if len(heating_jobs) > 0:
-                qstr = 'Welches Programm soll gelöscht werden?'
-                select_jobs = heating_jobs
+                selected_type = 'heating_jobs'
             elif len(non_heating_jobs) > 0:
-                qstr = 'Welche Aufgabe soll gelöscht werden?'
-                select_jobs = non_heating_jobs
+                selected_type = 'non_heating_jobs'
             else:
                 self._is_modifying_heating = False
                 self.__safe_send(update.message.chat_id, 'Derzeit sind weder Programme noch Aufgaben gespeichert.')
                 return
-            self.__helper_rm_select_job(update, context, qstr, select_jobs)
+            txt, reply_markup = self.__rm_helper_keyboard_job_select(jobs, selected_type)
+        self._is_modifying_heating = self.__safe_message_reply(update, txt, reply_markup)
 
 
 
