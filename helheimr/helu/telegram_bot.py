@@ -108,9 +108,11 @@ class HelheimrBot:
     CALLBACK_TURN_ON_ONCE_CONFIRM = '3'
     CALLBACK_CONFIG_CANCEL = '4'
     CALLBACK_CONFIG_CONFIRM = '5'
-    CALLBACK_CONFIG_REMOVE = '6'
+    CALLBACK_CONFIG_REMOVE_TYPE_SELECT = '6'
+    CALLBACK_CONFIG_REMOVE_JOB_SELECT = '7'
     #TODO the python bot api wrapper supports pattern matching, so
-    # clean up the callback handler: https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
+    # we might want to clean up the callback handler: 
+    # https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
     USE_MARKDOWN = True
     USE_EMOJI = True
@@ -570,7 +572,15 @@ class HelheimrBot:
             self._config_duration = None
 
 
-        elif response == type(self).CALLBACK_CONFIG_REMOVE:
+        elif response == type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT:
+            # Don't change modifying heating!
+            jobs = scheduling.HelheimrScheduler.instance().get_job_teasers(use_markdown=False)
+            job_type = tokens[1]
+            qstr = 'Welches Programm soll gelöscht werden?' if job_type == 'heating_jobs' else 'Welche Aufgabe soll gelöscht werden?'
+            self.__helper_rm_select_job(update, context, qstr, jobs[job_type])
+            
+
+        elif response == type(self).CALLBACK_CONFIG_REMOVE_JOB_SELECT:
             uid = tokens[1]
             self._is_modifying_heating = False
             removed = scheduling.HelheimrScheduler.instance().remove_job(uid)
@@ -578,24 +588,50 @@ class HelheimrBot:
                 self.__safe_edit_callback_query(query, 'Fehler beim Entfernen, bitte Logs überprüfen.')
             else:
                 self.__safe_edit_callback_query(query, "Programm '{:s}' wurde entfernt.".format(removed.teaser(use_markdown=True)))
-            
+
+
+    def __helper_rm_select_job(self, update, context, question_str, select_jobs):
+        keyboard = list()
+        for uid, teaser in select_jobs:
+            keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
+                callback_data=type(self).CALLBACK_CONFIG_REMOVE_JOB_SELECT + ':' + str(uid), parse_mode=telegram.ParseMode.MARKDOWN)])
+        # Always include a 'cancel' option
+        keyboard.append([telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_CONFIG_CANCEL)])
+        # Send menu to user:
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)            
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            question_str, reply_markup)
+
 
     def __cmd_rm(self, update, context):
-        #TODO two-level menu: first select heating/non-heating, then remove job as following:
+        # If we have both heating and non-heating jobs, present the user a 
+        # two-level menu (first, select the type, then the task)
         self._is_modifying_heating = True
         jobs = scheduling.HelheimrScheduler.instance().get_job_teasers(use_markdown=False)
-        keyboard = list()
-        for uid, teaser in jobs['heating_jobs']:
-            keyboard.append([telegram.InlineKeyboardButton('[{:d}] {:s}'.format(uid, teaser), 
-                callback_data=type(self).CALLBACK_CONFIG_REMOVE + ':' + str(uid), parse_mode=telegram.ParseMode.MARKDOWN)])
-        
-        keyboard.append([telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_CONFIG_CANCEL)])
+        heating_jobs = jobs['heating_jobs']
+        non_heating_jobs = jobs['non_heating_jobs']
+        if len(heating_jobs) > 0 and len(non_heating_jobs) > 0:
+            keyboard = [[telegram.InlineKeyboardButton('Heizungsprogramme',
+                callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'heating_jobs')],
+                [telegram.InlineKeyboardButton('Andere Aufgaben',
+                callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'non_heating_jobs')],
+                [telegram.InlineKeyboardButton('Abbrechen', callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
+            reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+            self._is_modifying_heating = self.__safe_message_reply(update, 'Bitte Typ auswählen:', reply_markup)
+        else:
+            select_jobs = None
+            if len(heating_jobs) > 0:
+                qstr = 'Welches Programm soll gelöscht werden?'
+                select_jobs = heating_jobs
+            elif len(non_heating_jobs) > 0:
+                qstr = 'Welche Aufgabe soll gelöscht werden?'
+                select_jobs = non_heating_jobs
+            else:
+                self._is_modifying_heating = False
+                self.__safe_send(update.message.chat_id, 'Derzeit sind weder Programme noch Aufgaben gespeichert.')
+                return
+            self.__helper_rm_select_job(update, context, qstr, select_jobs)
 
-        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
-        # Set flag to prevent other users from concurrently modifying 
-        # heating system via telegram (only if sending text succeeded)
-        self._is_modifying_heating = self.__safe_message_reply(update, 
-            'Welches Programm soll gelöscht werden?', reply_markup)
 
 
     def __cmd_configure(self, update, context):
