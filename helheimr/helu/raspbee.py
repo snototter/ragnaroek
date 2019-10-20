@@ -263,7 +263,7 @@ class RaspBeeWrapper:
         return known_ids
 
 
-    def query_full_state(self):
+    def query_deconz_details(self):
         r = network_utils.http_get_request(self.api_url)
         if r is None:
             return list()
@@ -289,17 +289,17 @@ class RaspBeeWrapper:
         #     msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
 
 
-        sensors = list()
-        for raspbee_id in state['sensors']:
-            if raspbee_id in self.known_temperature_sensor_ids:
-                sensors.append(TemperatureState(self.__lookup_temperature_display_name(raspbee_id), state['sensors'][raspbee_id]))
-        if len(sensors) == 0:
-            msg.append('\u2022 :bangbang: Thermometer sind nicht erreichbar!')
-        else:
-            sensors = TemperatureState.merge_sensors(sensors)
-            msg.append('\n*Thermometer:*')
-            for sensor in sensors:
-                msg.append('  \u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
+        # sensors = list()
+        # for raspbee_id in state['sensors']:
+        #     if raspbee_id in self.known_temperature_sensor_ids:
+        #         sensors.append(TemperatureState(self.__lookup_temperature_display_name(raspbee_id), state['sensors'][raspbee_id]))
+        # if len(sensors) == 0:
+        #     msg.append('\u2022 :bangbang: Thermometer sind nicht erreichbar!')
+        # else:
+        #     sensors = TemperatureState.merge_sensors(sensors)
+        #     msg.append('\n*Thermometer:*')
+        #     for sensor in sensors:
+        #         msg.append('  \u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
 
         return '\n'.join(msg)
 

@@ -969,7 +969,7 @@ class HelheimrScheduler(Scheduler):
             #TODO Remove debug output:
             print('DEBUG JOB LIST::::::::::::::::::::::::::::::HelheimrScheduler:::::::::')
             for job in self.jobs:
-                print(job, ' next_run (localized): ', time_utils.format(job.next_run))
+                print('  * ', job)
 
             # Run all pending jobs:
             try:

@@ -166,14 +166,9 @@ class Heating:
         self._condition_var.release()
 
 
-    def query_detailed_status(self):
+    def query_deconz_status(self):
         """:return: Verbose multi-line string."""
-        is_heating, plug_states = self.query_heating_state()
-        msg = telegram_bot.format_msg_heating(is_heating, plug_states, 
-            use_markdown=True, use_emoji=True, include_state_details=True)
-
-        msg += '\n' + self._zigbee_gateway.query_full_state()
-        return msg
+        return self._zigbee_gateway.query_deconz_details()
 
 
     def query_heating_state(self):

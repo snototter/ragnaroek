@@ -133,7 +133,7 @@ class HelheimrBot:
         if any([not cid in self._authorized_ids for cid in self._broadcast_ids]):
             raise ValueError("[HelheimrBot] Error: Not all broadcast IDs are authorized. Double-check telegram's configuration file.")
 
-        logging.getLogger().info('HelheimrBot is initializing.\nAccept connections from chat IDs: {}\nBroadcast messages to: {}'.format(
+        logging.getLogger().info('[HelheimrBot] Will accept connections from chat IDs: [{}]. Broadcast messages to: [{}]'.format(
             ','.join(map(str, self._authorized_ids)), 
             ','.join(map(str, self._broadcast_ids))))
 

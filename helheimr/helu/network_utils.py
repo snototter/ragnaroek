@@ -128,7 +128,7 @@ class ConnectionTester:
 
         msg.append('') # Empty line to separate text content
         if deconz_api_available:
-            msg.append(heating.Heating.instance().query_detailed_status())
+            msg.append(heating.Heating.instance().query_deconz_status())
         else:
             msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
         return '\n'.join(msg)
