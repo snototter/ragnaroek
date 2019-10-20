@@ -38,10 +38,9 @@ from . import time_utils
 from . import weather
 
 #TODOs:
-#TODO Unicode: black circle, medium black circle, bullet: \u23fa \u25cf \u2022
-#TODO forecast icons (w.get_weather_code(), weather condition codes, check emoji, make mapping)
-#TODO altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
-#TODO reminder alle config minuten, falls heizung laeuft (zB 12h)
+# * Unicode: black circle, medium black circle, bullet: \u23fa \u25cf \u2022
+# * altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
+# * reminder alle config minuten, falls heizung laeuft (zB 12h)
 
 # List of telegram emojis: 
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
@@ -54,7 +53,9 @@ def _rand_flower():
 
 
 def format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
+    ## (deprecated) raspbee.PlugState:
     # return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
+    ## (replaced by) lpd433.DeviceState:
     return '\n\u2022 ' + '\n\u2022 '.join([plug.to_status_line() for plug in plug_states])
 
 
@@ -72,13 +73,6 @@ def format_msg_heating(is_heating, plug_states, use_markdown=True, use_emoji=Tru
             'ein' if is_heating else 'aus',
             ('.' if not include_state_details else ':') if not use_emoji else (' :thermometer:' if is_heating else ' :snowman:')
         )
-    # #TODO later on, I probably only want to know the states if the plug states differ:
-    #TODO LPD has no states...
-    # include_state_details = False
-    # for i in range(1, len(plug_states)):
-    #     if plug_states[i].on != plug_states[i-1].on:
-    #         include_state_details = True
-    #         break
     if include_state_details:
         txt += format_details_plug_states(plug_states, use_markdown, include_state_details)
     return txt
@@ -155,7 +149,7 @@ class HelheimrBot:
         try:
             logging.getLogger().info('[HelheimrBot] querying myself: {}'.format(self._bot.get_me()))
         except:
-            err_msg = traceback.format_exc()
+            err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while querying myself:\n' + err_msg)
 
         # Parameters to store configuration while waiting for user callback:
@@ -490,13 +484,7 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:    
-                self.__safe_edit_callback_query(query, 'Ist erledigt.')
-        #   #TODO remove action, we can immediately return
-        #         time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
-
-        #         # Query heating after this short break
-                # status_txt = self.__query_status(None)
-                # self.__safe_edit_callback_query(query, common.emo(status_txt))
+                self.__safe_edit_callback_query(query, 'Heizung wurde eingeschaltet.')
             self._is_modifying_heating = False
 
 
@@ -504,13 +492,9 @@ class HelheimrBot:
             # Show user we do something
             self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
             self._heating.stop_heating(query.from_user.first_name)
-            self.__safe_edit_callback_query(query, 'Ist erledigt.')
-            # time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
-
-            # # Query heating after this short break
-            # status_txt = self.__query_status(None)
-            # self.__safe_edit_callback_query(query, common.emo(status_txt))
+            self.__safe_edit_callback_query(query, 'Heizung wurde ausgeschaltet.')
             self._is_modifying_heating = False
+
 
         elif response == type(self).CALLBACK_TURN_ON_ONCE_CONFIRM:
             # Show user we do something
@@ -528,14 +512,17 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
-                self.__safe_edit_callback_query(query, 'Wird erledigt.')
-          
-                # time.sleep(type(self).WAIT_TIME_HEATING_TOGGLE)
-
-                # # Query heating after this short break
-                # status_txt = self.__query_status(None)
-                # self.__safe_edit_callback_query(query, common.emo(status_txt))
+                txt = 'Heize jetzt einmalig auf {}\u200a°'.format(
+                        common.format_num('.1f', temperature, use_markdown=True))
+                current_temperature = heating.Heating.instance().query_temperature_for_heating()
+                if current_temperature is None:
+                    txt += '. :bangbang: Aktuelle Temperatur kann nicht abgefragt werden!'
+                else:
+                    txt += ', aktuell: {}'.format(
+                            common.format_num('.1f', current_temperature, use_markdown=True))
+                self.__safe_edit_callback_query(query, common.emo(txt))
             self._is_modifying_heating = False
+
 
         elif response == type(self).CALLBACK_CONFIG_CANCEL:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
@@ -545,6 +532,7 @@ class HelheimrBot:
             self._config_temperature = None
             self._config_hysteresis = None
             self._config_duration = None
+
 
         elif response == type(self).CALLBACK_CONFIG_CONFIRM:
             tokens = self._config_at_time.split(':')
@@ -572,6 +560,8 @@ class HelheimrBot:
             self._config_temperature = None
             self._config_hysteresis = None
             self._config_duration = None
+
+
         elif response == type(self).CALLBACK_CONFIG_REMOVE:
             uid = tokens[1]
             self._is_modifying_heating = False

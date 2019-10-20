@@ -625,7 +625,7 @@ class PeriodicHeatingJob(Job):
 
     def overlaps(self, other):
         # Periodic heating jobs are (currently) assumed to run each day at a specific time
-        #TODO once we start fancy heating schedules, we need to adjust this!
+        #TODO once we start fancy heating schedules (e.g. weekends vs weekdays), we need to adjust this!
         start_this = datetime.datetime.combine(datetime.datetime.today(), self.at_time)
         end_this = start_this + self.heating_duration
         start_other = datetime.datetime.combine(datetime.datetime.today(), other.at_time)
@@ -966,16 +966,22 @@ class HelheimrScheduler(Scheduler):
     def __scheduling_loop(self):
         self._condition_var.acquire()
         while self._run_loop:
-            #TODO add try block!
-            #TODO remove
-            print('TODO REMOVE JOB LIST DEBUG::::::::::::::::::::::::::::::')
+            #TODO Remove debug output:
+            print('DEBUG JOB LIST::::::::::::::::::::::::::::::HelheimrScheduler:::::::::')
             for job in self.jobs:
-                print(job, ' TU.format(next_run): ', time_utils.format(job.next_run))
+                print(job, ' next_run (localized): ', time_utils.format(job.next_run))
 
-            self.run_pending()
+            # Run all pending jobs:
+            try:
+                self.run_pending()
+            except:
+                err_msg = traceback.format_exc(limit=5)
+                logging.getLogger().error('[HelheimrScheduler] Exception occured inside run_pending():\n' + err_msg)
+                broadcasting.MessageBroadcaster.instance().error('*Fehler* beim Ausführen einer programmierten Aufgabe:\n' + err_msg)
           
+            # Go to sleep until next job is due (unless this would take too long)
             poll_interval = max(1, self._poll_interval if len(self.jobs) == 0 else min(self._poll_interval, self.idle_time))
-            logging.getLogger().info('[HelheimrScheduler] Going to sleep for {:.1f} seconds\n'.format(poll_interval))
+            logging.getLogger().debug('[HelheimrScheduler] Going to sleep for {:.1f} seconds\n'.format(poll_interval))
             
             # Go to sleep
             self._condition_var.wait(timeout = poll_interval)
@@ -1060,17 +1066,18 @@ class HelheimrScheduler(Scheduler):
         self._condition_var.release()
 
 
-
     def get_job_teasers(self, use_markdown=False):
         self._condition_var.acquire()
         heating_jobs = [j for j in self.jobs if isinstance(j, PeriodicHeatingJob)]
         non_heating_jobs = [j for j in self.jobs if isinstance(j, NonHeatingJob)]
-        # generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
+        generic_jobs = [j for j in self.jobs if not is_helheimr_job(j)]
         self._condition_var.release()
 
         heating_jobs = [(j.unique_id, j.teaser(use_markdown)) for j in heating_jobs]
         non_heating_jobs = [(j.unique_id, j.teaser(use_markdown)) for j in non_heating_jobs]
-        #TODO extend non_heating_jobs by generic jobs (need a teaser method first...)
+        # Extend non-heating jobs by generic ones (although these should never be in our
+        # job list, unless someone misused this scheduler...)
+        non_heating_jobs.extend([(j.unique_id, '{}'.format(j)) for j in generic_jobs])
         return {
                 'heating_jobs': heating_jobs,
                 'non_heating_jobs': non_heating_jobs

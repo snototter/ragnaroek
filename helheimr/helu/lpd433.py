@@ -3,6 +3,9 @@
 """Basic 433MHz transmit functionality."""
 
 import logging
+import traceback
+import broadcasting
+
 try:
     from rpi_rf import RFDevice
 except RuntimeError:
@@ -86,31 +89,47 @@ class LpdDevice:
             rfdevice.cleanup()
             return True
         except:
-            #TODO broadcast error
+            err_msg = traceback.format_exc(limit=3)
+            logging.getLogger().error("[LPD433] Error while sending: " + err_msg)
+            broadcasting.MessageBroadcaster.instance().error('Fehler beim {}schalten der Steckdosen:\n'.format(
+                'Ein' if code == self._code_on else 'Aus') + err_msg)
             return False
 
 
 class Lpd433Wrapper:
     def __init__(self, cfg):
+        # GPIO pin number to send the radio data.
         self._tx_gpio_pin = cfg['lpd433']['gpio_pin_tx']
 
-        self._heating_plugs = [LpdDevice(self._tx_gpio_pin, cfg['lpd433']['heating']['plugs'][k]) for k in cfg['lpd433']['heating']['plugs']]
+        # Configuration of the plugs used to turn the heating on/off.
+        self._heating_plugs = [LpdDevice(self._tx_gpio_pin, cfg['lpd433']['heating']['plugs'][k]) \
+            for k in cfg['lpd433']['heating']['plugs']]
+
+        # Establish a "known" state (we'll never know for sure, but
+        # from our experiments, FS1000A + antenna and 10 repeats will
+        # switch any LPD433 in our flat, no matter what's in between tx/rx ;-)
         self.turn_off()
         for h in self._heating_plugs:
             logging.getLogger().info('[LPD433] Configured plug: {}'.format(h))
 
 
     def turn_on(self):
+        """Send 'on' command to all plugs configured as 'heating'."""
         success = [d.turn_on() for d in self._heating_plugs]
         return all(success)
 
 
     def turn_off(self):
+        """Send 'off' command to all plugs configured as 'heating'."""
         success = [d.turn_off() for d in self._heating_plugs]
         return all(success)
 
 
     def query_heating(self):
+        """Query state of the devices - since LPD433 doesn't transmit anything,
+        we have to rely on software state monitoring (i.e. upon start up, all
+        plugs are switched off and afterwards, we remember the sent commands).
+        So use the result with a grain of salt."""
         is_on = [d.powered_on for d in self._heating_plugs]
         is_heating = any(is_on)
 

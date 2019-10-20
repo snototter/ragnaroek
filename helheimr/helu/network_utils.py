@@ -92,20 +92,20 @@ class ConnectionTester:
         self._known_hosts_local = self.__load_known_hosts(cfg['control']['network']['local'])
         self._known_hosts_internet = self.__load_known_hosts(cfg['control']['network']['internet'])
 
+        # TODO Add service URLs if needed
         self._known_service_urls = {
             'Telegram API': telegram_bot.get_bot_url(cfg['telegram']),
             'deCONZ API': raspbee.get_api_url(cfg['control'])
-            # ,
-            # 'pilight': pilight.get_config_url(cfg['control'])
         }
-        #TODO check status/list 433.92 MHz devices
 
 
     def __load_known_hosts(self, libconf_attr_dict):
+        """Load hosts from configuration file - use parameter name as dictionary key."""
         return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
 
 
     def list_known_connection_states(self, use_markdown=True):
+        """Returns a multi-line string listing all known connections and their availability (ping, http get, etc.)"""
         msg = list()
         # Check connectivity:
         msg.append('*Netzwerk/Services:*')

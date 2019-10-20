@@ -13,6 +13,7 @@ from . import lpd433
 from . import raspbee
 from . import time_utils
 from . import scheduling
+from . import telegram_bot
 
 """Heating can be turned on via manual request or via a scheduled job."""
 HeatingRequest = common.enum(MANUAL=1, SCHEDULED=2)
@@ -85,8 +86,6 @@ class Heating:
             raise RuntimeError("Heating is a singleton!")
         Heating.__instance = self
 
-        #FIXME switch to real system
-        # self._zigbee_gateway = raspbee.DummyRaspBeeWrapper(config)
         self._zigbee_gateway = raspbee.RaspBeeWrapper(config)
 
         self._lpd433_gateway = lpd433.Lpd433Wrapper(config)
@@ -103,14 +102,16 @@ class Heating:
         self._is_heating = False            # Used to notify the __heating_loop() that there was a stop_heating() request
 
         # Members related to the heating loop thread
-        self._latest_request_by = None   # Name of user who requested the most recent heating job
-        self._num_consecutive_errors_before_broadcast = config['heating']['num_consecutive_errors_before_broadcast'] # Num of retrys before broadcasting a heating error
-        self._max_idle_time = config['heating']['idle_time'] # Max. time to wait between __heating_loop() iterations
-        self._is_terminating = False     # During shutdown, we want to prevent start_heating() calls
-        self._start_heating = False      # Used to notify the __heating_loop() that there was a start_heating() request
-        self._run_heating_loop = True    # Flag to keep the heating thread alive
+        self._latest_request_by = None            # Name of user who requested the most recent heating job
+        self._num_consecutive_errors_before_broadcast = \
+            config['heating']['num_consecutive_errors_before_broadcast'] # Num of retrys before broadcasting a heating error
+        self._max_idle_time = \
+            config['heating']['idle_time']        # Max. time to wait between __heating_loop() iterations
+        self._is_terminating = False              # During shutdown, we want to prevent start_heating() calls
+        self._start_heating = False               # Used to notify the __heating_loop() that there was a start_heating() request
+        self._run_heating_loop = True             # Flag to keep the heating thread alive
         self._reach_temperature_only_once = False # In case you want to reach a specific temperature only once (stop heating after reaching it)
-        self._lock = threading.Lock()    # Thread will wait on the condition variable (so we can notify
+        self._lock = threading.Lock()             # Thread will wait on the condition variable (so we can notify
         self._condition_var = threading.Condition(self._lock) # it on shutdown or other changes
         self._heating_loop_thread = threading.Thread(target=self.__heating_loop)
         self._heating_loop_thread.start()
@@ -167,8 +168,12 @@ class Heating:
 
     def query_detailed_status(self):
         """:return: Verbose multi-line string."""
-        return 'TODO must be updated to LPD433' #self._heating_system.query_full_state()
-        #TODO need to query both lpd and raspbee!
+        is_heating, plug_states = self.query_heating_state()
+        msg = telegram_bot.format_msg_heating(is_heating, plug_states, 
+            use_markdown=True, use_emoji=True, include_state_details=True)
+
+        msg += '\n' + self._zigbee_gateway.query_full_state()
+        return msg
 
 
     def query_heating_state(self):
@@ -253,9 +258,6 @@ class Heating:
                     end_time = time_utils.dt_offset(self._heating_duration)
                     logging.getLogger().info("[Heating] This heating request will end at {}".format(time_utils.format(end_time)))
 
-            # If we're heating and there is no error, this plug state list will be 
-            # populated within the following if-branch.
-            plug_states = None 
 
             if self._is_heating:
                 # Should we turn the heater on or off?
@@ -305,17 +307,20 @@ class Heating:
                     if is_heating is not None and is_heating != should_heat:
                         # Increase error count, but retry before broadcasting:
                         consecutive_errors += 1
+                        logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
 
 
-            # # Check if all plugs are reachable #TODO remove - lpd433 don't transmit anything
-            # if plug_states is None:
-            #     is_heating, plug_states = self._heating_system.query_heating()
+            ## Note: LPD433 plugs don't transmit anything, so we cannot check if they
+            ## are reachable/on/off...
+            ## The following check was needed for ZigBee plugs (because they often
+            ## disconnected)
+            # # Check if all plugs are reachable
+            # is_heating, plug_states = self._heating_system.query_heating()
             # if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
             #     consecutive_errors += 1
 
             # Report error if the plug didn't respond until now
             if consecutive_errors >= self._num_consecutive_errors_before_broadcast:
-                # is_heating, _ = self._heating_system.query_heating()
                 self._broadcaster.error("Heizung reagiert nicht, bitte kontrollieren!")
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0
@@ -328,8 +333,7 @@ class Heating:
                 idle_time = min(self._max_idle_time, diff.total_seconds())
 
             # Send thread to sleep
-            #TODO remove debug
-            logging.getLogger().info('[Heating] Heating loop goes to sleep for {} seconds'.format(idle_time))
+            logging.getLogger().debug('[Heating] Heating loop goes to sleep for {} seconds'.format(idle_time))
             self._condition_var.wait(idle_time)
 
         self._condition_var.release()

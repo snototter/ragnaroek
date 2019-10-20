@@ -15,43 +15,41 @@ state of the plug.
 
 import json
 import logging
-import requests
-import traceback
 
 from . import common
 from . import network_utils
 
 ## Note: as of 10/2019 we don't use the ZigBee plugs anymore as the Osram plugs disconnect frequently.
-# class PlugState:
-#     """State of a 'smart' ZigBee plug."""
-#     def __init__(self, display_name, deconz_plug):
-#         self.display_name = display_name                    # Readable name
-#         self.name = deconz_plug['name']                     # Name/label within the deconz/phoscon gateway
-#         self.reachable = deconz_plug['state']['reachable']  # Flag indicating the plug's connection status
-#         self.on = deconz_plug['state']['on']                # Currently on or off?
+class PlugState:
+    """State of a 'smart' ZigBee plug."""
+    def __init__(self, display_name, deconz_plug):
+        self.display_name = display_name                    # Readable name
+        self.name = deconz_plug['name']                     # Name/label within the deconz/phoscon gateway
+        self.reachable = deconz_plug['state']['reachable']  # Flag indicating the plug's connection status
+        self.on = deconz_plug['state']['on']                # Currently on or off?
     
-#     def __str__(self):
-#         return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
+    def __str__(self):
+        return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
 
-#     def format_message(self, use_markdown=True, detailed_information=False):
-#         txt = '{}{}{} ist '.format(
-#             '_' if use_markdown else '',
-#             self.display_name,
-#             '_' if use_markdown else ''
-#         )
-#         if self.reachable:
-#             txt += 'ein' if self.on else 'aus'
-#         if not self.reachable or detailed_information:
-#             txt += ' und '
-#             if not self.reachable:
-#                 txt += '{}NICHT{} '.format(
-#                     '*' if use_markdown else '',
-#                     '*' if use_markdown else '')
-#             txt += 'erreichbar{}'.format(
-#                     '.' if self.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
-#         else:
-#             txt += '.'
-#         return txt
+    def format_message(self, use_markdown=True, detailed_information=False):
+        txt = '{}{}{} ist '.format(
+            '_' if use_markdown else '',
+            self.display_name,
+            '_' if use_markdown else ''
+        )
+        if self.reachable:
+            txt += 'ein' if self.on else 'aus'
+        if not self.reachable or detailed_information:
+            txt += ' und '
+            if not self.reachable:
+                txt += '{}NICHT{} '.format(
+                    '*' if use_markdown else '',
+                    '*' if use_markdown else '')
+            txt += 'erreichbar{}'.format(
+                    '.' if self.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
+        else:
+            txt += '.'
+        return txt
 
 
 class TemperatureState:
@@ -128,6 +126,7 @@ class TemperatureState:
             txt += ' {}nicht erreichbar!{}'.format(':bangbang: *' if use_markdown else '', '*' if use_markdown else '')
 
         return txt
+
 
     @staticmethod
     def merge_sensors(sensor_list):
@@ -276,7 +275,7 @@ class RaspBeeWrapper:
         msg.append('\u2022 deCONZ SW Version: {}'.format(common.format_num('s', state['config']['swversion'])))
         msg.append('\u2022 ZigBee Kanal: {}'.format(common.format_num('d', state['config']['zigbeechannel'])))
 
-        #TODO LPD433 replaced the zigbee lights
+        ## Note: LPD433 replaced the ZigBee plugs, so we don't need to query those:
         # # Iterate over reported lights (this group contains our power plugs)
         # is_heating = None
         # for raspbee_id in state['lights']:
@@ -284,7 +283,6 @@ class RaspBeeWrapper:
         #         plug = PlugState(self.__lookup_heating_display_name(raspbee_id), state['lights'][raspbee_id])
         #         msg.append('\u2022 Steckdose für ' + plug.format_message(use_markdown=True, detailed_information=True))
         #         is_heating = (is_heating if is_heating is not None else False) or plug.on
-        
         # if is_heating is not None:
         #     msg.insert(1, '\u2022 Heizung ist {}'.format('ein :thermometer:' if is_heating else 'aus :snowman:'))
         # else:
@@ -327,7 +325,7 @@ class RaspBeeWrapper:
             is_heating = is_heating or state.on
         return is_heating, status
 
-#TODO check if sensor['reachable'] is received - if so, issue warning if sensor is unavailable!
+#TODO Check if sensor[reachable] works as intended (warn upon /details, or if no sensors are available to determine pre-set temperature)
     def query_temperature(self):
         status = list()
         logger = logging.getLogger()
@@ -361,8 +359,9 @@ class RaspBeeWrapper:
             return None
         temp_dict = {t.name: t for t in temp_states}
         for sensor_name in self._heating_preferred_reference_temperature_sensor_order:
-            if sensor_name in temp_dict:
+            if sensor_name in temp_dict and temp_dict[sensor_name].reachable:
                 return temp_dict[sensor_name].temperature
+        logging.getLogger().error('[RaspBeeWrapper] No preferred sensor is reachable!')
         return None
 
 
@@ -374,8 +373,6 @@ class RaspBeeWrapper:
                     'Ein' if turn_on else 'Aus', self.__lookup_heating_display_name(light_id)
                 )
 
-        # r = requests.put(self.api_url + '/lights/' + light_id + '/state', 
-        #     data='{:s}'.format('{"on":true}' if turn_on else '{"on":false}'))
         if r.status_code != 200:
             return False, 'Fehler (HTTP {:d}) beim {:s}schalten von {:s}.'.format(
                 r.status_code, 'Ein' if turn_on else 'Aus', self.__lookup_heating_display_name(light_id))
@@ -419,32 +416,3 @@ class RaspBeeWrapper:
             success = success and s
             msg.append(m)
         return success, '\n'.join(msg)
-
-
-
-class DummyRaspBeeWrapper:
-    """Dummy wrapper for dev/dbg"""
-    def __init__(self, cfg):
-        self._heating_on = False
-    
-    def query_full_state(self):
-        return 'Full state query'
-
-
-    def query_heating(self):
-        return self._heating_on, list()
-
-    def query_temperature(self):
-        return None
-
-    def query_temperature_for_heating(self):
-        return 23.7
-          
-    def turn_on(self):
-        self._heating_on = True
-        return True, 'Erledigt.'
-
-    def turn_off(self):
-        self._heating_on = False
-        return True, 'Erledigt.'
-
