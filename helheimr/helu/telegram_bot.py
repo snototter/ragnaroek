@@ -472,8 +472,6 @@ class HelheimrBot:
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_TURN_ON_CONFIRM:
-            # Show user we do something
-            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
                 query.from_user.first_name,
@@ -489,17 +487,12 @@ class HelheimrBot:
 
 
         elif response == type(self).CALLBACK_TURN_OFF_CONFIRM:
-            # Show user we do something
-            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
             self._heating.stop_heating(query.from_user.first_name)
             self.__safe_edit_callback_query(query, 'Heizung wurde ausgeschaltet.')
             self._is_modifying_heating = False
 
 
         elif response == type(self).CALLBACK_TURN_ON_ONCE_CONFIRM:
-            # Show user we do something
-            self.__safe_chat_action(query.from_user.id, action=telegram.ChatAction.TYPING)
-
             temperature = float(tokens[1])
             success, txt = self._heating.start_heating(
                 heating.HeatingRequest.MANUAL,
@@ -512,13 +505,16 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
             else:
-                txt = 'Heize jetzt einmalig auf {}\u200a°'.format(
-                        common.format_num('.1f', temperature, use_markdown=True))
                 current_temperature = heating.Heating.instance().query_temperature_for_heating()
                 if current_temperature is None:
-                    txt += '. :bangbang: Aktuelle Temperatur kann nicht abgefragt werden!'
+                    txt = ':bangbang: Aktuelle Temperatur kann nicht abgefragt werden! Versuche, Heizung einzuschalten - bitte überprüfen!'
                 else:
-                    txt += ', aktuell: {}'.format(
+                    if current_temperature >= temperature:
+                        txt = 'Es hat bereits {}\u200a°'.format(common.format_num('.1f', current_temperature, use_markdown=True))
+                    else:
+                        txt = 'Heize jetzt einmalig auf {}\u200a°'.format(
+                            common.format_num('.1f', temperature, use_markdown=True))
+                        txt = ', aktuell: {}\u200a°'.format(
                             common.format_num('.1f', current_temperature, use_markdown=True))
                 self.__safe_edit_callback_query(query, common.emo(txt))
             self._is_modifying_heating = False
