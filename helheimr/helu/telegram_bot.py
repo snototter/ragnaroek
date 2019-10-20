@@ -210,6 +210,7 @@ class HelheimrBot:
 
 
     def __safe_send(self, chat_id, text, parse_mode=telegram.ParseMode.MARKDOWN):
+        #TODO max message length
         """Exception-safe message sending.
         Especially needed for callback queries - we got a lot of exceptions whenever users edited a previously sent command/message."""
         try:
