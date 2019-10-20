@@ -6,8 +6,10 @@ Telegram bot helheimr - controlling and querying our heating system.
 
 Commands (formating for @botfather):
 
+aus - :snowflake: Heizung ausschalten
 config - Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
+ein - :high_brightness: Heizung einschalten
 help - Liste verfügbarer Befehle
 on - :high_brightness: Heizung einschalten
 once - :high_brightness: Einmalig aufheizen
@@ -179,8 +181,14 @@ class HelheimrBot:
 
         on_handler = CommandHandler('on', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
+        # For convenience, map also 'ein' to 'on'
+        on_handler = CommandHandler('ein', self.__cmd_on, self._user_filter)
+        self._dispatcher.add_handler(on_handler)
 
         off_handler = CommandHandler('off', self.__cmd_off, self._user_filter)
+        self._dispatcher.add_handler(off_handler)
+        # For convenience, map also 'aus' to 'off'
+        off_handler = CommandHandler('aus', self.__cmd_off, self._user_filter)
         self._dispatcher.add_handler(off_handler)
 
         shutdown_handler = CommandHandler('shutdown', self.__cmd_shutdown, self._user_filter)
@@ -266,7 +274,7 @@ class HelheimrBot:
 /status - Statusabfrage.
 /details - Detaillierte Systeminformation.
 
-/on - :thermometer: Heizung einschalten.
+/ein oder /on - :thermometer: Heizung einschalten.
   nur Temperatur: /on `21.7c`
   Hysterese: /on `21c` `1c`
   nur Heizdauer: /on `1.5h`
@@ -275,7 +283,7 @@ class HelheimrBot:
 
 /once - :thermometer: Einmalig aufheizen.
 
-/off - :snowflake: Heizung ausschalten.
+/aus oder /off - :snowflake: Heizung ausschalten.
 
 /config - Heizungsprogramm einstellen.
   Uhrzeit + Dauer: /config 6:00 2h
