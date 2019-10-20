@@ -112,6 +112,8 @@ class HelheimrBot:
 
     USE_MARKDOWN = True
     USE_EMOJI = True
+
+    MESSAGE_MAX_LENGTH = 4096
     
 
     def __init__(self, bot_cfg):
@@ -210,10 +212,11 @@ class HelheimrBot:
 
 
     def __safe_send(self, chat_id, text, parse_mode=telegram.ParseMode.MARKDOWN):
-        #TODO max message length
         """Exception-safe message sending.
         Especially needed for callback queries - we got a lot of exceptions whenever users edited a previously sent command/message."""
         try:
+            if len(text) > type(self).MESSAGE_MAX_LENGTH:
+                text = text[:type(self).MESSAGE_MAX_LENGTH]
             self._bot.send_message(chat_id=chat_id, text=common.emo(text), parse_mode=parse_mode)
             return True
         except:
