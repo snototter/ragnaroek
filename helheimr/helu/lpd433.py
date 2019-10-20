@@ -35,9 +35,9 @@ except RuntimeError:
         def __init__(self, gpio):
             self.tx_repeat = None
         def enable_tx(self):
-            pass
+            pass           
         def tx_code(self, code, protocol, pulse_length, code_length):
-            pass
+            logging.getLogger().warning('[LPD433] Dummy RFDevice cannot send code via tx_code()')
         def cleanup(self):
             pass
 
