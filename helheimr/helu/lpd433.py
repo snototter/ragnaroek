@@ -23,7 +23,8 @@ latest raspbian ;-)
 
 import logging
 import traceback
-import broadcasting
+
+from . import broadcasting
 
 try:
     from rpi_rf import RFDevice
