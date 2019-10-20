@@ -11,7 +11,6 @@ import logging
 
 
 from . import heating
-# from . import pilight
 from . import raspbee
 from . import telegram_bot
 
