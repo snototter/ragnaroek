@@ -21,36 +21,37 @@ import traceback
 from . import common
 from . import network_utils
 
-class PlugState:
-    """State of a 'smart' ZigBee plug."""
-    def __init__(self, display_name, deconz_plug):
-        self.display_name = display_name                    # Readable name
-        self.name = deconz_plug['name']                     # Name/label within the deconz/phoscon gateway
-        self.reachable = deconz_plug['state']['reachable']  # Flag indicating the plug's connection status
-        self.on = deconz_plug['state']['on']                # Currently on or off?
+## Note: as of 10/2019 we don't use the ZigBee plugs anymore as the Osram plugs disconnect frequently.
+# class PlugState:
+#     """State of a 'smart' ZigBee plug."""
+#     def __init__(self, display_name, deconz_plug):
+#         self.display_name = display_name                    # Readable name
+#         self.name = deconz_plug['name']                     # Name/label within the deconz/phoscon gateway
+#         self.reachable = deconz_plug['state']['reachable']  # Flag indicating the plug's connection status
+#         self.on = deconz_plug['state']['on']                # Currently on or off?
     
-    def __str__(self):
-        return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
+#     def __str__(self):
+#         return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
 
-    def format_message(self, use_markdown=True, detailed_information=False):
-        txt = '{}{}{} ist '.format(
-            '_' if use_markdown else '',
-            self.display_name,
-            '_' if use_markdown else ''
-        )
-        if self.reachable:
-            txt += 'ein' if self.on else 'aus'
-        if not self.reachable or detailed_information:
-            txt += ' und '
-            if not self.reachable:
-                txt += '{}NICHT{} '.format(
-                    '*' if use_markdown else '',
-                    '*' if use_markdown else '')
-            txt += 'erreichbar{}'.format(
-                    '.' if self.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
-        else:
-            txt += '.'
-        return txt
+#     def format_message(self, use_markdown=True, detailed_information=False):
+#         txt = '{}{}{} ist '.format(
+#             '_' if use_markdown else '',
+#             self.display_name,
+#             '_' if use_markdown else ''
+#         )
+#         if self.reachable:
+#             txt += 'ein' if self.on else 'aus'
+#         if not self.reachable or detailed_information:
+#             txt += ' und '
+#             if not self.reachable:
+#                 txt += '{}NICHT{} '.format(
+#                     '*' if use_markdown else '',
+#                     '*' if use_markdown else '')
+#             txt += 'erreichbar{}'.format(
+#                     '.' if self.reachable else (' :skull_and_crossbones::bangbang:' if use_markdown else '!'))
+#         else:
+#             txt += '.'
+#         return txt
 
 
 class TemperatureState:
@@ -62,6 +63,7 @@ class TemperatureState:
         self.pressure = None
         self.temperature = None
         self.battery_level = deconz_sensor['config']['battery']
+        self.reachable = deconz_sensor['config']['rachable']
         
         state = deconz_sensor['state']
         if deconz_sensor['type'] == 'ZHATemperature': #'temperature' in state:
@@ -75,9 +77,9 @@ class TemperatureState:
     def __str__(self):
         return '{:s}: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
             self.display_name, 
-            -100 if self.temperature is None else self.temperature, 
-            -100 if self.humidity is None else self.humidity, 
-            -1000 if self.pressure is None else self.pressure, 
+            -999 if self.temperature is None else self.temperature, 
+            -999 if self.humidity is None else self.humidity, 
+            -9999 if self.pressure is None else self.pressure, 
             -9999 if self.battery_level is None else self.battery_level)
 
 
@@ -98,6 +100,11 @@ class TemperatureState:
             self.battery_level = other.battery_level
         elif other.battery_level is not None:
             self.battery_level = min(self.battery_level, other.battery_level)
+
+        if self.reachable is None:
+            self.reachable = other.reachable
+        elif other.reachable is not None:
+            self.reachable = self.reachable and other.reachable
         return self
 
 
@@ -116,6 +123,10 @@ class TemperatureState:
                 '?' if self.battery_level is None else common.format_num('d', int(self.battery_level),
                 use_markdown),
                 ' :warning:' if use_markdown and (self.battery_level is not None and self.battery_level < 20) else '')
+
+        if not self.reachable:
+            txt += ' {}nicht erreichbar!{}'.format(':bangbang: *' if use_markdown else '', '*' if use_markdown else '')
+
         return txt
 
     @staticmethod
