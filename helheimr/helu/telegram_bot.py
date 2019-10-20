@@ -11,6 +11,7 @@ config - Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
 help - Liste verfügbarer Befehle
+list - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
 once - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
@@ -102,6 +103,8 @@ class HelheimrBot:
     WAIT_TIME_HEATING_TOGGLE = 2  # Time to wait after turning heating on/off before checking the heating state (to see if it actually responded)
 
     # Identifiers used in message callbacks
+    # Do not use colons here, as we use this to distinguish callback
+    # types (the following) and callback parameters!
     CALLBACK_TURN_ON_OFF_CANCEL = '0'
     CALLBACK_TURN_ON_CONFIRM = '1'
     CALLBACK_TURN_OFF_CONFIRM = '2'
@@ -110,13 +113,18 @@ class HelheimrBot:
     CALLBACK_CONFIG_CONFIRM = '5'
     CALLBACK_CONFIG_REMOVE_TYPE_SELECT = '6'
     CALLBACK_CONFIG_REMOVE_JOB_SELECT = '7'
+
     #TODO the python bot api wrapper supports pattern matching, so
-    # we might want to clean up the callback handler: 
+    # we might want to clean up the callback handler a bit:
     # https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
-    USE_MARKDOWN = True
+
+    # Markdown: uses bold, italics and monospace (to prevent interpreting numbers as phone numbers...)
+    USE_MARKDOWN = True    
+    # Self-explanatory?
     USE_EMOJI = True
 
+    # Prevent errors when sending large temperature logs
     MESSAGE_MAX_LENGTH = 4096
     
 
@@ -211,6 +219,9 @@ class HelheimrBot:
         temp_task_handler = CommandHandler('temp', self.__cmd_temp, self._user_filter)
         self._dispatcher.add_handler(temp_task_handler)
 
+        job_list_handler = CommandHandler('list', self.__cmd_list_jobs, self._user_filter)
+        self._dispatcher.add_handler(job_list_handler)
+
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
 
@@ -260,6 +271,7 @@ class HelheimrBot:
             self._is_modifying_heating = False # Reset flag to allow editing again
         return False
 
+
     def __safe_edit_message_text(self, query, txt, reply_markup=None, parse_mode=telegram.ParseMode.MARKDOWN):
         try:
             self._bot.edit_message_text(chat_id=query.message.chat_id,
@@ -269,9 +281,10 @@ class HelheimrBot:
         except:
             err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while editing message text:\n' +\
-                err_msg + '\n\nMessage text was:\n' + text)
+                err_msg + '\n\nMessage text was:\n' + txt)
             self._is_modifying_heating = False # Reset flag to allow editing again
         return False
+
 
     def __safe_chat_action(self, chat_id, action=telegram.ChatAction.TYPING):
         try:
@@ -287,6 +300,7 @@ class HelheimrBot:
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
 /details - Detaillierte Systeminformation.
+/list - Liste aller Programme & Aufgaben.
 
 /ein oder /on - :thermometer: Heizung einschalten.
   nur Temperatur: /on `21.7c`
@@ -313,12 +327,12 @@ class HelheimrBot:
 /shutdown - System herunterfahren.
 /weather - :partly_sunny: Wetterbericht.
 /help - Diese Hilfemeldung."""
-        self.__safe_send(update.message.chat_id, common.emo(txt))
+        self.__safe_send(update.message.chat_id, txt)
 
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
-            common.emo("Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower())))
+            "Hallo! {:s}\n\n/help zeigt dir eine Liste verfügbarer Befehle an.".format(_rand_flower()))
 
 
     def __query_status(self, chat_id, detailed_report=True):
@@ -339,7 +353,7 @@ class HelheimrBot:
         if chat_id is None:
             return txt
         else:
-            self.__safe_send(chat_id, common.emo(txt))
+            self.__safe_send(chat_id, txt)
 
 
     def __cmd_status(self, update, context):
@@ -366,7 +380,7 @@ class HelheimrBot:
 
         txt = '\n'.join(msg)
         
-        self.__safe_send(update.message.chat_id, common.emo(txt))
+        self.__safe_send(update.message.chat_id, txt)
 
 
 
@@ -472,7 +486,7 @@ class HelheimrBot:
         if not is_heating:
             self._is_modifying_heating = False
             self.__safe_send(update.message.chat_id, 
-                common.emo('Heizung ist schon *aus* :snowman:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False)))
+                'Heizung ist schon *aus* :snowman:\n' + format_details_plug_states(plug_states, use_markdown=True, detailed_information=False))
         else:
             keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_TURN_OFF_CONFIRM + ':' + ':'.join(context.args)),
                  telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
@@ -488,7 +502,7 @@ class HelheimrBot:
     def __callback_handler(self, update, context):
         if not self._is_modifying_heating:
             logging.getLogger().error('[HelheimrBot] __calback_handler called with _is_modifying_heating = False!')
-            self.__safe_send(update.query.chat_id, common.emo(':bangbang: Fehler: _is_modifying_heating wurde in der Zwischenzeit zurückgesetzt!'))
+            self.__safe_send(update.query.chat_id, ':bangbang: Fehler: _is_modifying_heating wurde in der Zwischenzeit zurückgesetzt!')
         query = update.callback_query
         tokens = query.data.split(':')
         response = tokens[0]
@@ -506,7 +520,7 @@ class HelheimrBot:
                 duration = self._config_duration)
 
             if not success:
-                self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
+                self.__safe_edit_callback_query(query, ':bangbang: Fehler: ' + txt)
             else:    
                 self.__safe_edit_callback_query(query, 'Heizung wurde eingeschaltet.')
             self._is_modifying_heating = False
@@ -529,7 +543,7 @@ class HelheimrBot:
                 reach_temperature_only_once = True)
 
             if not success:
-                self.__safe_edit_callback_query(query, common.emo(':bangbang: Fehler: ' + txt))
+                self.__safe_edit_callback_query(query, ':bangbang: Fehler: ' + txt)
             else:
                 current_temperature = heating.Heating.instance().query_temperature_for_heating()
                 if current_temperature is None:
@@ -542,7 +556,7 @@ class HelheimrBot:
                             common.format_num('.1f', temperature, use_markdown=True))
                         txt = ', aktuell: {}\u200a°'.format(
                             common.format_num('.1f', current_temperature, use_markdown=True))
-                self.__safe_edit_callback_query(query, common.emo(txt))
+                self.__safe_edit_callback_query(query, txt)
             self._is_modifying_heating = False
 
 
@@ -741,13 +755,18 @@ class HelheimrBot:
         msg = temperature_log.TemperatureLog.instance().format_table(num_entries, use_markdown=True)
         self.__safe_send(update.message.chat_id, msg)
 
+    
+    def __cmd_list_jobs(self, update, context):
+        txt = scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True)
+        self.__safe_message_reply(update, txt, reply_markup=None)
+
 
     def __cmd_unknown(self, update, context):
         if update.message.chat_id in self._authorized_ids:
-            self.__safe_send(update.message.chat_id, common.emo("Das habe ich nicht verstanden. :thinking_face:"))
+            self.__safe_send(update.message.chat_id, "Das habe ich nicht verstanden. :thinking_face:")
         else:
             logging.getLogger().warn('[HelheimrBot] Unauthorized access: by {} {} (user {}, id {})'.format(update.message.chat.first_name, update.message.chat.last_name, update.message.chat.username, update.message.chat_id))
-            self.__safe_send(update.message.chat_id, common.emo("Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:").format(update.message.chat.first_name, update.message.chat_id))
+            self.__safe_send(update.message.chat_id, "Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:".format(update.message.chat.first_name, update.message.chat_id))
 
     
     def __cmd_shutdown(self, update, context):
