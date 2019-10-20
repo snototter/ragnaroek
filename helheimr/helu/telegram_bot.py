@@ -552,9 +552,9 @@ class HelheimrBot:
                     if current_temperature >= temperature:
                         txt = 'Es hat bereits {}\u200a°'.format(common.format_num('.1f', current_temperature, use_markdown=True))
                     else:
-                        txt = 'Heize jetzt einmalig auf {}\u200a°'.format(
+                        txt = 'Heize einmalig auf {}\u200a°'.format(
                             common.format_num('.1f', temperature, use_markdown=True))
-                        txt = ', aktuell: {}\u200a°'.format(
+                        txt += ', aktuell: {}\u200a°'.format(
                             common.format_num('.1f', current_temperature, use_markdown=True))
                 self.__safe_edit_callback_query(query, txt)
             self._is_modifying_heating = False
