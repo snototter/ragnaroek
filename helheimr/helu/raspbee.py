@@ -61,7 +61,7 @@ class TemperatureState:
         self.pressure = None
         self.temperature = None
         self.battery_level = deconz_sensor['config']['battery']
-        self.reachable = deconz_sensor['config']['rachable']
+        self.reachable = deconz_sensor['config']['reachable']
         
         state = deconz_sensor['state']
         if deconz_sensor['type'] == 'ZHATemperature': #'temperature' in state:
