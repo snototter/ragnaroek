@@ -131,15 +131,18 @@ class Heating:
         if self._is_terminating:
             return False, 'System wird gerade heruntergefahren.'
 
-        if self._is_paused:
-            if request_type == HeatingRequest.SCHEDULED:
-                logging.getLogger().info("[Heating] Ignoring periodic heating request, because system is paused.")
-                return False, 'Heizungsprogramme sind pausiert'
-
         sane, txt = type(self).sanity_check(request_type, target_temperature, 
             temperature_hysteresis, duration)
         if not sane:
             return False, txt
+
+        if self._is_paused:
+            if request_type == HeatingRequest.SCHEDULED:
+                logging.getLogger().info("[Heating] Ignoring periodic heating request, because system is paused.")
+                return False, 'Heizungsprogramme sind pausiert'
+            else:
+                logging.getLogger().info("[Heating] Manual request by '{:s}' overrides the current 'paused' state.".format(requested_by))
+                self._is_paused = False
 
         # Acquire the lock, store this heat request.
         self._condition_var.acquire()
@@ -177,7 +180,7 @@ class Heating:
         if self._is_paused:
             self.stop_heating(requested_by)
         return self._is_paused
-        
+
 
     @property
     def is_paused(self):
