@@ -366,7 +366,7 @@ class HelheimrBot:
 
 
     def __cmd_status(self, update, context):
-        self.__query_status(update.message.chat_id)
+        self.__query_status(update.message.chat_id, detailed_report=False)
 
 
     def __cmd_details(self, update, context):
@@ -819,7 +819,7 @@ class HelheimrBot:
         self._updater.start_polling(poll_interval=self._poll_interval,
             timeout=self._timeout, bootstrap_retries=self._bootstrap_retries)
         # Send startup message to all authorized users
-        status_txt = self.__query_status(None)
+        status_txt = self.__query_status(None, detailed_report=False)
         self.broadcast_message("Hallo, ich bin online. {:s}\n\n{:s}".format(
                     _rand_flower(), status_txt))
 
@@ -846,7 +846,7 @@ class HelheimrBot:
         if not self._shutdown_message_sent:
             self._shutdown_message_sent = True
             # Send shutdown message
-            status_txt = self.__query_status(None)
+            status_txt = self.__query_status(None, detailed_report=True)
             
             self.broadcast_message("System wird heruntergefahren, bis bald.\n\n{:s}".format(
                         status_txt))
