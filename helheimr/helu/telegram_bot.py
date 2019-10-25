@@ -338,6 +338,7 @@ class HelheimrBot:
         self.__safe_send(update.message.chat_id, txt)
 
 #TODO temp => aktuelle temperatur + plot
+#TODO status (temp ohne luftdruck)
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
@@ -508,7 +509,6 @@ class HelheimrBot:
 
 
     def __cmd_pause(self, update, context):
-        #TODO menu!
         # Check if another user is currently sending an on/off command:
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
