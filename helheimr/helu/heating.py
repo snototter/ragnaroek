@@ -100,6 +100,7 @@ class Heating:
         self._heating_duration = None       # Stop heating after this duration
         self._is_manual_request = False     # Flag to indicate whether we have an active manual request
         self._is_heating = False            # Used to notify the __heating_loop() that there was a stop_heating() request
+        self._is_paused = False             # While paused, scheduled heating tasks will be ignored
 
         # Members related to the heating loop thread
         self._latest_request_by = None            # Name of user who requested the most recent heating job
@@ -117,7 +118,6 @@ class Heating:
         self._heating_loop_thread.start()
 
 
-
     def start_heating(self, request_type, requested_by, target_temperature=None,
             temperature_hysteresis=0.5, duration=None, reach_temperature_only_once=False):
         """
@@ -130,6 +130,11 @@ class Heating:
         # Sanity checks:
         if self._is_terminating:
             return False, 'System wird gerade heruntergefahren.'
+
+        if self._is_paused:
+            if request_type == HeatingRequest.SCHEDULED:
+                logging.getLogger().info("[Heating] Ignoring periodic heating request, because system is paused.")
+                return False, 'Heizungsprogramme sind pausiert'
 
         sane, txt = type(self).sanity_check(request_type, target_temperature, 
             temperature_hysteresis, duration)
@@ -164,6 +169,19 @@ class Heating:
         self.__stop_heating()
         self._condition_var.notify()
         self._condition_var.release()
+
+    
+    def toggle_pause(self, requested_by):
+        """Toggle pause (heating will be stopped if currently active)."""
+        self._is_paused = not self._is_paused
+        if self._is_paused:
+            self.stop_heating(requested_by)
+        return self._is_paused
+        
+
+    @property
+    def is_paused(self):
+        return self._is_paused
 
 
     def query_deconz_status(self):

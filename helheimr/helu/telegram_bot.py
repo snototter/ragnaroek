@@ -15,6 +15,7 @@ list - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
 once - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
+pause - Heizungsprogramme pausieren
 rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
 status - Statusabfrage
@@ -113,6 +114,8 @@ class HelheimrBot:
     CALLBACK_CONFIG_CONFIRM = '5'
     CALLBACK_CONFIG_REMOVE_TYPE_SELECT = '6'
     CALLBACK_CONFIG_REMOVE_JOB_SELECT = '7'
+    CALLBACK_PAUSE_CONFIRM_TOGGLE = '8'
+    CALLBACK_PAUSE_CANCEL = '9'
 
     #TODO the python bot api wrapper supports pattern matching, so
     # we might want to clean up the callback handler a bit:
@@ -212,6 +215,9 @@ class HelheimrBot:
 
         heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
         self._dispatcher.add_handler(heat_once_handler)
+
+        pause_handler = CommandHandler('pause', self.__cmd_pause, self._user_filter)
+        self._dispatcher.add_handler(pause_handler)
 
         rm_task_handler = CommandHandler('rm', self.__cmd_rm, self._user_filter)
         self._dispatcher.add_handler(rm_task_handler)
@@ -313,6 +319,8 @@ class HelheimrBot:
 
 /aus oder /off - :snowflake: Heizung ausschalten.
 
+/pause - Heizungsprogramme pausieren.
+
 /config - Heizungsprogramm einstellen.
   Uhrzeit + Dauer: /config 6:00 2h
   Zusätzlich Temperatur: /config 6:00 23c 2h
@@ -329,6 +337,7 @@ class HelheimrBot:
 /help - Diese Hilfemeldung."""
         self.__safe_send(update.message.chat_id, txt)
 
+#TODO temp => aktuelle temperatur + plot
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
@@ -497,7 +506,28 @@ class HelheimrBot:
             self._is_modifying_heating = self.__safe_message_reply(update, 
                 'Heizung wirklich ausschalten?', reply_markup)
 
-    
+
+    def __cmd_pause(self, update, context):
+        #TODO menu!
+        # Check if another user is currently sending an on/off command:
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True
+
+        paused = self._heating.is_paused
+
+        msg = 'Heizungsprogramme pausieren?' if not paused else 'Heizungsprogramme aktivieren?'
+
+        keyboard = [[telegram.InlineKeyboardButton("Ja", callback_data=type(self).CALLBACK_PAUSE_CONFIRM_TOGGLE),
+                 telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_PAUSE_CANCEL)]]
+
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        # Set flag to prevent other users from concurrently modifying 
+        # heating system via telegram (only if sending text succeeded)
+        self._is_modifying_heating = self.__safe_message_reply(update, msg, reply_markup)
+
 
     def __callback_handler(self, update, context):
         if not self._is_modifying_heating:
@@ -614,6 +644,17 @@ class HelheimrBot:
                 self.__safe_edit_callback_query(query, 'Fehler beim Entfernen, bitte Logs überprüfen.')
             else:
                 self.__safe_edit_callback_query(query, "Programm ({:s}) wurde entfernt.".format(removed.teaser(use_markdown=True)))
+
+        elif response == type(self).CALLBACK_PAUSE_CONFIRM_TOGGLE:
+            is_paused = self._heating.toggle_pause(query.from_user.first_name)
+            msg = 'Heizungsprogramme sind pausiert.' if is_paused else 'Heizungsprogramme sind wieder aktiviert.'
+            self.__safe_edit_callback_query(query, msg)
+            self._is_modifying_heating = False
+
+        elif response == type(self).CALLBACK_PAUSE_CANCEL:
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
+            self._is_modifying_heating = False
+
 
 
     def __rm_helper_keyboard_type_select(self):
