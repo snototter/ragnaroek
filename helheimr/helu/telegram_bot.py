@@ -376,7 +376,8 @@ class HelheimrBot:
         msg.append(self.__query_status(None, detailed_report=True))
         
         msg.append('')
-        msg.append(network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True))
+        _, txt = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
+        msg.append(txt)
 
         msg.append('')
         msg.append(scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True))

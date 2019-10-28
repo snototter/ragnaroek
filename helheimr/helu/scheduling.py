@@ -841,6 +841,7 @@ def log_temperature():
 
 
 def test_sensors():
+    # Check if all temperature sensors are reachable.
     sensors = heating.Heating.instance().query_temperature()
     if sensors is None:
         broadcasting.MessageBroadcaster.instance().error('Fehler bei der Sensorabfrage, bitte überprüfen!')
@@ -860,12 +861,15 @@ def test_sensors():
                 else:
                     msg = 'Temperatursensoren sind nicht erreichbar: {}!'.format(', '.join(names))
                 broadcasting.MessageBroadcaster.instance().warning(msg)
+            else: # TODO remove
+                broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar')
 
 
 def test_network_connectivity():
-    #TODO remove the broadcast!
-    msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
-    broadcasting.MessageBroadcaster.instance().info('*Periodic network connection test:*\n\n' + msg)
+    # Check all known hosts, only broadcast message if at least one seems to be down.
+    all_online, msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
+    if not all_online:
+        broadcasting.MessageBroadcaster.instance().info('*Netzwerktest:* mindestens ein Host ist nicht erreichbar.\n\n' + msg)
 
 
 def is_helheimr_job(job):

@@ -14,6 +14,7 @@ from . import heating
 from . import raspbee
 from . import telegram_bot
 
+#TODO replay curl request (headers, params) return response
 
 def http_get_request(url, timeout=2.0):
     """
@@ -106,16 +107,19 @@ class ConnectionTester:
     def list_known_connection_states(self, use_markdown=True):
         """Returns a multi-line string listing all known connections and their availability (ping, http get, etc.)"""
         msg = list()
+        all_online = True
         # Check connectivity:
         msg.append('*Netzwerk/Services:*')
         # Home network
         for name, host in self._known_hosts_local.items():
             reachable = ping(host)
             msg.append('\u2022 {} [LAN] ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+            all_online = all_online and reachable
         # WWW
         for name, host in self._known_hosts_internet.items():
             reachable = ping(host)
             msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+            all_online = all_online and reachable
 
         deconz_api_available = False
         for name, url in self._known_service_urls.items():
@@ -125,11 +129,12 @@ class ConnectionTester:
                 deconz_api_available = reachable
             else:
                 msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
+            all_online = all_online and reachable
 
         msg.append('') # Empty line to separate text content
         if deconz_api_available:
             msg.append(heating.Heating.instance().query_deconz_status())
         else:
             msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
-        return '\n'.join(msg)
+        return all_online, '\n'.join(msg)
         

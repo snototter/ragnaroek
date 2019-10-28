@@ -130,7 +130,7 @@ class Lpd433Wrapper:
         # switch any LPD433 in our flat, no matter what's in between tx/rx ;-)
         self.turn_off()
         for h in self._heating_plugs:
-            logging.getLogger().info('[LPD433] Configured plug: {}'.format(h))
+            logging.getLogger().info('[LPD433] Initialized plug: {}'.format(h))
 
 
     def turn_on(self):

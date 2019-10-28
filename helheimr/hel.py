@@ -8,6 +8,7 @@ import sys
 
 from helu import broadcasting
 from helu import common
+from helu import district_heating
 from helu import heating
 from helu import network_utils
 from helu import scheduling
@@ -56,6 +57,14 @@ class Hel:
             self._heating = heating.Heating.init_instance(ctrl_cfg)
         except Exception as e:
             self._logger.error('[Hel] Error while setting up heating system:\n{}'.format(e))
+            raise e
+
+
+        # Set up the district heating wrapper
+        try:
+            district_heating.DistrictHeating.init_instance(ctrl_cfg)
+        except Exception as e:
+            self._logger.error('[Hel] Error while setting up district heating system:\n{}'.format(e))
             raise e
 
 
