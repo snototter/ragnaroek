@@ -7,6 +7,7 @@ import logging
 
 # from . import broadcasting
 from . import common
+from . import network_utils
 # from . import controller
 # from . import lpd433
 # from . import raspbee
@@ -44,40 +45,42 @@ class DistrictHeating:
             raise RuntimeError("DistrictHeating is a singleton!")
         DistrictHeating.__instance = self
 
-        #TODO load headers, params and configure buttons
+        # Load headers to replay the cURL requests
         dhcfg = config['district_heating']
         self._curl_headers = dict()
         headers = dhcfg['curl_headers']
         for k in headers:
             self._curl_headers[k] = headers[k]
 
+        # Prepare the button mapping
         self._buttons = dict()
         tmp_request_type = DistringHeatingRequest()
         for request_type in [r for r in dir(DistringHeatingRequest) if not r.startswith('__')]:
             self._buttons[getattr(tmp_request_type, request_type)] = dhcfg['button_{:s}'.format(request_type.lower())]
 
+        # Parameters which need to be set properly to switch on district heating
         self._param_change = (dhcfg['param_name_change'], dhcfg['param_value_change'])
         self._param_name_button = dhcfg['param_name_button']
 
+        # URLs of the district heating gateway
         self._url_change = dhcfg['url_change']
         self._url_query = dhcfg['url_query']
 
         #TODO remove
-        self.start_heating(DistringHeatingRequest.HIGH)
-        self.query_heating()
-        
+        self.start_heating(DistringHeatingRequest.HIGH) # TODO separate cmd teleheating/fernwaerme
+        self.query_heating() # TODO include in details cmd
+
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 
 
     def start_heating(self, request_type):
         """request_type is a DistrictHeatingRequest, specifying which physical button press should be simulated."""
-        #TODO
         params = (
             (self._param_name_button, self._buttons[request_type]),
             self._param_change
         )
-        #TODO perform request
-        print('GET', self._url_change, params, self._curl_headers)
+        # response = network_utils.safe_http_get(self._url_change, self._curl_headers, params) #TODO enable once we're done
+        #TODO check response (if None => exception, else r.status_code should be 200)
         return False
 
 
