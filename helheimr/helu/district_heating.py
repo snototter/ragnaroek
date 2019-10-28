@@ -47,10 +47,10 @@ class DistrictHeating:
 
         # Load headers to replay the cURL requests
         dhcfg = config['district_heating']
-        self._curl_headers = dict()
-        headers = dhcfg['curl_headers']
+        self._headers = dict()
+        headers = dhcfg['http_headers']
         for k in headers:
-            self._curl_headers[k] = headers[k]
+            self._headers[k] = headers[k]
 
         # Prepare the button mapping
         self._buttons = dict()
@@ -79,12 +79,13 @@ class DistrictHeating:
             (self._param_name_button, self._buttons[request_type]),
             self._param_change
         )
-        # response = network_utils.safe_http_get(self._url_change, self._curl_headers, params) #TODO enable once we're done
+        # response = network_utils.safe_http_get(self._url_change, self._headers, params) #TODO enable once we're done
         #TODO check response (if None => exception, else r.status_code should be 200)
         return False
 
 
     def query_heating(self):
         #TODO query #.cgi, parse result, check which button was pressed and return DistrictHeatingRequest
-        print('QUERY', self._url_query, self._curl_headers, 'params = None')
+        print('QUERY', self._url_query, self._headers, 'params = None')
+        #TODO check requests.get() doc for params=None
         return None
