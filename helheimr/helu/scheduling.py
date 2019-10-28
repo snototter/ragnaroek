@@ -840,6 +840,28 @@ def log_temperature():
     temperature_log.TemperatureLog.instance().log_temperature()
 
 
+def test_sensors():
+    sensors = heating.Heating.instance().query_temperature()
+    if sensors is None:
+        broadcasting.MessageBroadcaster.instance().error('Fehler bei der Sensorabfrage, bitte überprüfen!')
+    else:
+        num_sensors = len(sensors)
+        if num_sensors == 0:
+            broadcasting.MessageBroadcaster.instance().error('Es wurden keine Temperatursensoren konfiguriert!')
+        else:
+            reachable = [s.reachable for s in sensors]
+            not_reachable = num_sensors - sum(reachable)
+            if not_reachable == num_sensors:
+                broadcasting.MessageBroadcaster.instance().error('Aktuell ist kein Temperatursensor erreichbar!')
+            elif not_reachable > 0:
+                names = [s.display_name for s in sensors if not s.reachable]
+                if not_reachable == 1:
+                    msg = 'Temperatursensor im {} ist nicht erreichbar!'.format(names[0])
+                else:
+                    msg = 'Temperatursensoren sind nicht erreichbar: {}!'.format(', '.join(names))
+                broadcasting.MessageBroadcaster.instance().warning(msg)
+
+
 def test_network_connectivity():
     #TODO remove the broadcast!
     msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)

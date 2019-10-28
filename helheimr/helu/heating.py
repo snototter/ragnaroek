@@ -245,6 +245,7 @@ class Heating:
         should_heat = False
         current_temperature = None
         consecutive_errors = 0
+        reference_temperature_log = list()
         
         self._condition_var.acquire()
         while self._run_heating_loop:
@@ -276,9 +277,13 @@ class Heating:
 
 
             if self._is_heating:
+                # Log temperature to see if room temperature actually increases
+                current_temperature = self._zigbee_gateway.query_temperature_for_heating()
+                reference_temperature_log.append(current_temperature) #TODO use circular buffer
+                #TODO compute trend, https://docs.scipy.org/doc/scipy-0.13.0/reference/generated/scipy.stats.linregress.html
+
                 # Should we turn the heater on or off?
                 if use_controller:
-                    current_temperature = self._zigbee_gateway.query_temperature_for_heating()
                     if current_temperature is None:
                         self._broadcaster.error('Ich konnte kein Thermometer abfragen - versuche jetzt, die Heizung einzuschalten.')
                         should_heat = True
@@ -324,6 +329,9 @@ class Heating:
                         # Increase error count, but retry before broadcasting:
                         consecutive_errors += 1
                         logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
+            else:
+                # We're not heating, so clear the temperature log
+                reference_temperature_log = list()
 
 
             ## Note: LPD433 plugs don't transmit anything, so we cannot check if they
