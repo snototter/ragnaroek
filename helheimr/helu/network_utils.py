@@ -14,15 +14,23 @@ from . import heating
 from . import raspbee
 from . import telegram_bot
 
-#TODO replay curl request (headers, params) return response
-
-def http_get_request(url, timeout=2.0):
+def safe_http_get(url, headers=None, params=None, timeout=2.0, verify=False):
     """
-    Performs a GET request at the given url (string) and returns the response if one
-    was received within timeout (float) seconds. Otherwise, returns None.
+    Performs a GET request at the given url (string) with the given headers and parameters 
+    and returns the response if one was received within timeout (float) seconds. Otherwise, 
+    returns None.
     """
     try:
-        r = requests.get(url, timeout=timeout)
+        if headers is None:
+            if params is None:
+                r = requests.get(url, timeout=timeout, verify=verify)
+            else:
+                r = requests.get(url, params=params, timeout=timeout, verify=verify)
+        else:
+            if params is None:
+                r = requests.get(url, headers=headers, timeout=timeout, verify=verify)
+            else:
+                r = requests.get(url, headers=headers, params=params, timeout=timeout, verify=verify)
         return r
     except:
         err_msg = traceback.format_exc(limit=3)
@@ -30,19 +38,19 @@ def http_get_request(url, timeout=2.0):
         return None
 
 
-def safe_http_get(url, headers, params, timeout=2.0):
+def http_get_request(url, timeout=2.0):
     """
-    Performs a GET request at the given url (string) with the given headers and parameters 
-    and returns the response if one was received within timeout (float) seconds. Otherwise, 
-    returns None.
+    Performs a GET request at the given url (string) and returns the response if one
+    was received within timeout (float) seconds. Otherwise, returns None.
     """
-    try:
-        r = requests.get(url, headers=headers, params=params, verify=False, timeout=timeout)
-        return r
-    except:
-        err_msg = traceback.format_exc(limit=3)
-        logging.getLogger().error("Error HTTP GETting from '{}' with headers and parameters:\n{}".format(url, err_msg))
-        return None
+    return safe_http_get(url, None, None, timeout)
+    # try:
+    #     r = requests.get(url, timeout=timeout)
+    #     return r
+    # except:
+    #     err_msg = traceback.format_exc(limit=3)
+    #     logging.getLogger().error("Error HTTP GETting from '{}':\n{}".format(url, err_msg))
+    #     return None
 
 
 def http_put_request(url, data, timeout=2.0):
