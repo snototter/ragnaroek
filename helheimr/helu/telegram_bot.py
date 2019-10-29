@@ -24,7 +24,12 @@ temp - Aktueller Temperaturverlauf
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
 """
-
+#TODO all german?
+# start, stop, pause, einheizen, ausschalten, einmalig, aufheizen
+# shutdown => herunterfahren
+# list => programme
+# rm => loeschen :-/
+# konfigurieren :-/ ... keep config + rm
 
 import datetime
 import logging

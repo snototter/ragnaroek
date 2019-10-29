@@ -172,7 +172,7 @@ class DistrictHeatingQueryParser(HTMLParser):
                 'ein (Restzeit {:s})'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time))) \
                 if self.transition_status else 'aus')) #TODO div is also not known!
-                
+
         return '\n'.join(msg)
         
 
@@ -282,10 +282,6 @@ class DistrictHeating:
         # URLs of the district heating gateway
         self._url_change = dhcfg['url_change']
         self._url_query = dhcfg['url_query']
-
-        #TODO remove
-        self.start_heating(DistrictHeatingRequest.HIGH) # TODO separate telegram cmd teleheating/fernwaerme (menu: x is on/off, turn x,y,z, on for 1h)
-        self.query_heating() # TODO include fernwaerme in /details cmd
 
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 
