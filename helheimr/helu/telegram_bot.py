@@ -12,9 +12,9 @@ details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
 fernwaerme - Fernwärmestatus
 help - Liste verfügbarer Befehle
-list - Programme/Aufgaben auflisten
+programme - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
-once - :high_brightness: Einmalig aufheizen
+einmal - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
 rm - Heizungsprogramm löschen
@@ -25,8 +25,9 @@ vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
 """
 #TODO all german?
-# start, stop, pause, einheizen, ausschalten, einmalig, aufheizen
-# shutdown => herunterfahren
+# stop, pause, einheizen, ausschalten, einmalig, aufheizen
+# shutdown => herunterfahren :-/
+#TODO reboot, restart
 # list => programme
 # rm => loeschen :-/
 # konfigurieren :-/ ... keep config + rm
@@ -224,7 +225,7 @@ class HelheimrBot:
         forecast_handler = CommandHandler('wetter', self.__cmd_weather, self._user_filter)
         self._dispatcher.add_handler(forecast_handler)
 
-        heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
+        heat_once_handler = CommandHandler('einmal', self.__cmd_once, self._user_filter)
         self._dispatcher.add_handler(heat_once_handler)
 
         pause_handler = CommandHandler('pause', self.__cmd_pause, self._user_filter)
@@ -236,7 +237,7 @@ class HelheimrBot:
         temp_task_handler = CommandHandler('temp', self.__cmd_temp, self._user_filter)
         self._dispatcher.add_handler(temp_task_handler)
 
-        job_list_handler = CommandHandler('list', self.__cmd_list_jobs, self._user_filter)
+        job_list_handler = CommandHandler('programme', self.__cmd_list_jobs, self._user_filter)
         self._dispatcher.add_handler(job_list_handler)
 
         dh_start_handler = CommandHandler('vorlauf', self.__cmd_start_district_heating, self._user_filter)
@@ -323,38 +324,41 @@ class HelheimrBot:
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
 /details - Detaillierte Systeminformation.
-/list - Liste aller Programme & Aufgaben.
+/programme - Liste aller Programme & Aufgaben.
 
 /ein oder /on - :thermometer: Heizung einschalten.
-  nur Temperatur: /on `21.7c`
-  Hysterese: /on `21c` `1c`
-  nur Heizdauer: /on `1.5h`
-  Temperatur und Dauer: /on `23c` `2h`
-  Alles: /on `22c` `0.5c` `1.5h`
+    Mit Temperatur: /on `21.7c`
+    Mit Hysterese: /on `21c` `1c`
+    Mit Heizdauer: /on `1.5h`
+    Temperatur und Dauer: /on `23c` `2h`
+    Alles: /on `22c` `0.5c` `1.5h`
 
-/once - :thermometer: Einmalig aufheizen.
+/einmal - :thermometer: Einmalig auf
+    bestimmte Temperatur aufheizen.
 
 /aus oder /off - :snowflake: Heizung ausschalten.
 
 /pause - Heizungsprogramme pausieren.
 
+/temp - Temperaturverlauf anzeigen.
+    Letzte Stunde: /temp
+    Letzten n Messungen: /temp 15
+
+/wetter - :partly_sunny: Wetterbericht.
+
+/fernwaerme - Ferwärmestatus abfragen.
+
+/vorlauf - 1\u200ah Fernwärmevorlauf einstellen.
+
 /config - Heizungsprogramm einstellen.
-  Uhrzeit + Dauer: /config 6:00 2h
-  Zusätzlich Temperatur: /config 6:00 23c 2h
-  Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
+    Uhrzeit + Dauer: /config 6:00 2h
+    Zusätzlich Temperatur: /config 6:00 23c 2h
+    Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
 
 /rm - Heizungsprogramm löschen.
 
-/temp - Temperaturverlauf anzeigen.
-  Letzte Stunde: /temp
-  n Messungen: /temp 15
-
-/fernwaerme - Ferwärmestatus abfragen.
-/vorlauf - Temperatur für 1\u200ah Fernwärmevorlauf
-  einstellen.
-
 /shutdown - System herunterfahren.
-/wetter - :partly_sunny: Wetterbericht.
+
 /help - Diese Hilfemeldung."""
         self.__safe_send(update.message.chat_id, txt)
 
