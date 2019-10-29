@@ -19,7 +19,7 @@ def compute_temperature_trend(readings, time_steps=None):
         return None, None
     if time_steps is None:
         time_steps = range(len(readings))
-    slope, intercept, r_value, p_value, std_err = stats.linregress(time_steps, readings)
+    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(time_steps, readings)
     return slope, r_value**2
 
 
@@ -107,7 +107,7 @@ class TemperatureLog:
         return ls
 
 
-    def format_table(self, num_entries=None, use_markdown=True):
+    def format_table(self, num_entries=None, use_markdown=True): #TODO if no stored readings => query current temperature!
         """Returns an ASCII table showing the last
         num_entries readings (or the last hour if
         num_entries is None).

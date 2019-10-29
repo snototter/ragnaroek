@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # coding=utf-8
 """Controls the heater (or a dummy heater for debug purposes)."""
-
+#TODO e-ink: thrudvang, bilskirnir, fensal, gjallarbru (bruecke ueber gjoell), breidablik
 import datetime
 import logging
 import threading
