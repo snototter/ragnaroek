@@ -26,7 +26,10 @@ class Hel:
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+        # Suppress time (as it's added by journalctl by default)
+        # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(levelname)s - %(message)s')
         file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
                     interval=1, backupCount=8)
         file_handler.setLevel(logging.INFO)
