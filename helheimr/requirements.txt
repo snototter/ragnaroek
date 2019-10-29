@@ -7,3 +7,4 @@ pyowm
 python-dateutil
 pylint
 rpi-rf
+scipy

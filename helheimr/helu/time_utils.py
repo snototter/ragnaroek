@@ -61,23 +61,27 @@ def time_as_local(t):
     return dt_as_local(dt).timetz()
 
 
-def days_hours_minutes(td):
+def days_hours_minutes_seconds(td):
     """Convert datetime.timedelta to days, hours, minutes"""
-    return td.days, td.seconds//3600, (td.seconds//60)%60
+    return td.days, td.seconds//3600, (td.seconds//60)%60, td.seconds%60
 
 
 def format_timedelta(td):
     """Returns a simplified string representation of the datetime.timedelta object td."""
-    days, hours, minutes = days_hours_minutes(td)
+    days, hours, minutes, seconds = days_hours_minutes_seconds(td)
     s = '' if days == 0 else '{:d}\u200ad'.format(days)
     if hours > 0:
         if len(s) > 0:
             s += ' '
         s += '{:d}\u200ah'.format(hours)
-    if minutes > 0 or len(s) == 0:
+    if minutes > 0:
         if len(s) > 0:
             s += ' '
         s += '{:d}\u200amin'.format(minutes)
+    if seconds > 0 or len(s) == 0:
+        if len(s) > 0:
+            s += ' '
+        s += '{:d}\u200asec'.format(seconds)
     return s
 
 

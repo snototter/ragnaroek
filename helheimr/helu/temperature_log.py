@@ -4,12 +4,23 @@
 
 import logging
 import math
+import scipy.stats
 
 from . import common
 from . import heating
 from . import raspbee
 from . import time_utils
 from . import scheduling
+
+def compute_temperature_trend(readings, time_steps=None):
+    """Fits a least-squares line to the temperature readings (list-like, np.array, etc.) and
+    returns the tuple (slope, r_squared)."""
+    if len(readings) < 2:
+        return None, None
+    if time_steps is None:
+        time_steps = range(len(readings))
+    slope, intercept, r_value, p_value, std_err = stats.linregress(time_steps, readings)
+    return slope, r_value**2
 
 
 class TemperatureLog:

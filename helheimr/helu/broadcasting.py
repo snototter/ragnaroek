@@ -4,6 +4,7 @@
 
 import logging
 
+#TODO telegram: send error to all authorized chats
 class MessageBroadcaster:
     __instance = None
 

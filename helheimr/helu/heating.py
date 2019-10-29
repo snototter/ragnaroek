@@ -12,8 +12,9 @@ from . import controller
 from . import lpd433
 from . import raspbee
 from . import time_utils
-from . import scheduling
 from . import telegram_bot
+from . import temperature_log
+from . import scheduling
 
 """Heating can be turned on via manual request or via a scheduled job."""
 HeatingRequest = common.enum(MANUAL=1, SCHEDULED=2)
@@ -116,6 +117,10 @@ class Heating:
         self._condition_var = threading.Condition(self._lock) # it on shutdown or other changes
         self._heating_loop_thread = threading.Thread(target=self.__heating_loop)
         self._heating_loop_thread.start()
+
+        # Members related to temperature sensor check #TODO add to config, waitingtime = 1200, threshold = 0.2 initially (testing) wait=20
+        self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
+        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']     # Temperature inc/dec will be recognised if |delta_temp| >= hysteresis
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,
@@ -280,7 +285,6 @@ class Heating:
                 # Log temperature to see if room temperature actually increases
                 current_temperature = self._zigbee_gateway.query_temperature_for_heating()
                 reference_temperature_log.append(current_temperature) #TODO use circular buffer
-                #TODO compute trend, https://docs.scipy.org/doc/scipy-0.13.0/reference/generated/scipy.stats.linregress.html
 
                 # Should we turn the heater on or off?
                 if use_controller:
@@ -329,6 +333,9 @@ class Heating:
                         # Increase error count, but retry before broadcasting:
                         consecutive_errors += 1
                         logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
+
+                # Check whether temperature actually increases
+                self.__check_temperature_trend(reference_temperature_log, should_heat)
             else:
                 # We're not heating, so clear the temperature log
                 reference_temperature_log = list()
@@ -363,3 +370,16 @@ class Heating:
         self._condition_var.release()
         logging.getLogger().info('[Heating] Heating system has been shut down.')
 
+
+    def __check_temperature_trend(self, reference_temperature_log, should_heat):
+        trend_period = len(reference_temperature_log) * self._max_idle_time
+        if trend_period >= self._temperature_trend_waiting_time:
+            temperature_slope, determination_coefficient = \
+                temperature_log.compute_temperature_trend(reference_temperature_log)
+            if temperature_slope is not None and \
+                (should_heat and temperature_slope < self._temperature_trend_hysteresis):
+                logging.getLogger().error("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}) too small despite heating for {} seconds".format(
+                    temperature_slope, determination_coefficient, trend_period))
+                broadcasting.MessageBroadcaster.instance().error('Temperatur steigt zu wenig an {:.3f}\u200a° innerhalb von {}'.format(
+                    temperature_slope, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
+            
