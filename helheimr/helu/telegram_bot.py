@@ -20,6 +20,7 @@ rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
 status - Statusabfrage
 temp - Aktueller Temperaturverlauf
+vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 weather - :partly_sunny: Wetterbericht
 """
 
@@ -232,6 +233,9 @@ class HelheimrBot:
         job_list_handler = CommandHandler('list', self.__cmd_list_jobs, self._user_filter)
         self._dispatcher.add_handler(job_list_handler)
 
+        dh_handler = CommandHandler('vorlauf', self.__cmd_district_heating, self._user_filter)
+        self._dispatcher.add_handler(dh_handler)
+
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
 
@@ -335,6 +339,9 @@ class HelheimrBot:
 /temp - Temperaturverlauf anzeigen.
   Letzte Stunde: /temp
   n Messungen: /temp 15
+
+/vorlauf - Temperatur für 1\u200ah Fernwärmevorlauf
+  einstellen.
 
 /shutdown - System herunterfahren.
 /weather - :partly_sunny: Wetterbericht.
