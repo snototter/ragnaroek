@@ -388,3 +388,4 @@ class Heating:
                     broadcasting.MessageBroadcaster.instance().info("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}), heating for {}".format(
                         temperature_slope, determination_coefficient, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
             
+    #TODO mute the trend warning once issued for some time!
