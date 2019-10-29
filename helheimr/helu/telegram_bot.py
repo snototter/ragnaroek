@@ -510,7 +510,7 @@ class HelheimrBot:
 
         reply_markup = telegram.InlineKeyboardMarkup(keyboard)
         self._is_modifying_heating = self.__safe_message_reply(update, 
-            "Bitte Vorlauftemperatur auswählen:", reply_markup=reply_markup)
+            "Vorlauftemperatur auswählen:", reply_markup=reply_markup)
 
 
     def __cmd_off(self, update, context):

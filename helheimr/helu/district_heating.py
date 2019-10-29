@@ -2,7 +2,9 @@
 # coding=utf-8
 """Our solar/district heating system can be 'boosted' on really cold days."""
 
+from html.parser import HTMLParser
 import logging
+import re
 # import threading
 import traceback
 
@@ -15,6 +17,90 @@ from . import network_utils
 # from . import time_utils
 # from . import scheduling
 # from . import telegram_bot
+
+class DistrictHeatingQueryParser(HTMLParser):
+    """The district heating system gateway provides a quite crappy website.
+    This parser takes care of the *really* dirty work to translate a status
+    query into into something we can use programmatically.
+    """
+    def __init__(self):
+        super(DistrictHeatingQueryParser, self).__init__()
+        #TODO register div_ids
+        self._status = {
+            'eco_status': None,
+            'eco_time': None,
+            'medium_status': None,
+            'medium_time': None,
+            'high_status': None,
+            'high_time': None,
+            'very_high_status': None,
+            'very_high_time': None,
+            'transition_status': None,
+            'transition_time': None
+        }
+
+        self._store_data_to = None # Holds the key into self._status (is set upon starting tags)
+
+        self._div_mapping = {
+            'pos38': 'eco_status',
+            'pos34': 'medium_status',
+            'pos36': 'high_status',
+            'pos37': 'very_high_status',
+            'pos39': 'transition_status',
+
+            'posTODO1': 'eco_time',
+            'pos35': 'medium_time',
+            'pos29': 'high_time',
+            'pos31': 'very_high_time',
+            'posTODO2': 'transition_time' # Couldn't find the corresponding div id (as it's not always shown)
+        }
+        self._interesting_divs = self._div_mapping.keys()
+        #TODO add system status? (solar panel state, speicher, verbrauch, etc)
+
+    @property
+    def status_dict(self):
+        return self._status
+
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'div':
+            div_id = None
+            for attr in attrs:
+                name, val = attr
+                if name == 'id':
+                    div_id = val
+                    break
+            if div_id in self._interesting_divs:
+                self._store_data_to = self._div_mapping[div_id]
+            else:
+                self._store_data_to = None
+
+
+    def handle_endtag(self, tag):
+        self._store_data_to = None
+
+
+    def handle_data(self, data):
+        if self._store_data_to is None:
+            return
+        trimmed = data.strip()
+        if self._store_data_to.endswith('_status'):
+            # Need to parse an on/off string
+            self._status[self._store_data_to] = True if trimmed.lower() == 'on' else False
+        elif self._store_data_to.endswith('_time'):
+            # Need to parse an "remaining time" string which should contain 'Xm Ys'
+            times = [int(t) for t in re.findall(r'\d+', trimmed)]
+            if len(times) == 2:
+                self._status[self._store_data_to] = times[0] * 60 + times[1]
+            elif len(times) == 1:
+                self._status[self._store_data_to] = times[0]
+            else:
+                logging.getLogger().error('[DistrictHeatingQueryParser] Invalid remaining time string: "{:s}"'.format(trimmed))
+                #TODO broadcast error
+        else:
+            #TODO implement others if needed
+            pass
+
 
 DistrictHeatingRequest = common.enum(ECO=1, MEDIUM=2, HIGH=3, VERY_HIGH=4, TRANSITION=5)
 
@@ -92,7 +178,7 @@ class DistrictHeating:
         except:
             err_msg = traceback.format_exc(limit=3)
             return False, 'Vorlauftemperatur konnte keiner Adresse zugeordnet werden: {}'.format(err_msg)
-            
+
         print('You requested', request_type, 'btn id:', btn_id)
         params = (
             (self._param_name_button, btn_id),
@@ -104,7 +190,15 @@ class DistrictHeating:
 
 
     def query_heating(self):
-        #TODO query #.cgi, parse result, check which button was pressed and return DistrictHeatingRequest
-        print('QUERY', self._url_query, self._headers, 'params = None')
-        #TODO check requests.get() doc for params=None
-        return None
+        response = network_utils.safe_http_get(self._url_query, headers=self._headers)
+        if response is None:
+            return False, 'Netzwerkfehler bei der Fernwärmeabfrage'
+        
+        if response:
+            query_parser = DistrictHeatingQueryParser()
+            query_parser.feed(response.text)
+            print(query_parser.status_dict)
+            #TODO make msg
+            return True, 'TODO'
+        else:
+            return False, 'Fehler bei der Fernwärmeabfrage, HTTP Status: {}'.format(response.status_code)
