@@ -383,4 +383,7 @@ class Heating:
                     temperature_slope, determination_coefficient, trend_period))
                 broadcasting.MessageBroadcaster.instance().error('Temperatur steigt zu wenig an {:.3f}\u200a° innerhalb von {}'.format(
                     temperature_slope, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
+            elif temperature_slope is not None: #TODO remove this debug output
+                    broadcasting.MessageBroadcaster.instance().info("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}), heating for {}".format(
+                        temperature_slope, determination_coefficient, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
             
