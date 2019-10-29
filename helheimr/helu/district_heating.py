@@ -67,8 +67,8 @@ class DistrictHeating:
         self._url_query = dhcfg['url_query']
 
         #TODO remove
-        self.start_heating(DistringHeatingRequest.HIGH) # TODO separate cmd teleheating/fernwaerme
-        self.query_heating() # TODO include in details cmd
+        self.start_heating(DistringHeatingRequest.HIGH) # TODO separate telegram cmd teleheating/fernwaerme (menu: x is on/off, turn x,y,z, on for 1h)
+        self.query_heating() # TODO include fernwaerme in /details cmd
 
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 

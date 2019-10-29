@@ -205,10 +205,12 @@ class WeatherReport:
                 ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '')
 
         if self.rain is not None:
-            msg += ', {:d}\200amm'.format(int(self.rain))
+            #msg += ', {:d}\u200amm'.format(int(self.rain))
+            msg += ', {:.1f}\u200amm'.format(self.rain)
 
         if self.snow is not None:
-            msg += ', {:d}\200amm'.format(int(self.snow))
+            #msg += ', {:d}\u200amm'.format(int(self.snow))
+            msg += ', {:.1f}\u200amm'.format(self.snow)
 
         if self.wind is not None and self.wind['speed'] is not None:
             msg += ', {:d}\u200akm/h{}'.format(

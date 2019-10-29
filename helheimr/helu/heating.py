@@ -120,7 +120,7 @@ class Heating:
 
         # Members related to temperature sensor check #TODO add to config, waitingtime = 1200, threshold = 0.2 initially (testing) wait=20
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
-        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']     # Temperature inc/dec will be recognised if |delta_temp| >= hysteresis
+        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']     # Temperature inc/dec will be recognised if |delta_temp| >= threshold
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,
@@ -377,7 +377,7 @@ class Heating:
             temperature_slope, determination_coefficient = \
                 temperature_log.compute_temperature_trend(reference_temperature_log)
             if temperature_slope is not None and \
-                (should_heat and temperature_slope < self._temperature_trend_hysteresis):
+                (should_heat and temperature_slope < self._temperature_trend_threshold):
                 logging.getLogger().error("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}) too small despite heating for {} seconds".format(
                     temperature_slope, determination_coefficient, trend_period))
                 broadcasting.MessageBroadcaster.instance().error('Temperatur steigt zu wenig an {:.3f}\u200a° innerhalb von {}'.format(
