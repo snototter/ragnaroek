@@ -861,6 +861,8 @@ def test_sensors():
                 else:
                     msg = 'Temperatursensoren sind nicht erreichbar: {}!'.format(', '.join(names))
                 broadcasting.MessageBroadcaster.instance().warning(msg)
+            else: #TODO remove
+                broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar!')
 
 
 def test_network_connectivity():
