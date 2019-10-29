@@ -34,6 +34,7 @@ import threading
 import time
 
 from . import common
+from . import district_heating
 from . import heating
 from . import network_utils
 from . import scheduling
@@ -116,6 +117,9 @@ class HelheimrBot:
     CALLBACK_CONFIG_REMOVE_JOB_SELECT = '7'
     CALLBACK_PAUSE_CONFIRM_TOGGLE = '8'
     CALLBACK_PAUSE_CANCEL = '9'
+    CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL = 'dh0'
+    CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM = 'dh1'
+
 
     #TODO the python bot api wrapper supports pattern matching, so
     # we might want to clean up the callback handler a bit:
@@ -338,7 +342,6 @@ class HelheimrBot:
         self.__safe_send(update.message.chat_id, txt)
 
 #TODO temp => aktuelle temperatur + plot
-#TODO status (temp ohne luftdruck)
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
@@ -474,7 +477,7 @@ class HelheimrBot:
         self._is_modifying_heating = True
 
 
-        temp_buttons = [telegram.InlineKeyboardButton('{:d}'.format(t), 
+        temp_buttons = [telegram.InlineKeyboardButton('{:d}\u200a°'.format(t), 
             callback_data=type(self).CALLBACK_TURN_ON_ONCE_CONFIRM + ':{:d}'.format(t)) for t in [19, 21, 23, 25]]
         keyboard = [temp_buttons, # First row
             [telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
@@ -482,6 +485,25 @@ class HelheimrBot:
         reply_markup = telegram.InlineKeyboardMarkup(keyboard)
         self._is_modifying_heating = self.__safe_message_reply(update, 
             "Bitte Temperatur auswählen:", reply_markup=reply_markup)
+
+
+    def __cmd_district_heating(self, update, context):
+        # Check if another user is currently modifying something:
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True
+
+        btns = district_heating.DistrictHeating.instance().get_buttons()
+        temp_buttons = [telegram.InlineKeyboardButton(b[0], 
+            callback_data=type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM + ':{}'.format(b[1])) for b in btns]
+        keyboard = [temp_buttons, # First row
+            [telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL)]]
+
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            "Bitte Vorlauftemperatur auswählen:", reply_markup=reply_markup)
 
 
     def __cmd_off(self, update, context):
@@ -654,6 +676,19 @@ class HelheimrBot:
 
         elif response == type(self).CALLBACK_PAUSE_CANCEL:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
+            self._is_modifying_heating = False
+
+        elif response == type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL:
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
+            self._is_modifying_heating = False
+
+        elif response == type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM:
+            request_type = tokens[1]
+            success, txt = district_heating.DistrictHeating.instance().start_heating(request_type)
+            if not success:
+                self.__safe_edit_callback_query(query, ':bangbang: Fehler: ' + txt)
+            else:
+                self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.')
             self._is_modifying_heating = False
 
 

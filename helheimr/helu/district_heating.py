@@ -15,7 +15,7 @@ from . import network_utils
 # from . import scheduling
 # from . import telegram_bot
 
-DistringHeatingRequest = common.enum(ECO=1, MEDIUM=2, HIGH=3, VERY_HIGH=4, TRANSITION=5)
+DistrictHeatingRequest = common.enum(ECO=1, MEDIUM=2, HIGH=3, VERY_HIGH=4, TRANSITION=5)
 
 class DistrictHeating:
     __instance = None
@@ -54,8 +54,8 @@ class DistrictHeating:
 
         # Prepare the button mapping
         self._buttons = dict()
-        tmp_request_type = DistringHeatingRequest()
-        for request_type in [r for r in dir(DistringHeatingRequest) if not r.startswith('__')]:
+        tmp_request_type = DistrictHeatingRequest()
+        for request_type in [r for r in dir(DistrictHeatingRequest) if not r.startswith('__')]:
             self._buttons[getattr(tmp_request_type, request_type)] = dhcfg['button_{:s}'.format(request_type.lower())]
 
         # Parameters which need to be set properly to switch on district heating
@@ -67,21 +67,32 @@ class DistrictHeating:
         self._url_query = dhcfg['url_query']
 
         #TODO remove
-        self.start_heating(DistringHeatingRequest.HIGH) # TODO separate telegram cmd teleheating/fernwaerme (menu: x is on/off, turn x,y,z, on for 1h)
+        self.start_heating(DistrictHeatingRequest.HIGH) # TODO separate telegram cmd teleheating/fernwaerme (menu: x is on/off, turn x,y,z, on for 1h)
         self.query_heating() # TODO include fernwaerme in /details cmd
 
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 
 
+    def get_buttons(self):
+        """Returns the (sub-set of) buttons to control the district heating system."""
+        return [
+            ('Eco', DistrictHeatingRequest.ECO), #TODO remove
+            ('55\u200a°', DistrictHeatingRequest.MEDIUM),
+            ('60\u200a°', DistrictHeatingRequest.HIGH),
+            ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
+        ]
+
+
     def start_heating(self, request_type):
         """request_type is a DistrictHeatingRequest, specifying which physical button press should be simulated."""
+        print('You requested', request_type, 'type:', type(request_type))
         params = (
             (self._param_name_button, self._buttons[request_type]),
             self._param_change
         )
         # response = network_utils.safe_http_get(self._url_change, self._headers, params) #TODO enable once we're done
         #TODO check response (if None => exception, else r.status_code should be 200)
-        return False
+        return False, 'Not implemented'
 
 
     def query_heating(self):
