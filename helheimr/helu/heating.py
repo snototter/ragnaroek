@@ -406,7 +406,7 @@ class Heating:
                     broadcasting.MessageBroadcaster.instance().error(msg)
                     # Also send the list of temperatures:
                     broadcasting.MessageBroadcaster.instance().info(
-                        '```' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
+                        '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
                         'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
 
             elif temperature_slope is not None: #TODO remove this debug output (full branch!)
@@ -414,6 +414,6 @@ class Heating:
                         temperature_slope, determination_coefficient, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
 
                     broadcasting.MessageBroadcaster.instance().info(
-                        '```' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
+                        '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
                         'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
             
