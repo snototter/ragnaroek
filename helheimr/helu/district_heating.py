@@ -4,6 +4,7 @@
 
 import logging
 # import threading
+import traceback
 
 # from . import broadcasting
 from . import common
@@ -85,9 +86,16 @@ class DistrictHeating:
 
     def start_heating(self, request_type):
         """request_type is a DistrictHeatingRequest, specifying which physical button press should be simulated."""
-        print('You requested', request_type, 'type:', type(request_type))
+        try:
+            request_type = int(request_type)
+            btn_id = self._buttons[request_type]
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            return False, 'Vorlauftemperatur konnte keiner Adresse zugeordnet werden: {}'.format(err_msg)
+            
+        print('You requested', request_type, 'btn id:', btn_id)
         params = (
-            (self._param_name_button, self._buttons[request_type]),
+            (self._param_name_button, btn_id),
             self._param_change
         )
         # response = network_utils.safe_http_get(self._url_change, self._headers, params) #TODO enable once we're done
