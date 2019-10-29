@@ -206,14 +206,14 @@ class WeatherReport:
 
         if self.rain is not None:
             #msg += ', {:d}\u200amm'.format(int(self.rain))
-            msg += ', {:.1f}\u200amm'.format(self.rain)
+            msg += ' {:.1f}\u200amm'.format(self.rain)
 
         if self.snow is not None:
             #msg += ', {:d}\u200amm'.format(int(self.snow))
-            msg += ', {:.1f}\u200amm'.format(self.snow)
+            msg += ' {:.1f}\u200amm'.format(self.snow)
 
         if self.wind is not None and self.wind['speed'] is not None:
-            msg += ', {:d}\u200akm/h{}'.format(
+            msg += ' {:d}\u200akm/h{}'.format(
                     int(math.ceil(self.wind['speed'])),
                     ' {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else '')
         return msg
