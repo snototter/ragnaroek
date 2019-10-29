@@ -118,9 +118,9 @@ class Heating:
         self._heating_loop_thread = threading.Thread(target=self.__heating_loop)
         self._heating_loop_thread.start()
 
-        # Members related to temperature sensor check #TODO add to config, waitingtime = 1200, threshold = 0.2 initially (testing) wait=20
+        # Members related to temperature sensor check
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
-        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']     # Temperature inc/dec will be recognised if |delta_temp| >= threshold
+        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,
@@ -335,6 +335,7 @@ class Heating:
                         logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
 
                 # Check whether temperature actually increases
+                #TODO log should_heat along with reference temperature
                 self.__check_temperature_trend(reference_temperature_log, should_heat)
             else:
                 # We're not heating, so clear the temperature log
