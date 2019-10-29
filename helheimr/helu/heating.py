@@ -121,6 +121,8 @@ class Heating:
         # Members related to temperature sensor check
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
         self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
+        self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
+        self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,
@@ -284,7 +286,6 @@ class Heating:
             if self._is_heating:
                 # Log temperature to see if room temperature actually increases
                 current_temperature = self._zigbee_gateway.query_temperature_for_heating()
-                reference_temperature_log.append(current_temperature) #TODO use circular buffer
 
                 # Should we turn the heater on or off?
                 if use_controller:
@@ -335,8 +336,9 @@ class Heating:
                         logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
 
                 # Check whether temperature actually increases
-                #TODO log should_heat along with reference temperature
-                self.__check_temperature_trend(reference_temperature_log, should_heat)
+                reference_temperature_log.append((current_temperature, should_heat)) #TODO maybe use circular buffer
+                if should_heat:
+                    self.__check_temperature_trend(reference_temperature_log)
             else:
                 # We're not heating, so clear the temperature log
                 reference_temperature_log = list()
@@ -372,20 +374,46 @@ class Heating:
         logging.getLogger().info('[Heating] Heating system has been shut down.')
 
 
-    def __check_temperature_trend(self, reference_temperature_log, should_heat):
+    def __check_temperature_trend(self, reference_temperature_log):
+        # For how long have we collected the log?
         trend_period = len(reference_temperature_log) * self._max_idle_time
         if trend_period >= self._temperature_trend_waiting_time:
+            # Extract the temperatures (only from the last "should-be-heating period")
+            temperatures = list()
+            for i in range(len(reference_temperature_log)-1, 0, -1):
+                t, sh = reference_temperature_log[i]
+                if not sh:
+                    break
+                temperatures.append(t)
+
+            # Linear regression to determine the slope
             temperature_slope, determination_coefficient = \
-                temperature_log.compute_temperature_trend(reference_temperature_log)
-            if temperature_slope is not None and \
-                (should_heat and temperature_slope < self._temperature_trend_threshold):
-                logging.getLogger().error("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}) too small despite heating for {} seconds".format(
+                temperature_log.compute_temperature_trend(temperatures)
+
+            # Check if there is an actual temperature increase
+            if temperature_slope is not None and temperature_slope < self._temperature_trend_threshold:
+                # If not, log the error...
+                logging.getLogger().error("[Heating] Temperature change ({:.2f}° with R-squared {:.2f}) too small despite heating for {} seconds".format(
                     temperature_slope, determination_coefficient, trend_period))
-                broadcasting.MessageBroadcaster.instance().error('Temperatur steigt zu wenig an {:.3f}\u200a° innerhalb von {}'.format(
-                    temperature_slope, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
-                broadcasting.MessageBroadcaster.instance().error('```' + '\n'.join(['{:.3f}°'.format(t) for t in reference_temperature_log]) + '```') # TODO remove?
-            elif temperature_slope is not None: #TODO remove this debug output
-                    broadcasting.MessageBroadcaster.instance().info("[Heating] Temperature change ({:.3f}° with R-squared {:.3f}), heating for {}".format(
+                # ... and warn the users (but avoid spamming them)
+                if self._last_trend_warning_issue_time is None or \
+                    (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
+                    msg = 'Temperatur steigt zu wenig an, {:s}{:.2f}\u200a° innerhalb von {}'.format(
+                            '' if temperature_slope < 0 else '+',
+                            temperature_slope, 
+                            time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))
+                        )
+                    broadcasting.MessageBroadcaster.instance().error(msg)
+                    # Also send the list of temperatures:
+                    broadcasting.MessageBroadcaster.instance().info(
+                        '```' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
+                        'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
+
+            elif temperature_slope is not None: #TODO remove this debug output (full branch!)
+                    broadcasting.MessageBroadcaster.instance().info("[Heating] Temperature change ({:.2f}° with R-squared {:.2f}), heating for {}".format(
                         temperature_slope, determination_coefficient, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
+
+                    broadcasting.MessageBroadcaster.instance().info(
+                        '```' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
+                        'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
             
-    #TODO mute the trend warning once issued for some time!
