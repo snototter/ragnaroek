@@ -51,7 +51,7 @@ class DistrictHeatingQueryParser(HTMLParser):
             'consumption_temperature': None, # Verbrauch °C
             'consumption_power': None,       # Verbrauch kW
             'teleheating_temperature': None, # Herkunft Fernwärme °C
-        }#TODO some power?
+        }
 
         self._store_data_to = None # Holds the key into self._status (is set upon starting tags)
 
@@ -149,6 +149,12 @@ class DistrictHeatingQueryParser(HTMLParser):
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.eco_time))) \
                 if self.eco_status else 'aus')) # TODO eco time will be None as we don't know the correct div
 
+        if self.transition_status is not None:
+            msg.append('\u2022 Übergang ist {}'.format(
+                'ein, Restzeit {:s}'.format(
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time))) \
+                if self.transition_status else 'aus')) #TODO div is also not known!
+
         if self.medium_status is not None:
             msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
                 'ein, Restzeit {:s}'.format(
@@ -166,12 +172,6 @@ class DistrictHeatingQueryParser(HTMLParser):
                 'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.very_high_time))) \
                 if self.very_high_status else 'aus'))
-
-        if self.transition_status is not None:
-            msg.append('\u2022 Übergang ist {}'.format(
-                'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time))) \
-                if self.transition_status else 'aus')) #TODO div is also not known!
 
         return '\n'.join(msg)
         
