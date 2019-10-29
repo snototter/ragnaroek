@@ -145,31 +145,31 @@ class DistrictHeatingQueryParser(HTMLParser):
 
         if self.eco_status is not None:
             msg.append('\u2022 Eco ist {}'.format(
-                'ein (Restzeit {:s})'.format(
+                'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.eco_time))) \
                 if self.eco_status else 'aus')) # TODO eco time will be None as we don't know the correct div
 
         if self.medium_status is not None:
             msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
-                'ein (Restzeit {:s})'.format(
+                'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.medium_time))) \
                 if self.medium_status else 'aus'))
 
         if self.high_status is not None:
             msg.append('\u2022 Hoch 60\u200a° ist {}'.format(
-                'ein (Restzeit {:s})'.format(
+                'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.high_time))) \
                 if self.high_status else 'aus'))
 
         if self.very_high_status is not None:
             msg.append('\u2022 Sehr hoch 65\u200a° ist {}'.format(
-                'ein (Restzeit {:s})'.format(
+                'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.very_high_time))) \
                 if self.very_high_status else 'aus'))
 
         if self.transition_status is not None:
             msg.append('\u2022 Übergang ist {}'.format(
-                'ein (Restzeit {:s})'.format(
+                'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time))) \
                 if self.transition_status else 'aus')) #TODO div is also not known!
 
