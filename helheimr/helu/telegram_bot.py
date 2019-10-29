@@ -10,6 +10,7 @@ aus - :snowflake: Heizung ausschalten
 config - Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
+fernwaerme - Fernwärmestatus
 help - Liste verfügbarer Befehle
 list - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
@@ -21,7 +22,7 @@ shutdown - System herunterfahren
 status - Statusabfrage
 temp - Aktueller Temperaturverlauf
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
-weather - :partly_sunny: Wetterbericht
+wetter - :partly_sunny: Wetterbericht
 """
 
 
@@ -215,7 +216,7 @@ class HelheimrBot:
         cfg_handler = CommandHandler('config', self.__cmd_configure, self._user_filter)
         self._dispatcher.add_handler(cfg_handler)
 
-        forecast_handler = CommandHandler('weather', self.__cmd_weather, self._user_filter)
+        forecast_handler = CommandHandler('wetter', self.__cmd_weather, self._user_filter)
         self._dispatcher.add_handler(forecast_handler)
 
         heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
@@ -233,8 +234,11 @@ class HelheimrBot:
         job_list_handler = CommandHandler('list', self.__cmd_list_jobs, self._user_filter)
         self._dispatcher.add_handler(job_list_handler)
 
-        dh_handler = CommandHandler('vorlauf', self.__cmd_district_heating, self._user_filter)
-        self._dispatcher.add_handler(dh_handler)
+        dh_start_handler = CommandHandler('vorlauf', self.__cmd_start_district_heating, self._user_filter)
+        self._dispatcher.add_handler(dh_start_handler)
+
+        dh_query_handler = CommandHandler('fernwaerme', self.__cmd_query_district_heating, self._user_filter)
+        self._dispatcher.add_handler(dh_query_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
@@ -340,11 +344,12 @@ class HelheimrBot:
   Letzte Stunde: /temp
   n Messungen: /temp 15
 
+/fernwaerme - Ferwärmestatus abfragen.
 /vorlauf - Temperatur für 1\u200ah Fernwärmevorlauf
   einstellen.
 
 /shutdown - System herunterfahren.
-/weather - :partly_sunny: Wetterbericht.
+/wetter - :partly_sunny: Wetterbericht.
 /help - Diese Hilfemeldung."""
         self.__safe_send(update.message.chat_id, txt)
 
@@ -494,7 +499,7 @@ class HelheimrBot:
             "Bitte Temperatur auswählen:", reply_markup=reply_markup)
 
 
-    def __cmd_district_heating(self, update, context):
+    def __cmd_start_district_heating(self, update, context):
         # Check if another user is currently modifying something:
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
@@ -511,6 +516,13 @@ class HelheimrBot:
         reply_markup = telegram.InlineKeyboardMarkup(keyboard)
         self._is_modifying_heating = self.__safe_message_reply(update, 
             "Vorlauftemperatur auswählen:", reply_markup=reply_markup)
+
+
+    def __cmd_query_district_heating(self, update, context):
+        success, msg = district_heating.DistrictHeating.instance().query_heating(use_markdown=True)
+        if not success:
+            msg = ':bangbang: ' + msg
+        self.__safe_message_reply(update, msg, reply_markup=None)
 
 
     def __cmd_off(self, update, context):
