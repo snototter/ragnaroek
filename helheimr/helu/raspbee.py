@@ -108,13 +108,19 @@ class TemperatureState:
 
     def format_message(self, use_markdown=True, detailed_information=False):
         # hair space: U+200A, thin space: U+2009
-        txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
+        # txt = '{}{}{}: {}\u200a°, {}\u200a%, {}\u200ahPa'.format(
+        #         '_' if use_markdown else '',
+        #         self.display_name,
+        #         '_' if use_markdown else '',
+        #         common.format_num('.1f', self.temperature, use_markdown),
+        #         common.format_num('d', int(self.humidity), use_markdown),
+        #         common.format_num('d', self.pressure, use_markdown))
+        txt = '{}{}{}: {}\u200a°, {}\u200a%'.format(
                 '_' if use_markdown else '',
                 self.display_name,
                 '_' if use_markdown else '',
                 common.format_num('.1f', self.temperature, use_markdown),
-                common.format_num('d', int(self.humidity), use_markdown),
-                common.format_num('d', self.pressure, use_markdown))
+                common.format_num('d', int(self.humidity), use_markdown))
 
         if detailed_information or (self.battery_level is not None and self.battery_level < 20):
             txt += ', {}\u200a% Akku{:s}'.format(
