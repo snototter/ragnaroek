@@ -12,3 +12,5 @@ TODO documentation/details:
 * prepare venv
 * install (TODO what else?) libatlas-base-dev
 * install service, start service
+
+`journalctl -f -u helheimr-heating.service`
