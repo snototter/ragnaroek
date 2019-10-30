@@ -177,10 +177,11 @@ class HelheimrBot:
         # Test telegram token/connection
         self._bot = self._updater.bot
         try:
-            logging.getLogger().info('[HelheimrBot] querying myself: {}'.format(self._bot.get_me()))
+            logging.getLogger().info('[HelheimrBot] Successfully contacted Telegram API, I am: {}'.format(self._bot.get_me()))
         except:
             err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while querying myself:\n' + err_msg)
+
 
         # Parameters to store configuration while waiting for user callback:
         self._config_at_time = None
@@ -897,7 +898,7 @@ class HelheimrBot:
             self.__safe_message_reply(update, 'Fehler beim Aktualisieren des git Repos: ' + txt, reply_markup=None)
         else:
             logging.getLogger().info('[HelheimrBot] Restarting service now...')
-            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n{:s}\n\nService wird jetzt neugestartet...'.format(txt),
+            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n```\n{:s}\n```\nService wird jetzt neugestartet...'.format(txt),
                 reply_markup=None)
             
             success, txt = common.shell_restart_service()
