@@ -982,6 +982,7 @@ class HelheimrBot:
 
     def __cmd_update(self, update, context):
         # Perform git update
+        self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         success, txt = common.shell_git_update()
         if not success:
             logging.getLogger().error('[HelheimrBot] Could not update git repository: ' + txt)
