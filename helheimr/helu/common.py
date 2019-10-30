@@ -99,10 +99,20 @@ def shell_restart_service():
     # Must use sudo because the service user is 'pi'.
     # Fortunately, there's https://raspberrypi.stackexchange.com/a/7137 to prevent
     # user interaction here ;-)
-    return safe_shell_output('sudo', 'systemctl', 'restart', 'helheimr-heating.service')
+    success, txt = safe_shell_output('sudo', 'systemctl', 'restart', 'helheimr-heating.service')
+    # Even if successful, there can be a problem due to scheduling:
+    #   subprocess.CalledProcessError: Command ... died with <Signals.SIGTERM: 15> 
+    # or similar, thus:
+    if not success and (txt.find('Signals.SIGTERM') >= 0 or txt.find('Signals.SIGHUP') >= 0):
+        return True, 'Already terminating the service...'
+    return success, txt
 
 def shell_shutdown(*args):
-    return safe_shell_output('shutdown', *args)
+    success, txt = safe_shell_output('shutdown', *args)
+    # @see shell_restart_service
+    if not success and (txt.find('Signals.SIGTERM') >= 0 or txt.find('Signals.SIGHUP') >= 0):
+        return True, 'Already terminating the service...'
+    return success, txt
 
 
 #######################################################################
