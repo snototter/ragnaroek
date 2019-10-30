@@ -101,11 +101,8 @@ def shell_restart_service():
     # user interaction here ;-)
     return safe_shell_output('sudo', 'systemctl', 'restart', 'helheimr-heating.service')
 
-def shell_reboot_device():
-    return safe_shell_output('shutdown', '-r', 'now')
-
-def shell_shutdown_device():
-    return safe_shell_output('shutdown', '-h', 'now')
+def shell_shutdown(*args):
+    return safe_shell_output('shutdown', *args)
 
 
 #######################################################################

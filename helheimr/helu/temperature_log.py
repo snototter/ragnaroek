@@ -65,7 +65,7 @@ class TemperatureLog:
         polling_job_label = temp_cfg['job_label']
         buffer_capacity = int(math.ceil(24*60/polling_interval_min))
         self._temperature_readings = common.circularlist(buffer_capacity)
-        self._num_readings_per_hour = int(math.ceil(60/polling_interval_min))
+        self._num_readings_per_hour = int(math.ceil(60/polling_interval_min)) + 1 # one more to include the same minute, one hour ago
 
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)

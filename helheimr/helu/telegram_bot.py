@@ -17,6 +17,8 @@ on - :high_brightness: Heizung einschalten
 einmal - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
+poweroff - PC herunterfahren
+reboot - PC neustarten
 rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
 status - Statusabfrage
@@ -252,6 +254,12 @@ class HelheimrBot:
         update_handler = CommandHandler('update', self.__cmd_update, self._user_filter)
         self._dispatcher.add_handler(update_handler)
 
+        reboot_handler = CommandHandler('reboot', self.__cmd_reboot, self._user_filter)
+        self._dispatcher.add_handler(reboot_handler)
+
+        poweroff_handler = CommandHandler('poweroff', self.__cmd_poweroff, self._user_filter)
+        self._dispatcher.add_handler(poweroff_handler)
+
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
 
@@ -363,12 +371,19 @@ class HelheimrBot:
 
 /rm - Heizungsprogramm löschen.
 
-/shutdown - System herunterfahren.
+/reboot - PC neustarten.
+
+/poweroff - PC herunterfahren.
+
+/shutdown - Heizungsservice beenden.
 
 /update - Repository aktualisieren und Service
     neustarten.
 
 /help - Diese Hilfemeldung."""
+#TODO shutdown => pi, stop => service, 
+#TODO reboot & shutdown (poweroff) => confirmation!
+
         self.__safe_send(update.message.chat_id, txt)
 
 #TODO temp => aktuelle temperatur + plot
@@ -890,6 +905,24 @@ class HelheimrBot:
         threading.Thread(target=self.shutdown, daemon=True).start()
 
 
+    def __cmd_reboot(self, update, context):
+        logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(update.message.chat.first_name))
+        self.__safe_message_reply(update, 'Raspberry wird neugestartet...', reply_markup=None)
+
+        success, txt = common.shell_shutdown('-r', 'now')
+        if not success:
+            logging.getLogger().error('[HelheimrBot] Error while trying to reboot the pi: ' + txt)
+
+
+    def __cmd_poweroff(self, update, context):
+        logging.getLogger().info('[HelheimrBot] User {} requested system shutdown (power-off).'.format(update.message.chat.first_name))
+        self.__safe_message_reply(update, 'Raspberry wird heruntergefahren.', reply_markup=None)
+
+        success, txt = common.shell_shutdown('-h', 'now')
+        if not success:
+            logging.getLogger().error('[HelheimrBot] Error while trying to shutdown the pi: ' + txt)
+
+
     def __cmd_update(self, update, context):
         # Perform git update
         success, txt = common.shell_git_update()
@@ -897,11 +930,12 @@ class HelheimrBot:
             logging.getLogger().error('[HelheimrBot] Could not update git repository: ' + txt)
             self.__safe_message_reply(update, 'Fehler beim Aktualisieren des git Repos: ' + txt, reply_markup=None)
         else:
+            # Restart service
             logging.getLogger().info('[HelheimrBot] Restarting service now...')
             self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n```\n{:s}\n```\nService wird jetzt neugestartet...'.format(txt),
                 reply_markup=None)
 
-            # Short delay 
+            # ... after a short delay
             time.sleep(1.5)
             
             success, txt = common.shell_restart_service()

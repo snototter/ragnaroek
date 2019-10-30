@@ -4,6 +4,7 @@
 
 import logging
 import os
+import signal
 import sys
 
 from helu import broadcasting
@@ -20,9 +21,13 @@ from helu import weather
 
 class Hel:
     def __init__(self):
-        pass
+        self._is_terminating = False
 
     def control_heating(self):
+        # Register signal handler to be notified upon system shutdown:
+        signal.signal(signal.SIGTERM, self.__shutdown_signal)
+        signal.signal(signal.SIGHUP, self.__shutdown_signal)
+
         ## Set up logging
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
@@ -105,6 +110,15 @@ class Hel:
         except KeyboardInterrupt:
             self._logger.info("[Hel] Received keyboard interrupt")
 
+        self.__shutdown_gracefully()
+    
+
+    def __shutdown_signal(self, sig, frame):
+        logging.getLogger().info('[Hel] Shutdown signal received.')
+        self.__shutdown_gracefully()
+
+        
+    def __shutdown_gracefully(self):
         # Gracefully shut down
         self._logger.info("[Hel] Shutting down...")
         self._telegram_bot.shutdown()
