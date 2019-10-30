@@ -12,10 +12,12 @@ import timeit
 import io
 import re
 import sys
+import subprocess
 import os
 import psutil
 import datetime
 import argparse
+import traceback
 
 
 #######################################################################
@@ -62,8 +64,48 @@ def proc_info():
     mem_bytes = proc.memory_info().rss
     mb = mem_bytes/2**20
     return (pid, mb)
-#TODO implement reboot, restart, etc. here
-# Need to check/query: current user, pwd - this requires: https://docs.python.org/3/library/subprocess.html#subprocess.check_output
+
+
+def safe_shell_output(*args):
+    """Executes the given shell command and returns the output
+    with leading/trailing whitespace trimmed. For example:
+    * sso('ls')
+    * sso('ls', '-l', '-a')
+
+    Returns the tuple (True/False, output/error_message)
+    """
+    try:
+        # with open(os.devnull, 'wb') as devnull:
+        #     by = subprocess.check_output(list(args), stderr=devnull)
+        by = subprocess.check_output(list(args))
+        out = by.decode('utf-8').strip()
+        success = True
+    except:
+        out = traceback.format_exc(limit=3)
+        success = False
+    return success, out
+
+
+#TODO test/check these functions:
+
+def shell_whoami():
+    return safe_shell_output('whoami')
+
+def shell_pwd():
+    return safe_shell_output('pwd')
+
+def shell_git_update():
+    #TODO check pwd, then something along the lines: x,s = safe_shell_output('/bin/bash', '-c', 'cd ../.. && git status')
+    return safe_shell_output('git', 'pull', 'origin', 'master')
+
+def shell_restart_service():
+    return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')
+
+def shell_reboot_device():
+    return safe_shell_output('shutdown', '-r', 'now')
+
+def shell_shutdown_device():
+    return safe_shell_output('shutdown', '-h', 'now')
 
 
 #######################################################################
