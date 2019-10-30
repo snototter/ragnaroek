@@ -388,32 +388,31 @@ class Heating:
 
             # Linear regression to determine the slope
             temperature_slope, determination_coefficient = \
-                temperature_log.compute_temperature_trend(temperatures)
+                temperature_log.compute_temperature_trend(temperatures[:-1]) # Reverse to get correct inc/dec trend
 
             # Check if there is an actual temperature increase
-            if temperature_slope is not None and temperature_slope < self._temperature_trend_threshold:
-                # If not, log the error...
-                logging.getLogger().error("[Heating] Temperature change ({:.2f}° with R-squared {:.2f}) too small despite heating for {} seconds".format(
-                    temperature_slope, determination_coefficient, trend_period))
-                # ... and warn the users (but avoid spamming them)
-                if self._last_trend_warning_issue_time is None or \
-                    (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
-                    msg = 'Temperatur steigt zu wenig an, {:s}{:.2f}\u200a° innerhalb von {}'.format(
-                            '' if temperature_slope < 0 else '+',
-                            temperature_slope, 
-                            time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))
-                        )
-                    broadcasting.MessageBroadcaster.instance().error(msg)
-                    # Also send the list of temperatures:
-                    broadcasting.MessageBroadcaster.instance().info(
-                        '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
-                        'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
-
-            elif temperature_slope is not None: #TODO remove this debug output (full branch!)
-                    broadcasting.MessageBroadcaster.instance().info("[Heating] Temperature change ({:.2f}° with R-squared {:.2f}), heating for {}".format(
-                        temperature_slope, determination_coefficient, time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))))
-
-                    broadcasting.MessageBroadcaster.instance().info(
-                        '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
-                        'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '```') # TODO remove?
-            
+            if temperature_slope is not None:
+                # The slope defines the average change between two readings/heating 
+                # loop iterations. Thus, accumulate it over the most recent
+                # "should-be-heating" period, so we actually see if there is an
+                # increase.
+                temperature_inc = temperature_slope * len(temperatures)
+                if temperature_inc < self._temperature_trend_threshold:
+                    # If temperature didn't increase (sufficiently), log the error...
+                    logging.getLogger().error("[Heating] Temperature change ({:.2f} * {:d} = {:.2f}° with R-squared {:.2f}) too small despite heating for {} seconds".format(
+                        temperature_slope, len(temperatures), temperature_inc, determination_coefficient, trend_period))
+                    # ... and warn the users (but avoid spamming them)
+                    if self._last_trend_warning_issue_time is None or \
+                        (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
+                        msg = 'Temperatur steigt zu wenig an, {:s}{:.2f}\u200a° ({:d} * {:.2f}\u200a°) innerhalb von {}'.format(
+                                '' if temperature_inc < 0 else '+',
+                                temperature_inc,
+                                len(temperatures),
+                                temperature_slope, 
+                                time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))
+                            )
+                        broadcasting.MessageBroadcaster.instance().error(msg)
+                        # Also send the list of temperatures:
+                        broadcasting.MessageBroadcaster.instance().info(
+                            '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
+                            'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```') # TODO remove?
