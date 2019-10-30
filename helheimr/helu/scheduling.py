@@ -1133,6 +1133,7 @@ class HelheimrScheduler(Scheduler):
         if len(non_heating_jobs) == 0:
             msg_lines.append('*Keine anderen Aufgaben registriert*')
         else:
+            non_heating_jobs = sorted(non_heating_jobs, key=lambda j: j.next_run)
             msg_lines.append('*Weitere periodische Aufgaben:*')
             
             for j in non_heating_jobs:

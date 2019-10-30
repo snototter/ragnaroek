@@ -29,7 +29,7 @@ class Hel:
 
         # Suppress time (as it's added by journalctl by default)
         # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        formatter = logging.Formatter('%(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(levelname)s: %(message)s')
         
         # Save to disk and rotate logs each sunday
         file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",

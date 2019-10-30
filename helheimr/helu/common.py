@@ -81,8 +81,6 @@ def safe_shell_output(*args):
     return success, out
 
 
-#TODO test/check these functions:
-
 def shell_whoami():
     return safe_shell_output('whoami')
 
@@ -90,11 +88,18 @@ def shell_pwd():
     return safe_shell_output('pwd')
 
 def shell_git_update():
-    #TODO check pwd, then something along the lines: x,s = safe_shell_output('/bin/bash', '-c', 'cd ../.. && git status')
+    # We set the service's working directory accordingly.
+    # If you need something similar but 'cd ...' first, the
+    # following also works:
+    # success, txt = safe_shell_output('/bin/bash', '-c', 'cd /some/path && git status')
     return safe_shell_output('git', 'pull', 'origin', 'master')
 
 def shell_restart_service():
-    return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')
+    #return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')
+    # Must use sudo because the service user is 'pi'.
+    # Fortunately, there's https://raspberrypi.stackexchange.com/a/7137 to prevent
+    # user interaction here ;-)
+    return safe_shell_output('sudo', 'systemctl restart helheimr-heating.service')
 
 def shell_reboot_device():
     return safe_shell_output('shutdown', '-r', 'now')

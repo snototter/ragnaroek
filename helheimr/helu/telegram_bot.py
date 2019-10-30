@@ -882,12 +882,26 @@ class HelheimrBot:
         threading.Thread(target=self.shutdown, daemon=True).start()
 
 
+    def __cmd_update(self, update, context):
+        # Perform git update
+        success, txt = common.shell_git_update()
+        if not success:
+            logging.getLogger().error('[HelheimrBot] Could not update git repository: ' + txt)
+            self.__safe_message_reply('Fehler beim Aktualisieren des git Repos: ' + txt)
+        else:
+            logging.getLogger().info('[HelheimrBot] Restarting service now...')
+            success, txt = common.shell_restart_service()
+            if not success:
+                logging.getLogger().error('[HelheimrBot] Could not restart service: ' + txt)
+                self.__safe_message_reply('Fehler beim Service-Neustart: ' + txt)
+
+
     def __cmd_debug(self, update, context):
         # All sorts of debug stuff, tests, etc.
         successs1, txt1 = common.shell_pwd()
         successs2, txt2 = common.shell_whoami()
 
-        self.__safe_send(update.message.chat_id, 'Benutzer "{}" (success: {})\nWD: "{}" (success: {})'.format(txt1, successs1, txt2, successs2))
+        self.__safe_send(update.message.chat_id, 'Benutzer "{}" (success: {})\nWD: "{}" (success: {})'.format(txt2, successs2, txt1, successs1))
         
 
 
