@@ -12,16 +12,16 @@ details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
 fernwaerme - Fernwärmestatus
 help - Liste verfügbarer Befehle
-programme - Programme/Aufgaben auflisten
+progs - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
 einmal - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
-poweroff - PC herunterfahren
 reboot - PC neustarten
 rm - Heizungsprogramm löschen
-shutdown - System herunterfahren
+shutdown - PC herunterfahren
 status - Statusabfrage
+stop - Heizungsservice beenden
 temp - Aktueller Temperaturverlauf
 update - Repository aktualisieren
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
@@ -199,6 +199,9 @@ class HelheimrBot:
 
         help_handler = CommandHandler('help', self.__cmd_help, self._user_filter)
         self._dispatcher.add_handler(help_handler)
+        # For convenience, both German and English
+        help_handler = CommandHandler('hilfe', self.__cmd_help, self._user_filter)
+        self._dispatcher.add_handler(help_handler)
 
         status_handler = CommandHandler('status', self.__cmd_status, self._user_filter)
         self._dispatcher.add_handler(status_handler)
@@ -208,18 +211,18 @@ class HelheimrBot:
 
         on_handler = CommandHandler('on', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
-        # For convenience, map also 'ein' to 'on'
+        # For convenience, both German and English
         on_handler = CommandHandler('ein', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
 
         off_handler = CommandHandler('off', self.__cmd_off, self._user_filter)
         self._dispatcher.add_handler(off_handler)
-        # For convenience, map also 'aus' to 'off'
+        # For convenience, both German and English
         off_handler = CommandHandler('aus', self.__cmd_off, self._user_filter)
         self._dispatcher.add_handler(off_handler)
 
-        shutdown_handler = CommandHandler('shutdown', self.__cmd_shutdown, self._user_filter)
-        self._dispatcher.add_handler(shutdown_handler)
+        stop_handler = CommandHandler('stop', self.__cmd_stop, self._user_filter)
+        self._dispatcher.add_handler(stop_handler)
 
         cfg_handler = CommandHandler('config', self.__cmd_configure, self._user_filter)
         self._dispatcher.add_handler(cfg_handler)
@@ -228,6 +231,9 @@ class HelheimrBot:
         self._dispatcher.add_handler(forecast_handler)
 
         heat_once_handler = CommandHandler('einmal', self.__cmd_once, self._user_filter)
+        self._dispatcher.add_handler(heat_once_handler)
+        # For convenience, both German and English
+        heat_once_handler = CommandHandler('once', self.__cmd_once, self._user_filter)
         self._dispatcher.add_handler(heat_once_handler)
 
         pause_handler = CommandHandler('pause', self.__cmd_pause, self._user_filter)
@@ -238,8 +244,11 @@ class HelheimrBot:
 
         temp_task_handler = CommandHandler('temp', self.__cmd_temp, self._user_filter)
         self._dispatcher.add_handler(temp_task_handler)
-
-        job_list_handler = CommandHandler('programme', self.__cmd_list_jobs, self._user_filter)
+        # For convenience, add abbreviation
+        temp_task_handler = CommandHandler('t', self.__cmd_temp, self._user_filter)
+        self._dispatcher.add_handler(temp_task_handler)
+        
+        job_list_handler = CommandHandler('progs', self.__cmd_list_jobs, self._user_filter)
         self._dispatcher.add_handler(job_list_handler)
 
         dh_start_handler = CommandHandler('vorlauf', self.__cmd_start_district_heating, self._user_filter)
@@ -257,7 +266,7 @@ class HelheimrBot:
         reboot_handler = CommandHandler('reboot', self.__cmd_reboot, self._user_filter)
         self._dispatcher.add_handler(reboot_handler)
 
-        poweroff_handler = CommandHandler('poweroff', self.__cmd_poweroff, self._user_filter)
+        poweroff_handler = CommandHandler('shutdown', self.__cmd_poweroff, self._user_filter)
         self._dispatcher.add_handler(poweroff_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
@@ -338,7 +347,7 @@ class HelheimrBot:
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
 /details - Detaillierte Systeminformation.
-/programme - Liste aller Programme & Aufgaben.
+/progs - Liste aller Programme & Aufgaben.
 
 /ein oder /on - :thermometer: Heizung einschalten.
     Mit Temperatur: /on `21.7c`
@@ -347,16 +356,16 @@ class HelheimrBot:
     Temperatur und Dauer: /on `23c` `2h`
     Alles: /on `22c` `0.5c` `1.5h`
 
-/einmal - :thermometer: Einmalig auf
+/einmal oder /once - :thermometer: Einmalig auf
     bestimmte Temperatur aufheizen.
 
 /aus oder /off - :snowflake: Heizung ausschalten.
 
 /pause - Heizungsprogramme pausieren.
 
-/temp - Temperaturverlauf anzeigen.
+/temp oder /t - Temperaturverlauf anzeigen.
     Letzte Stunde: /temp
-    Letzten n Messungen: /temp 15
+    Letzten x Messungen: /temp 15
 
 /wetter - :partly_sunny: Wetterbericht.
 
@@ -375,7 +384,7 @@ class HelheimrBot:
 
 /poweroff - PC herunterfahren.
 
-/shutdown - Heizungsservice beenden.
+/stop - Heizungsservice beenden.
 
 /update - Repository aktualisieren und Service
     neustarten.
@@ -901,7 +910,7 @@ class HelheimrBot:
             self.__safe_send(update.message.chat_id, "Hallo {} ({}), du bist (noch) nicht autorisiert. :flushed_face:".format(update.message.chat.first_name, update.message.chat_id))
 
     
-    def __cmd_shutdown(self, update, context):
+    def __cmd_stop(self, update, context):
         threading.Thread(target=self.shutdown, daemon=True).start()
 
 
@@ -912,6 +921,7 @@ class HelheimrBot:
         success, txt = common.shell_shutdown('-r', 'now')
         if not success:
             logging.getLogger().error('[HelheimrBot] Error while trying to reboot the pi: ' + txt)
+            self.__safe_message_reply(update, 'Fehler beim Neustarten: ' + txt, reply_markup=None)
 
 
     def __cmd_poweroff(self, update, context):
@@ -921,6 +931,7 @@ class HelheimrBot:
         success, txt = common.shell_shutdown('-h', 'now')
         if not success:
             logging.getLogger().error('[HelheimrBot] Error while trying to shutdown the pi: ' + txt)
+            self.__safe_message_reply(update, 'Fehler beim Herunterfahren: ' + txt, reply_markup=None)
 
 
     def __cmd_update(self, update, context):
