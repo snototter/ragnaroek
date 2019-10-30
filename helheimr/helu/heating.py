@@ -234,8 +234,10 @@ class Heating:
 
     def shutdown(self):
         """Shut down gracefully."""
-        logging.getLogger().info('[Heating] Stopping heating system...')
+        if self._is_terminating:
+            return
         self._is_terminating = True
+        logging.getLogger().info('[Heating] Stopping heating system...')
         self._condition_var.acquire()
         # Stop heating
         self.__stop_heating()
