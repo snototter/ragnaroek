@@ -21,6 +21,7 @@ rm - Heizungsprogramm löschen
 shutdown - System herunterfahren
 status - Statusabfrage
 temp - Aktueller Temperaturverlauf
+update - Repository aktualisieren
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
 
@@ -361,6 +362,9 @@ class HelheimrBot:
 /rm - Heizungsprogramm löschen.
 
 /shutdown - System herunterfahren.
+
+/update - Repository aktualisieren und Service
+    neustarten.
 
 /help - Diese Hilfemeldung."""
         self.__safe_send(update.message.chat_id, txt)
