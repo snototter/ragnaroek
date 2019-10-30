@@ -170,8 +170,9 @@ class HelheimrBot:
             ','.join(map(str, self._broadcast_ids))))
 
 
-        self._is_modifying_heating = False # Indicate that one user currently wants to change something
+        self._is_modifying_heating = False  # Indicate that one user currently wants to change something
         self._shutdown_message_sent = False # Indicate whether we already sent the good bye message (in case shutdown() is called multiple times)
+        self._is_restarting = False         # Indicate whether the user triggered a service restart (no goodbye status message should be sent)
 
         self._updater = Updater(token=self._api_token, use_context=True)
         self._dispatcher = self._updater.dispatcher
@@ -999,6 +1000,9 @@ class HelheimrBot:
 
             # ... after a short delay
             time.sleep(1.5)
+
+            # Prevent sending the shutdown message
+            self._is_restarting = True
             
             success, txt = common.shell_restart_service()
             if not success:
@@ -1047,11 +1051,12 @@ class HelheimrBot:
 
         if not self._shutdown_message_sent:
             self._shutdown_message_sent = True
-            # Send shutdown message
-            status_txt = self.__query_status(None, detailed_report=True)
-            
-            self.broadcast_message("Heizungsservice wird beendet, bis bald.\n\n{:s}".format(
-                        status_txt))
+            if not self._is_restarting:
+                # Send shutdown message (unless the service is just restarting)
+                status_txt = self.__query_status(None, detailed_report=True)
+                
+                self.broadcast_message("Heizungsservice wird beendet, bis bald.\n\n{:s}".format(
+                            status_txt))
             
             self.__shutdown_helper()
             #threading.Thread(target=self._shutdown_helper).start()
