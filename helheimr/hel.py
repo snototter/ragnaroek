@@ -117,8 +117,11 @@ class Hel:
         logging.getLogger().info('[Hel] Shutdown signal received.')
         self.__shutdown_gracefully()
 
-        
+
     def __shutdown_gracefully(self):
+        if self._is_terminating:
+            return
+        self._is_terminating = True
         # Gracefully shut down
         self._logger.info("[Hel] Shutting down...")
         self._telegram_bot.shutdown()
