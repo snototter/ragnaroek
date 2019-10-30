@@ -909,8 +909,8 @@ class HelheimrBot:
 
     def __cmd_debug(self, update, context):
         # All sorts of debug stuff, tests, etc.
-        successs1, txt1 = common.shell_pwd()
         successs2, txt2 = common.shell_whoami()
+        successs1, txt1 = common.shell_pwd()
 
         self.__safe_send(update.message.chat_id, 'Benutzer "{}" (success: {})\nWD: "{}" (success: {})'.format(txt2, successs2, txt1, successs1))
         
