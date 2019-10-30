@@ -999,7 +999,7 @@ class HelheimrBot:
             # Send shutdown message
             status_txt = self.__query_status(None, detailed_report=True)
             
-            self.broadcast_message("System wird heruntergefahren, bis bald.\n\n{:s}".format(
+            self.broadcast_message("Heizungsservice wird beendet, bis bald.\n\n{:s}".format(
                         status_txt))
             
             self.__shutdown_helper()

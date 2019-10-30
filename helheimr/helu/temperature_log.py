@@ -63,14 +63,16 @@ class TemperatureLog:
         # Compute size of circular buffer to store readings of the past 24 hours
         polling_interval_min = temp_cfg['update_interval_minutes']
         polling_job_label = temp_cfg['job_label']
-        buffer_capacity = int(math.ceil(24*60/polling_interval_min))
+        buffer_hours = 24
+        buffer_capacity = int(math.ceil(buffer_hours*60/polling_interval_min))
         self._temperature_readings = common.circularlist(buffer_capacity)
         self._num_readings_per_hour = int(math.ceil(60/polling_interval_min)) + 1 # one more to include the same minute, one hour ago
 
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
 
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries and scheduled job: "{:s}"'.format(buffer_capacity, str(polling_job)))
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(buffer_capacity, polling_interval_min, buffer_hours))
+        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
 
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
