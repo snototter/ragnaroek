@@ -541,6 +541,8 @@ class HelheimrBot:
         success, msg = district_heating.DistrictHeating.instance().query_heating(use_markdown=True)
         if not success:
             msg = ':bangbang: ' + msg
+        else:
+            msg += '\n\nEinstellungen sind über /vorlauf möglich.'
         self.__safe_message_reply(update, msg, reply_markup=None)
 
 
@@ -726,7 +728,7 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, ':bangbang: Fehler: ' + txt)
             else:
-                self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.')
+                self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.\nFür Statusabfrage bitte /fernwaerme verwenden.')
             self._is_modifying_heating = False
 
 
