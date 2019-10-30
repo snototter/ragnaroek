@@ -894,13 +894,16 @@ class HelheimrBot:
         success, txt = common.shell_git_update()
         if not success:
             logging.getLogger().error('[HelheimrBot] Could not update git repository: ' + txt)
-            self.__safe_message_reply('Fehler beim Aktualisieren des git Repos: ' + txt)
+            self.__safe_message_reply(update, 'Fehler beim Aktualisieren des git Repos: ' + txt, reply_markup=None)
         else:
             logging.getLogger().info('[HelheimrBot] Restarting service now...')
+            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n{:s}\n\nService wird jetzt neugestartet...'.format(txt),
+                reply_markup=None)
+            
             success, txt = common.shell_restart_service()
             if not success:
                 logging.getLogger().error('[HelheimrBot] Could not restart service: ' + txt)
-                self.__safe_message_reply('Fehler beim Service-Neustart: ' + txt)
+                self.__safe_message_reply(update, 'Fehler beim Service-Neustart: ' + txt, reply_markup=None)
 
 
     def __cmd_debug(self, update, context):

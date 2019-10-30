@@ -99,7 +99,7 @@ def shell_restart_service():
     # Must use sudo because the service user is 'pi'.
     # Fortunately, there's https://raspberrypi.stackexchange.com/a/7137 to prevent
     # user interaction here ;-)
-    return safe_shell_output('sudo', 'systemctl restart helheimr-heating.service')
+    return safe_shell_output('sudo', 'systemctl', 'restart', 'helheimr-heating.service')
 
 def shell_reboot_device():
     return safe_shell_output('shutdown', '-r', 'now')
