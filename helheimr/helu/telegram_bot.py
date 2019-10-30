@@ -33,7 +33,7 @@ Frequently used commands are in German (turning stuff on/off,
 querying data, ...). System commands (shutting off, configuring
 or deleting programs) are English.
 """
-#TODO reboot, restart, update (subprocess.call cd && git update && systemctl restart...)
+#TODO sudo shutdown!
 
 import datetime
 import logging
@@ -128,6 +128,9 @@ class HelheimrBot:
     CALLBACK_PAUSE_CANCEL = '9'
     CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL = 'dh0'
     CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM = 'dh1'
+    CALLBACK_SYSTEM_CANCEL = 'sys0'
+    CALLBACK_SYSTEM_POWEROFF = 'sys1'
+    CALLBACK_SYSTEM_REBOOT = 'sys2'
 
 
     #TODO the python bot api wrapper supports pattern matching, so
@@ -390,8 +393,7 @@ class HelheimrBot:
 /update - Repository aktualisieren und Service
     neustarten.
 
-/help - Diese Hilfemeldung."""
-#TODO shutdown => pi, stop => service, 
+/hilfe oder /help - Diese Hilfemeldung."""
 #TODO reboot & shutdown (poweroff) => confirmation!
 
         self.__safe_send(update.message.chat_id, txt)
@@ -756,6 +758,17 @@ class HelheimrBot:
                 self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.\nFür Statusabfrage bitte /fernwaerme verwenden.')
             self._is_modifying_heating = False
 
+        elif response == type(self).CALLBACK_SYSTEM_CANCEL:
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
+            self._is_modifying_heating = False
+
+        elif response == type(self).CALLBACK_SYSTEM_POWEROFF:
+            self._is_modifying_heating = False
+            self.__poweroff_helper(query)
+
+        elif response == type(self).CALLBACK_SYSTEM_REBOOT:
+            self._is_modifying_heating = False
+            self.__reboot_helper(query)
 
 
     def __rm_helper_keyboard_type_select(self):
@@ -765,6 +778,7 @@ class HelheimrBot:
             callback_data=type(self).CALLBACK_CONFIG_REMOVE_TYPE_SELECT + ':' + 'non_heating_jobs')],
             [telegram.InlineKeyboardButton('Abbrechen', callback_data=type(self).CALLBACK_CONFIG_CANCEL)]]
         return 'Bitte Typ auswählen:', telegram.InlineKeyboardMarkup(keyboard)
+
 
     def __rm_helper_keyboard_job_select(self, jobs, job_type):
         qstr = 'Welches Programm soll gelöscht werden?' \
@@ -780,6 +794,10 @@ class HelheimrBot:
 
 
     def __cmd_rm(self, update, context):
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
         # If we have both heating and non-heating jobs, present the user a 
         # two-level menu (first, select the type, then the task)
         self._is_modifying_heating = True
@@ -912,27 +930,55 @@ class HelheimrBot:
 
     
     def __cmd_stop(self, update, context):
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
         threading.Thread(target=self.shutdown, daemon=True).start()
 
 
-    def __cmd_reboot(self, update, context):
-        logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(update.message.chat.first_name))
-        self.__safe_message_reply(update, 'Raspberry wird neugestartet...', reply_markup=None)
+    def __reboot_helper(self, query):
+        logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(query.from_user.first_name))
+        self.__safe_edit_callback_query(query, 'Raspberry wird neugestartet...')
 
         success, txt = common.shell_shutdown('-r', 'now')
         if not success:
-            logging.getLogger().error('[HelheimrBot] Error while trying to reboot the pi: ' + txt)
-            self.__safe_message_reply(update, 'Fehler beim Neustarten: ' + txt, reply_markup=None)
+            logging.getLogger().error('[HelheimrBot] Error rebooting the pi. ' + txt)
+            self.__safe_edit_callback_query(query, 'Fehler beim Neustarten. ' + txt)
+
+
+    def __cmd_reboot(self, update, context):
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return    
+        self._is_modifying_heating = True
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_SYSTEM_REBOOT),
+                 telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SYSTEM_CANCEL)]]
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            'Raspberry wirklich neustarten?', reply_markup=telegram.InlineKeyboardMarkup(keyboard))
+
+
+    def __poweroff_helper(self, query):
+        logging.getLogger().info('[HelheimrBot] User {} requested system shutdown (power-off).'.format(query.from_user.first_name))
+        self.__safe_edit_callback_query(query, 'Raspberry wird heruntergefahren.')
+
+        success, txt = common.shell_shutdown('-r', 'now')
+        if not success:
+            logging.getLogger().error('[HelheimrBot] Error shutting down the pi. ' + txt)
+            self.__safe_edit_callback_query(query, 'Fehler beim Herunterfahren. ' + txt)
 
 
     def __cmd_poweroff(self, update, context):
-        logging.getLogger().info('[HelheimrBot] User {} requested system shutdown (power-off).'.format(update.message.chat.first_name))
-        self.__safe_message_reply(update, 'Raspberry wird heruntergefahren.', reply_markup=None)
-
-        success, txt = common.shell_shutdown('-h', 'now')
-        if not success:
-            logging.getLogger().error('[HelheimrBot] Error while trying to shutdown the pi: ' + txt)
-            self.__safe_message_reply(update, 'Fehler beim Herunterfahren: ' + txt, reply_markup=None)
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_SYSTEM_POWEROFF),
+                 telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SYSTEM_CANCEL)]]
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            'Raspberry wirklich herunterfahren?', reply_markup=telegram.InlineKeyboardMarkup(keyboard))
 
 
     def __cmd_update(self, update, context):
