@@ -944,6 +944,8 @@ class HelheimrBot:
         if not success:
             logging.getLogger().error('[HelheimrBot] Error rebooting the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Neustarten. ' + txt)
+        else:
+            self.shutdown()
 
 
     def __cmd_reboot(self, update, context):
@@ -966,6 +968,8 @@ class HelheimrBot:
         if not success:
             logging.getLogger().error('[HelheimrBot] Error shutting down the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Herunterfahren. ' + txt)
+        else:
+            self.shutdown()
 
 
     def __cmd_poweroff(self, update, context):
