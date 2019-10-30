@@ -33,7 +33,6 @@ Frequently used commands are in German (turning stuff on/off,
 querying data, ...). System commands (shutting off, configuring
 or deleting programs) are English.
 """
-#TODO sudo shutdown!
 
 import datetime
 import logging

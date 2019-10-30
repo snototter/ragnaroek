@@ -71,9 +71,6 @@ class TemperatureLog:
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
 
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(buffer_capacity, polling_interval_min, buffer_hours))
-        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
-
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
         _sname2display = dict()
@@ -86,6 +83,8 @@ class TemperatureLog:
 
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
         
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(buffer_capacity, polling_interval_min, buffer_hours))
+        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
 
 
     def recent_readings(self, num_entries=None):

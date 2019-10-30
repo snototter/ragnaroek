@@ -108,12 +108,12 @@ def shell_restart_service():
     return success, txt
 
 def shell_shutdown(*args):
-    success, txt = safe_shell_output('shutdown', *args)
-    # @see shell_restart_service
+    # @see shell_restart_service() for comments on sudo'ing something
+    success, txt = safe_shell_output('sudo', 'shutdown', *args)
     if not success and (txt.find('Signals.SIGTERM') >= 0 or txt.find('Signals.SIGHUP') >= 0):
         return True, 'Already terminating the service...'
     return success, txt
-
+    
 
 #######################################################################
 ## Message formatting
