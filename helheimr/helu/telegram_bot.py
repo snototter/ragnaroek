@@ -248,7 +248,10 @@ class HelheimrBot:
         self._dispatcher.add_handler(dh_query_handler)
 
         debug_handler = CommandHandler('debug', self.__cmd_debug, self._user_filter)
-        self._dispatcher.add_handler(debug_handler)
+        self._dispatcher.add_handler(debug_handler) # TODO remove once we're done testing ;-)
+
+        update_handler = CommandHandler('update', self.__cmd_update, self._user_filter)
+        self._dispatcher.add_handler(update_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
