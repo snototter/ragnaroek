@@ -178,7 +178,7 @@ class HelheimrBot:
         self._bot = self._updater.bot
         try:
             me = self._bot.get_me()
-            logging.getLogger().info('[HelheimrBot] Successfully contacted Telegram API, I am {} (ID: {})'.format(me['first_name'], me['id']))
+            logging.getLogger().info('[HelheimrBot] Successfully contacted Telegram API, I am @{} (Name: {}, ID: {}).'.format(me['username'], me['first_name'], me['id']))
         except:
             err_msg = traceback.format_exc(limit=3)
             logging.getLogger().error('[HelheimrBot] Error while querying myself:\n' + err_msg)
