@@ -87,6 +87,9 @@ def shell_whoami():
 def shell_pwd():
     return safe_shell_output('pwd')
 
+def shell_uptime():
+    return safe_shell_output('uptime', '-p')
+
 def shell_git_update():
     # We set the service's working directory accordingly.
     # If you need something similar but 'cd ...' first, the
@@ -113,7 +116,7 @@ def shell_shutdown(*args):
     if not success and (txt.find('Signals.SIGTERM') >= 0 or txt.find('Signals.SIGHUP') >= 0):
         return True, 'Already terminating the service...'
     return success, txt
-    
+
 
 #######################################################################
 ## Message formatting

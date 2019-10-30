@@ -448,6 +448,8 @@ class HelheimrBot:
         msg.append('\u2022 PID: `{}`'.format(pid))
         msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
 
+        #TODO system info (cpu/mem/uptime)
+
         txt = '\n'.join(msg)
         
         self.__safe_send(update.message.chat_id, txt)
@@ -1003,10 +1005,11 @@ class HelheimrBot:
 
     def __cmd_debug(self, update, context):
         # All sorts of debug stuff, tests, etc.
-        successs2, txt2 = common.shell_whoami()
-        successs1, txt1 = common.shell_pwd()
+        _, txt1 = common.shell_pwd()
+        _, txt2 = common.shell_whoami()
+        _, txt3 = common.shell_uptime()
 
-        self.__safe_send(update.message.chat_id, 'Benutzer "{}" (success: {})\nWD: "{}" (success: {})'.format(txt2, successs2, txt1, successs1))
+        self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
         
 
 
