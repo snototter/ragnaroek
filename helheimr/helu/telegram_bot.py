@@ -111,8 +111,6 @@ def get_bot_url(cfg):
 #######################################################################
 # Main bot workflow
 class HelheimrBot:
-    WAIT_TIME_HEATING_TOGGLE = 2  # Time to wait after turning heating on/off before checking the heating state (to see if it actually responded)
-
     # Identifiers used in message callbacks
     # Do not use colons here, as we use this to distinguish callback
     # types (the following) and callback parameters!
@@ -898,8 +896,11 @@ class HelheimrBot:
             self.__safe_message_reply(update, 'Fehler beim Aktualisieren des git Repos: ' + txt, reply_markup=None)
         else:
             logging.getLogger().info('[HelheimrBot] Restarting service now...')
-            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n```\n{:s}\n```\nService wird jetzt neugestartet...'.format(txt),
+            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n```\n{:s}\n```\nService wird jetzt neugestartet...'.format(txt),
                 reply_markup=None)
+
+            # Short delay 
+            time.sleep(1.5)
             
             success, txt = common.shell_restart_service()
             if not success:
