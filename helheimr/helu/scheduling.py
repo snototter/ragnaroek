@@ -625,7 +625,8 @@ class PeriodicHeatingJob(Job):
 
     def overlaps(self, other):
         # Periodic heating jobs are (currently) assumed to run each day at a specific time
-        #TODO once we start fancy heating schedules (e.g. weekends vs weekdays), we need to adjust this!
+        #TODO Once we start fancy heating schedules (e.g. weekends vs weekdays), we need to 
+        # adjust this check!
         start_this = datetime.datetime.combine(datetime.datetime.today(), self.at_time)
         end_this = start_this + self.heating_duration
         start_other = datetime.datetime.combine(datetime.datetime.today(), other.at_time)
@@ -861,8 +862,8 @@ def test_sensors():
                 else:
                     msg = 'Temperatursensoren sind nicht erreichbar: {}!'.format(', '.join(names))
                 broadcasting.MessageBroadcaster.instance().warning(msg)
-            else: #TODO remove
-                broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar!')
+            # else: # Only enable this verbose message for debugging purposes.
+            #     broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar!')
 
 
 def test_network_connectivity():

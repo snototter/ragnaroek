@@ -5,12 +5,13 @@
 I found out about rpi-rf from this basic tutorial:
 https://www.instructables.com/id/RF-433-MHZ-Raspberry-Pi/
 
-Uses https://pypi.org/project/rpi-rf/ to transmit LPD433 codes
+Uses https://pypi.org/project/rpi-rf/ to transmit LPD433 codes.
 
 If you need to find out your device's codes, protocols, etc. use
 https://github.com/ninjablocks/433Utils
+
 I followed this tutorial https://tutorials-raspberrypi.de/raspberry-pi-funksteckdosen-433-mhz-steuern/
-basically, all you need to do is `make && sudo ./RFSniffer`
+Basically, all you need to do is `make && sudo ./RFSniffer`
 If you have a cheap receiver, make sure to hold the remote/device
 as close as possible to the rx (mine lost connection as soon as I was
 5 cm (!) away from the receiver).
@@ -18,7 +19,8 @@ as close as possible to the rx (mine lost connection as soon as I was
 Worked out-of-the-box (once you figure out the GPIO pin numbering)
 and has less configuration overhead (and almost no installation
 headache) compared to pilight (search for pilight installation on
-latest raspbian ;-)
+latest raspbian to get a glimpse of the (currently) necessary 
+workarounds needed ;-)
 """
 
 import logging

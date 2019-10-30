@@ -336,7 +336,7 @@ class Heating:
                         logging.getLogger().error("[Heating] Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat))
 
                 # Check whether temperature actually increases
-                reference_temperature_log.append((current_temperature, should_heat)) #TODO maybe use circular buffer
+                reference_temperature_log.append((current_temperature, should_heat))
                 if should_heat:
                     self.__check_temperature_trend(reference_temperature_log)
             else:
@@ -345,21 +345,22 @@ class Heating:
 
 
             ## Note: LPD433 plugs don't transmit anything, so we cannot check if they
-            ## are reachable/on/off...
+            ## are reachable/on/off/etc.
             ## The following check was needed for ZigBee plugs (because they often
-            ## disconnected)
-            # # Check if all plugs are reachable
+            ## disconnected).
+            # # Check if all plugs are reachable:
             # is_heating, plug_states = self._heating_system.query_heating()
             # if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
             #     consecutive_errors += 1
 
-            # Report error if the plug didn't respond until now
+            # Report error if the heating didn't respond until now (with LPD433 this
+            # indicates consecutive transmission errors)
             if consecutive_errors >= self._num_consecutive_errors_before_broadcast:
                 self._broadcaster.error("Heizung reagiert nicht, bitte kontrollieren!")
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0
             
-            # Compute idle time
+            # Compute idle time (in case this is a timed heating request)
             now = time_utils.dt_now()
             idle_time = self._max_idle_time
             if end_time is not None and end_time > now:
@@ -380,15 +381,18 @@ class Heating:
         if trend_period >= self._temperature_trend_waiting_time:
             # Extract the temperatures (only from the last "should-be-heating period")
             temperatures = list()
-            for i in range(len(reference_temperature_log)-1, 0, -1):
+            for i in range(len(reference_temperature_log)-1, max(0, len(reference_temperature_log)-11), -1): # Keep at most 10 recent readings
                 t, sh = reference_temperature_log[i]
                 if not sh:
                     break
                 temperatures.append(t)
 
-            # Linear regression to determine the slope
+            # Adjust period for reporting:
+            trend_period = len(temperatures) * self._max_idle_time
+
+            # Linear regression to determine the slope (reverse the buffer to get correct inc/dec trend)
             temperature_slope, determination_coefficient = \
-                temperature_log.compute_temperature_trend(temperatures[:-1]) # Reverse to get correct inc/dec trend
+                temperature_log.compute_temperature_trend(temperatures[:-1])
 
             # Check if there is an actual temperature increase
             if temperature_slope is not None:

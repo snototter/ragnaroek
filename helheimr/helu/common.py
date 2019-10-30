@@ -62,6 +62,8 @@ def proc_info():
     mem_bytes = proc.memory_info().rss
     mb = mem_bytes/2**20
     return (pid, mb)
+#TODO implement reboot, restart, etc. here
+# Need to check/query: current user, pwd - this requires: https://docs.python.org/3/library/subprocess.html#subprocess.check_output
 
 
 #######################################################################

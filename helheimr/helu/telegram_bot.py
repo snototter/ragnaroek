@@ -23,14 +23,14 @@ status - Statusabfrage
 temp - Aktueller Temperaturverlauf
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
+
+
+Naming/language conventions:
+Frequently used commands are in German (turning stuff on/off, 
+querying data, ...). System commands (shutting off, configuring
+or deleting programs) are English.
 """
-#TODO all german?
-# stop, pause, einheizen, ausschalten, einmalig, aufheizen
-# shutdown => herunterfahren :-/
-#TODO reboot, restart
-# list => programme
-# rm => loeschen :-/
-# konfigurieren :-/ ... keep config + rm
+#TODO reboot, restart, update (subprocess.call cd && git update && systemctl restart...)
 
 import datetime
 import logging
