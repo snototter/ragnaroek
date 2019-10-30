@@ -122,6 +122,7 @@ class Heating:
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
         self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
         self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
+        self._temperature_trend_max_num_readings = config['heating']['temperature_trend_max_num_readings'] # Consider only the most recent N readings for trend computation
         self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
 
 
@@ -381,7 +382,9 @@ class Heating:
         if trend_period >= self._temperature_trend_waiting_time:
             # Extract the temperatures (only from the last "should-be-heating period")
             temperatures = list()
-            for i in range(len(reference_temperature_log)-1, max(0, len(reference_temperature_log)-11), -1): # Keep at most 10 recent readings
+            for i in range(len(reference_temperature_log)-1, \
+                max(0, len(reference_temperature_log)-(self._temperature_trend_max_num_readings+1)), \
+                    -1): # Keep at most 10 recent readings
                 t, sh = reference_temperature_log[i]
                 if not sh:
                     break

@@ -22,19 +22,10 @@ import traceback
 
 #######################################################################
 # Utilities
-# def slurp_stripped_lines(filename):
-#     with open(filename) as f:
-#         return [s.strip() for s in f.readlines()]
-
-# def load_api_token(filename='.api-token'):
-#     return slurp_stripped_lines(filename)
-#     #with open(filename) as f:
-#         #f.read().strip()
-#         #return [s.strip() for s in f.readlines()] 
-
-
-# def load_authorized_user_ids(filename='.authorized-ids'):
-#     return [int(id) for id in slurp_stripped_lines(filename)]
+def slurp_stripped_lines(filename):
+    """Read the file line-by-line, return a list of the (trimmed!) lines."""
+    with open(filename) as f:
+        return [s.strip() for s in f.readlines()]
 
 def emo(txt):
     """Simply wrapping emoji.emojize() since I often need/forget the optional parameter ;-)"""
@@ -42,11 +33,15 @@ def emo(txt):
 
 
 def cfg_val_or_none(cfg, key):
+    """Look up key in the 'cfg' dictionary. If not found, returns None."""
     return cfg[key] if key in cfg else None
+
         
 def cfg_val_or_default(cfg, key, default):
+    """Look up key in the 'cfg' dictionary. If not found, returns the 'default' value."""
     v = cfg_val_or_none(cfg, key)
     return default if v is None else v
+
 
 def load_configuration(filename):
     """Loads a libconfig configuration file."""
@@ -293,42 +288,7 @@ def is_tool(name):
             if os.path.exists(os.path.join(path, name)):
                 return True
         return False
-
-# #TODO still in use? if so, move to time_utils
-# def date_str(delimiter=['','','-','',''], ):
-#     """Returns a YYYY*MM*DD*hh*mm*ss string using the given delimiters.
-#     Provide less delimiter to return shorter strings, e.g.
-#     delimiter=['-'] returns YYYY-MM
-#     delimiter=['',''] returns YYYYMMDD
-#     etc.
-#     """
-#     now = datetime.datetime.now()
-#     res_str = now.strftime('%Y')
-#     month = now.strftime('%m')
-#     day = now.strftime('%d')
-#     hour = now.strftime('%H')
-#     minute = now.strftime('%M')
-#     sec = now.strftime('%S')
-#     num_delim = len(delimiter)
-#     if num_delim == 0:
-#         return res_str
-#     res_str += '{:s}{:s}'.format(delimiter[0], month)
-#     if num_delim == 1:
-#         return res_str
-#     res_str += '{:s}{:s}'.format(delimiter[1], day)
-#     if num_delim == 2:
-#         return res_str
-#     res_str += '{:s}{:s}'.format(delimiter[2], hour)
-#     if num_delim == 3:
-#         return res_str
-#     res_str += '{:s}{:s}'.format(delimiter[3], minute)
-#     if num_delim == 4:
-#         return res_str
-#     res_str += '{:s}{:s}'.format(delimiter[4], sec)
-#     if num_delim > 5:
-#         raise RuntimeError('Too many delimiter, currently we only support formating up until seconds')
-#     return res_str
-    
+ 
 
 ################################################################################
 # Data validation (e.g. argument parsing)

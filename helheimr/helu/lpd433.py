@@ -56,7 +56,11 @@ class LpdDeviceState:
         return '{:s} ist {:s}'.format(self._display_name, 'ein' if self._powered_on else 'aus')
 
 
+
 class LpdDevice:
+    """Abstraction of an LPD433 device (i.e. a power plug).
+    Use this to turn the device on/off.
+    """
     def __init__(self, gpio_pin, cfg_entry):
         self._gpio_pin = gpio_pin
         self._display_name = cfg_entry['display_name']

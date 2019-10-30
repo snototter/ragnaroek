@@ -97,6 +97,11 @@ class TemperatureLog:
 
         if num_entries < 1:
             raise ValueError('Number of retrieved entries must be >= 1!')
+
+        # If there are no readings yet, try to populate the log:
+        if len(self._temperature_readings) == 0:
+            self.log_temperature()
+
         num_entries = min(num_entries, len(self._temperature_readings))
 
         # Our circular list doesn't yet support slicing, so we do it the slow way:
@@ -107,7 +112,7 @@ class TemperatureLog:
         return ls
 
 
-    def format_table(self, num_entries=None, use_markdown=True): #TODO if no stored readings => query current temperature!
+    def format_table(self, num_entries=None, use_markdown=True):
         """Returns an ASCII table showing the last
         num_entries readings (or the last hour if
         num_entries is None).
@@ -154,10 +159,11 @@ class TemperatureLog:
             self._temperature_readings.append((dt_local, None))
             self._logger.log(logging.INFO, '{:s}'.format(time_utils.format(dt_local)))
         else:
+            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
+
             def _tocsv(s):
                 return '{:s};{:.1f}'.format(s.display_name, s.temperature)
 
-            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
             self._logger.log(logging.INFO, '{:s};{:s}'.format(
                     time_utils.format(dt_local),
                     ';'.join(map(_tocsv, [s for s in sensors]))

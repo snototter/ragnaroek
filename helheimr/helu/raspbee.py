@@ -331,7 +331,7 @@ class RaspBeeWrapper:
             is_heating = is_heating or state.on
         return is_heating, status
 
-#TODO Check if sensor[reachable] works as intended (warn upon /details, or if no sensors are available to determine pre-set temperature)
+
     def query_temperature(self):
         status = list()
         logger = logging.getLogger()

@@ -30,19 +30,23 @@ class Hel:
         # Suppress time (as it's added by journalctl by default)
         # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         formatter = logging.Formatter('%(levelname)s - %(message)s')
-        file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6", # Rotate the logs each sunday
-                    interval=1, backupCount=8)
+        
+        # Save to disk and rotate logs each sunday
+        file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",
+                    interval=1, backupCount=8)    
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
 
+        # Also log to stdout/stderr
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(logging.INFO)
         stream_handler.setFormatter(formatter)
         
+        # Configure this application's root logger
         logging.getLogger().addHandler(stream_handler)
         logging.getLogger().addHandler(file_handler)
         logging.getLogger().setLevel(logging.INFO)
-        self._logger = logging.getLogger() # Adjust the root logger
+        self._logger = logging.getLogger()
 
         # Load configuration files
         ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
@@ -50,10 +54,6 @@ class Hel:
         owm_cfg = common.load_configuration('configs/owm.cfg')
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
-        # self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
-        # self._weather_service.query()
-        # if True:
-        #     return
 
         # Start the heater/heating controller
         try:
@@ -62,14 +62,12 @@ class Hel:
             self._logger.error('[Hel] Error while setting up heating system:\n{}'.format(e))
             raise e
 
-
         # Set up the district heating wrapper
         try:
             district_heating.DistrictHeating.init_instance(ctrl_cfg)
         except Exception as e:
             self._logger.error('[Hel] Error while setting up district heating system:\n{}'.format(e))
             raise e
-
 
         # Create telegram bot
         try:

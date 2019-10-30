@@ -89,3 +89,39 @@ def format_time(t):
     """Convert to local time zone and return str representation."""
     t = time_as_local(t)
     return t.strftime('%H:%M')
+
+
+# def date_str(delimiter=['','','-','',''], ):
+#     """Returns a YYYY*MM*DD*hh*mm*ss string using the given delimiters.
+#     Provide less delimiter to return shorter strings, e.g.
+#     delimiter=['-'] returns YYYY-MM
+#     delimiter=['',''] returns YYYYMMDD
+#     etc.
+#     """
+#     now = datetime.datetime.now()
+#     res_str = now.strftime('%Y')
+#     month = now.strftime('%m')
+#     day = now.strftime('%d')
+#     hour = now.strftime('%H')
+#     minute = now.strftime('%M')
+#     sec = now.strftime('%S')
+#     num_delim = len(delimiter)
+#     if num_delim == 0:
+#         return res_str
+#     res_str += '{:s}{:s}'.format(delimiter[0], month)
+#     if num_delim == 1:
+#         return res_str
+#     res_str += '{:s}{:s}'.format(delimiter[1], day)
+#     if num_delim == 2:
+#         return res_str
+#     res_str += '{:s}{:s}'.format(delimiter[2], hour)
+#     if num_delim == 3:
+#         return res_str
+#     res_str += '{:s}{:s}'.format(delimiter[3], minute)
+#     if num_delim == 4:
+#         return res_str
+#     res_str += '{:s}{:s}'.format(delimiter[4], sec)
+#     if num_delim > 5:
+#         raise RuntimeError('Too many delimiter, currently we only support formating up until seconds')
+#     return res_str
+

@@ -246,6 +246,9 @@ class HelheimrBot:
         dh_query_handler = CommandHandler('fernwaerme', self.__cmd_query_district_heating, self._user_filter)
         self._dispatcher.add_handler(dh_query_handler)
 
+        debug_handler = CommandHandler('debug', self.__cmd_debug, self._user_filter)
+        self._dispatcher.add_handler(debug_handler)
+
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
 
@@ -877,6 +880,15 @@ class HelheimrBot:
     
     def __cmd_shutdown(self, update, context):
         threading.Thread(target=self.shutdown, daemon=True).start()
+
+
+    def __cmd_debug(self, update, context):
+        # All sorts of debug stuff, tests, etc.
+        successs1, txt1 = common.shell_pwd()
+        successs2, txt2 = common.shell_whoami()
+
+        self.__safe_send(update.message.chat_id, 'Benutzer "{}" (success: {})\nWD: "{}" (success: {})'.format(txt1, successs1, txt2, successs2))
+        
 
 
     def start(self):

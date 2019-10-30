@@ -8,7 +8,7 @@ import logging
 import re
 import traceback
 
-# from . import broadcasting
+from . import broadcasting
 from . import common
 from . import network_utils
 # from . import controller
@@ -34,17 +34,17 @@ class DistrictHeatingQueryParser(HTMLParser):
     """
     def __init__(self):
         super(DistrictHeatingQueryParser, self).__init__()
-        #TODO register div_ids
+        #TODO Don't forget to register the corresponding _div_mapping!
         self._status = {
-            'eco_status': None,
+            'eco_status': None,        # Button Eco
             'eco_time': None,
-            'medium_status': None,
+            'medium_status': None,     # Button Mittel
             'medium_time': None,
-            'high_status': None,
+            'high_status': None,       # Button Hoch
             'high_time': None,
-            'very_high_status': None,
+            'very_high_status': None,  # Button Sehr Hoch
             'very_high_time': None,
-            'transition_status': None,
+            'transition_status': None, # Button Übergang
             'transition_time': None,
 
             'consumption_state': None,       # Verbrauch '?geschaltet'
@@ -53,7 +53,9 @@ class DistrictHeatingQueryParser(HTMLParser):
             'teleheating_temperature': None, # Herkunft Fernwärme °C
         }
 
-        self._store_data_to = None # Holds the key into self._status (is set upon starting tags)
+        # During parsing, this holds the key into self._status
+        # Will be set upon handling starting tags
+        self._store_data_to = None
 
         self._div_mapping = {
             'pos38': 'eco_status',
@@ -62,11 +64,11 @@ class DistrictHeatingQueryParser(HTMLParser):
             'pos37': 'very_high_status',
             'pos39': 'transition_status',
 
-            'posTODO1': 'eco_time',
+            'posTODO1': 'eco_time', #TODO
             'pos35': 'medium_time',
             'pos29': 'high_time',
             'pos31': 'very_high_time',
-            'posTODO2': 'transition_time', # Couldn't find the corresponding div id (as it's not always shown)
+            'posTODO2': 'transition_time', #TODO Couldn't find the corresponding div id (as it's not always shown)
 
             'pos42': 'consumption_state',
             'pos40': 'consumption_temperature',
@@ -130,30 +132,38 @@ class DistrictHeatingQueryParser(HTMLParser):
 
     def format_message(self, use_markdown=True):
         msg = list()
+
+        ### General district heating stats:
         msg.append('{}Fernwärmestatus:{}'.format('*' if use_markdown else '', '*' if use_markdown else ''))
         if self.teleheating_temperature is not None:
             msg.append('\u2022 Fernwärme Eingang {}\u200a°'.format(
                 common.format_num('.1f', self.teleheating_temperature, use_markdown)))
 
         if self.consumption_state is not None:
-            #TODO rename all of these to something more explanatory (see if we find someone who knows what these terms actually mean ;-)
+            #TODO Rename all of these "system informations" to something more explanatory
+            # First we need to know, what the symbols on the CMI gateway actually mean
             msg.append('\u2022 Verbrauch ist {}'.format(
                 'eingeschaltet bei {}\u200a°, {}\u200akW'.format(
                     common.format_num('.1f', self.consumption_temperature, use_markdown),
                     common.format_num('.1f', self.consumption_power, use_markdown)) \
                 if self.consumption_state else 'ausgeschaltet'))
 
+        ### Button stats:
         if self.eco_status is not None:
-            msg.append('\u2022 Eco ist {}'.format(
-                'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.eco_time))) \
-                if self.eco_status else 'aus')) # TODO eco time will be None as we don't know the correct div
+            txt = '\u2022 Eco ist {}'.format(
+                'ein' if self.eco_status else 'aus')
+            if self.eco_time is not None and self.eco_status:
+                txt += ', Restzeit {:s}'.format(
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.eco_time)))
+            msg.append(txt)
 
         if self.transition_status is not None:
-            msg.append('\u2022 Übergang ist {}'.format(
-                'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time))) \
-                if self.transition_status else 'aus')) #TODO div is also not known!
+            txt = '\u2022 Übergang ist {}'.format(
+                'ein' if self.transition_status else 'aus')
+            if self.transition_time is not None and self.transition_status:
+                txt += ', Restzeit {:s}'.format(
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time)))
+            msg.append(txt)
 
         if self.medium_status is not None:
             msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
@@ -175,7 +185,6 @@ class DistrictHeatingQueryParser(HTMLParser):
 
         return '\n'.join(msg)
         
-
 
     def handle_starttag(self, tag, attrs):
         if tag == 'div':
@@ -214,8 +223,10 @@ class DistrictHeatingQueryParser(HTMLParser):
             elif len(times) == 1:
                 self._status[self._store_data_to] = times[0]
             else:
-                logging.getLogger().error('[DistrictHeatingQueryParser] Invalid remaining time string: "{:s}"'.format(trimmed))
-                #TODO broadcast error
+                logging.getLogger().error(
+                    '[DistrictHeatingQueryParser] Invalid remaining time string: "{:s}"'.format(trimmed))
+                broadcasting.MessageBroadcaster.instance().error(
+                    'Ungültige Zeichenfolge "{:s}" beim Parsen des Fernwärme-CMI (Restzeitangabe wurde erwartet).'.format(trimmed))
 
         elif self._store_data_to.endswith('_temperature') or \
             self._store_data_to.endswith('_power'):
@@ -224,8 +235,10 @@ class DistrictHeatingQueryParser(HTMLParser):
             if len(nums) == 1:
                 self._status[self._store_data_to] = nums[0]
             else:
-                logging.getLogger().error('[DistrictHeatingQueryParser] Invalid data string for a single float: "{:s}"'.format(trimmed))
-                #TODO broadcast error
+                logging.getLogger().error(
+                    '[DistrictHeatingQueryParser] Invalid data string for a single float: "{:s}"'.format(trimmed))
+                broadcasting.MessageBroadcaster.instance().error(
+                    'Ungültige Zeichenfolge "{:s}" beim Parsen des Fernwärme-CMI (Gleitkommazahl wurde nicht gefunden).'.format(trimmed))
 
         else:
             #TODO implement others if needed
@@ -289,8 +302,8 @@ class DistrictHeating:
     def get_buttons(self):
         """Returns the (sub-set of) buttons to control the district heating system."""
         return [
-            ('Eco', DistrictHeatingRequest.ECO), #TODO remove
-            ('55\u200a°', DistrictHeatingRequest.MEDIUM),
+            # ('Eco', DistrictHeatingRequest.ECO), 
+            ('55\u200a°', DistrictHeatingRequest.MEDIUM), # TODO not needed, may be removed soon
             ('60\u200a°', DistrictHeatingRequest.HIGH),
             ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
         ]

@@ -242,10 +242,10 @@ class WeatherReport:
             lines.append('Luftdruck: {}\u200ahPa'.format(common.format_num('d', self.atmospheric_pressure)))
 
         if self.rain is not None:
-            lines.append('Niederschlag: TODO {}\u200amm'.format(self.rain)) #TODO maybe round .1f
+            lines.append('Niederschlag: {}\u200amm'.format(common.format_num('.1f', self.rain)))
 
         if self.snow is not None:
-            lines.append('Schneefall: TODO {}\u200amm'.format(self.rain))
+            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.rain)))
 
         if self.wind is not None and self.wind['speed'] is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
@@ -255,7 +255,7 @@ class WeatherReport:
         lines.append('') # Will be joined with a newline
 
         lines.append('Sonnenaufgang: {:s}'.format(self.sunrise_time.strftime('%H:%m')))
-        lines.append('Sonnenuntergang: {:s} TODO check Winterzeit'.format(self.sunset_time.strftime('%H:%m'))) # TODO check after Daylight Savings Time (Zeitumstellung!)
+        lines.append('Sonnenuntergang: {:s}'.format(self.sunset_time.strftime('%H:%m')))
 
         return '\n'.join(lines)
 
