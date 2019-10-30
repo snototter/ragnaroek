@@ -385,7 +385,7 @@ class HelheimrBot:
 
 /reboot - PC neustarten.
 
-/poweroff - PC herunterfahren.
+/shutdown - PC herunterfahren.
 
 /stop - Heizungsservice beenden.
 
@@ -393,11 +393,9 @@ class HelheimrBot:
     neustarten.
 
 /hilfe oder /help - Diese Hilfemeldung."""
-#TODO reboot & shutdown (poweroff) => confirmation!
-
         self.__safe_send(update.message.chat_id, txt)
 
-#TODO temp => aktuelle temperatur + plot
+#TODO temp => plot
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
@@ -940,9 +938,9 @@ class HelheimrBot:
 
     def __reboot_helper(self, query):
         logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(query.from_user.first_name))
-        self.__safe_edit_callback_query(query, 'Raspberry wird neugestartet...')
+        self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin neugestartet.')
 
-        success, txt = common.shell_shutdown('-r', 'now')
+        success, txt = common.shell_shutdown('-r', '+1')
         if not success:
             logging.getLogger().error('[HelheimrBot] Error rebooting the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Neustarten. ' + txt)
@@ -962,9 +960,9 @@ class HelheimrBot:
 
     def __poweroff_helper(self, query):
         logging.getLogger().info('[HelheimrBot] User {} requested system shutdown (power-off).'.format(query.from_user.first_name))
-        self.__safe_edit_callback_query(query, 'Raspberry wird heruntergefahren.')
+        self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin heruntergefahren.')
 
-        success, txt = common.shell_shutdown('-r', 'now')
+        success, txt = common.shell_shutdown('-r', '+1')
         if not success:
             logging.getLogger().error('[HelheimrBot] Error shutting down the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Herunterfahren. ' + txt)
