@@ -32,7 +32,7 @@ def degrees_to_compass(deg, num_directions=8):
 def weather_code_emoji(code, ref_time=None):
     if code >= 200 and code < 300:
         # Thunderstorm
-        return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:'
+        return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:' ':zap:'
     elif code >= 300 and code < 400:
         # Drizzle
         return ':sun_behind_rain_cloud:'

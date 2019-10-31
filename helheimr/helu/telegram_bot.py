@@ -7,25 +7,25 @@ Telegram bot helheimr - controlling and querying our heating system.
 Commands (formating for @botfather):
 
 aus - :snowflake: Heizung ausschalten
-config - Heizungsprogramm einrichten
+config - :clock8: Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
 fernwaerme - Fernwärmestatus
 help - Liste verfügbarer Befehle
-progs - Programme/Aufgaben auflisten
+progs - :wrench: Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
 heizen - :high_brightness: Heizung einschalten
 einmal - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
-reboot - PC neustarten
+reboot - :wrench: PC neustarten
 rm - Heizungsprogramm löschen
-log - Servicelog anzeigen
-shutdown - PC herunterfahren
+log - :wrench: Servicelog anzeigen
+shutdown - :wrench: PC herunterfahren
 status - Statusabfrage
-stop - Heizungsservice beenden
+stop - :wrench: Heizungsservice beenden
 temp - Aktueller Temperaturverlauf
-update - Repository aktualisieren
+update - :wrench: Repository aktualisieren
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
 
