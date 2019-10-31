@@ -14,6 +14,7 @@ fernwaerme - Fernwärmestatus
 help - Liste verfügbarer Befehle
 progs - Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
+heizen - :high_brightness: Heizung einschalten
 einmal - :high_brightness: Einmalig aufheizen
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
@@ -219,6 +220,9 @@ class HelheimrBot:
         # For convenience, both German and English
         on_handler = CommandHandler('ein', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
+        # and with an additional name...
+        on_handler = CommandHandler('heizen', self.__cmd_on, self._user_filter)
+        self._dispatcher.add_handler(on_handler)
 
         off_handler = CommandHandler('off', self.__cmd_off, self._user_filter)
         self._dispatcher.add_handler(off_handler)
@@ -350,18 +354,18 @@ class HelheimrBot:
             logging.getLogger().error('[HelheimrBot] Error while sending chat action to chat ID {}\n'.format(chat_id) + err_msg)
         return False
 
-#TODO + /heizen = on
     def __cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
 /details - Detaillierte Systeminformation.
 /progs - Liste aller Programme & Aufgaben.
 
-/ein oder /on - :thermometer: Heizung einschalten.
+/ein oder /heizen oder /on
+    :thermometer: Heizung einschalten.
     Mit Temperatur: /on `21.7c`
     Mit Hysterese: /on `21c` `1c`
     Mit Heizdauer: /on `1.5h`
-    Temperatur und Dauer: /on `23c` `2h`
+    Temperatur & Dauer: /on `23c` `2h`
     Alles: /on `22c` `0.5c` `1.5h`
 
 /einmal oder /once - :thermometer: Einmalig
