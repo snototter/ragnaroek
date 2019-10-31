@@ -3,7 +3,7 @@
 **.api-token*
 **.cfg
 **.log*
-
+**/dummy*
 **.stl
 **.gcode
 **.bak

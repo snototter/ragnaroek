@@ -405,8 +405,11 @@ class WeatherForecastOwm:
             return None
 
 
-if __name__ == '__main__':
+def demo(cfg_file='../configs/owm.cfg'):
     #TODO try without internet connection
-    wcfg = common.load_configuration('../configs/owm.cfg')
-    weather_service = WeatherForecastOwm(wcfg)
+    wcfg = common.load_configuration(cfg_file)
+    weather_service = WeatherForecastOwm.init_instance(wcfg)
     print(weather_service.report().format_message(True, True)) # Note that the query may return None!
+
+if __name__ == '__main__':
+    demo()

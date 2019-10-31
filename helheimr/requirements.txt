@@ -8,3 +8,4 @@ python-dateutil
 pylint
 rpi-rf
 scipy
+matplotlib
