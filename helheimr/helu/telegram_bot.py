@@ -1022,7 +1022,7 @@ class HelheimrBot:
     def __cmd_update(self, update, context):
         # Perform git update
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
-        success, txt = common.shell_git_update()
+        success, txt = common.shell_update_repository()
         if not success:
             logging.getLogger().error('[HelheimrBot] Could not update git repository: ' + txt)
             self.__safe_message_reply(update, 'Fehler beim Aktualisieren des git Repos: ' + txt, reply_markup=None)
