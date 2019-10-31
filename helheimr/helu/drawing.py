@@ -72,6 +72,8 @@ def rgb2gray(rgb):
     return gray.astype(rgb.dtype)
 
 ##### matplotlib:
+# * Lookup
+#   https://matplotlib.org/api/_as_gen/matplotlib.pyplot.html#module-matplotlib.pyplot
 # * Reduce margins/white borders:
 #   https://stackoverflow.com/questions/4042192/reduce-left-and-right-margins-in-matplotlib-plot
 # * Change font properties:
@@ -87,9 +89,11 @@ if __name__ == '__main__':
     axes = fig.add_subplot(111)
     # axes = fig.gca()
 
-    x = np.arange(0., 5., 0.2)
-    axes.plot(x, x, 'r--')
-    axes.plot(x, x**2, 'bs')
+    with plt.xkcd():
+        x = np.arange(0., 5., 0.2)
+        axes.plot(x, x, 'r--')
+        axes.plot(x, x**2, 'bs')
+        
 
 #     ax = fig.gca()
     axes.set_xticks(np.arange(0, 5, 0.5))

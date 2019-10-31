@@ -107,7 +107,7 @@ def shell_update_repository():
     # #     else:
     # #         txt += "\n\nSubsequent 'pip install' succeeded"
     # # return success, txt
-    return = safe_shell_output('git', 'pull', 'origin', 'master')
+    return safe_shell_output('git', 'pull', 'origin', 'master')
 
 def shell_restart_service():
     #return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')
