@@ -19,6 +19,7 @@ off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
 reboot - PC neustarten
 rm - Heizungsprogramm löschen
+log - Servicelog anzeigen
 shutdown - PC herunterfahren
 status - Statusabfrage
 stop - Heizungsservice beenden
@@ -255,6 +256,9 @@ class HelheimrBot:
         job_list_handler = CommandHandler('progs', self.__cmd_list_jobs, self._user_filter)
         self._dispatcher.add_handler(job_list_handler)
 
+        log_handler = CommandHandler('log', self.__cmd_service_log, self._user_filter)
+        self._dispatcher.add_handler(log_handler)
+
         dh_start_handler = CommandHandler('vorlauf', self.__cmd_start_district_heating, self._user_filter)
         self._dispatcher.add_handler(dh_start_handler)
 
@@ -346,7 +350,7 @@ class HelheimrBot:
             logging.getLogger().error('[HelheimrBot] Error while sending chat action to chat ID {}\n'.format(chat_id) + err_msg)
         return False
 
-
+#TODO + /heizen = on
     def __cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
@@ -360,25 +364,26 @@ class HelheimrBot:
     Temperatur und Dauer: /on `23c` `2h`
     Alles: /on `22c` `0.5c` `1.5h`
 
-/einmal oder /once - :thermometer: Einmalig auf
-    bestimmte Temperatur aufheizen.
+/einmal oder /once - :thermometer: Einmalig
+    auf bestimmte Temperatur aufheizen.
 
 /aus oder /off - :snowflake: Heizung ausschalten.
 
 /pause - Heizungsprogramme pausieren.
 
-/temp oder /t - Temperaturverlauf anzeigen.
+/temp oder /t - Temperaturverlauf.
     Letzte Stunde: /temp
-    Letzten x Messungen: /temp 15
+    Letzten N Messungen: /temp 15
 
 /wetter - :partly_sunny: Wetterbericht.
 
-/fernwaerme - Ferwärmestatus abfragen.
+/fernwaerme - Ferwärmestatus.
 
-/vorlauf - 1\u200ah Fernwärmevorlauf einstellen.
+/vorlauf - 1\u200ah Fernwärmevorlauf.
 
-/config - Heizungsprogramm einstellen.
-    Uhrzeit + Dauer: /config 6:00 2h
+/config S D [T H] - Heizungsprogramm
+    konfigurieren.
+    Startzeit + Dauer: /config 6:00 2h
     Zusätzlich Temperatur: /config 6:00 23c 2h
     Zusätzlich Hysterese: /config 6:00 20c 0.5c 3h
 
@@ -388,12 +393,14 @@ class HelheimrBot:
 
 /shutdown - PC herunterfahren.
 
+/log oder /log N - Log anzeigen.
+
 /stop - Heizungsservice beenden.
 
-/update - Repository aktualisieren und Service
-    neustarten.
+/update - Repository aktualisieren
+    und Service neustarten.
 
-/hilfe oder /help - Diese Hilfemeldung."""
+/hilfe oder /help - Diese Hilfe."""
         self.__safe_send(update.message.chat_id, txt)
 
 #TODO temp => plot
@@ -908,7 +915,7 @@ class HelheimrBot:
         num_entries = None
         if len(context.args) > 0:
             try:
-                num_entries = int(context.args[0])
+                num_entries = common.check_positive_int(context.args[0])
             except:
                 self.__safe_send(update.message.chat_id, 'Parameterfehler: Anzahl der Messungen muss eine positive Ganzzahl sein!')
                 return
@@ -984,6 +991,25 @@ class HelheimrBot:
         self._is_modifying_heating = self.__safe_message_reply(update, 
             'Raspberry wirklich herunterfahren?', reply_markup=telegram.InlineKeyboardMarkup(keyboard))
 
+    
+    def __cmd_service_log(self, update, context):
+        num_lines = 10
+        if len(context.args) > 0:
+            try:
+                num_lines = common.check_positive_int(context.args[0])
+            except:
+                self.__safe_send(update.message.chat_id, 'Parameterfehler: Linienanzahl muss eine positive Ganzzahl sein!')
+                return
+
+        success, txt = common.shell_service_log(num_lines)
+        if success:
+            # Clip the most recent messages if log would be too long:
+            if len(txt) > type(self).MESSAGE_MAX_LENGTH:
+                txt = txt[-type(self).MESSAGE_MAX_LENGTH:]
+            self.__safe_send(update.message.chat_id, txt, parse_mode=None)
+        else:
+            self.__safe_send(update.message.chat_id, 'Fehler beim Auslesen des Logs. ' + txt)
+
 
     def __cmd_update(self, update, context):
         # Perform git update
@@ -1017,8 +1043,7 @@ class HelheimrBot:
         _, txt3 = common.shell_uptime()
 
         self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
-        
-
+       
 
     def start(self):
         # Start polling messages from telegram servers

@@ -16,7 +16,6 @@ import subprocess
 import os
 import psutil
 import datetime
-import argparse
 import traceback
 
 
@@ -89,6 +88,10 @@ def shell_pwd():
 
 def shell_uptime():
     return safe_shell_output('uptime', '-p')
+
+def shell_service_log(num_lines):
+    """Returns the last num_lines log lines of this service's log."""
+    return safe_shell_output('journalctl', '-u', 'helheimr-heating.service', '--no-pager', '-n', str(num_lines))
 
 def shell_git_update():
     # We set the service's working directory accordingly.
@@ -311,12 +314,12 @@ def is_tool(name):
 def check_positive_int(value):
     iv = int(value)
     if iv <= 0:
-        raise argparse.ArgumentTypeError("%s must be > 0" % value)
+        raise ValueError('{} must be > 0'.format(iv))
     return iv
 
 
 def check_positive_real(value):
     fv = float(value)
     if fv <= 0:
-        raise argparse.ArgumentTypeError("%s must be > 0.0" % value)
+        raise ValueError('{} must be > 0.0'.format(iv))
     return fv
