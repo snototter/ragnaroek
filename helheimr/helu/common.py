@@ -93,19 +93,21 @@ def shell_service_log(num_lines):
     """Returns the last num_lines log lines of this service's log."""
     return safe_shell_output('journalctl', '-u', 'helheimr-heating.service', '--no-pager', '-n', str(num_lines))
 
-def shell_update_repository(pip_update=True):
+def shell_update_repository():
     # We set the service's working directory accordingly.
     # If you need something similar but 'cd ...' first, the
     # following also works:
     # success, txt = safe_shell_output('/bin/bash', '-c', 'cd /some/path && git status')
-    success, txt = safe_shell_output('git', 'pull', 'origin', 'master')
-    if success and pip_update:
-        psuc, ptxt = safe_shell_output('pip', 'install', '-r', 'requirements.txt')
-        if not psuc:
-            return False, "'git pull' succeeded, but 'pip install' failed! {}".format(ptxt)
-        else:
-            txt += "\n\nSubsequent 'pip install' succeeded"
-    return success, txt
+    # # success, txt = safe_shell_output('git', 'pull', 'origin', 'master')
+    # # if success and pip_update:
+    # # !! pip install would need to first source the .venv :-/
+    # #     psuc, ptxt = safe_shell_output('pip', 'install', '-r', 'requirements.txt')
+    # #     if not psuc:
+    # #         return False, "'git pull' succeeded, but 'pip install' failed! {}".format(ptxt)
+    # #     else:
+    # #         txt += "\n\nSubsequent 'pip install' succeeded"
+    # # return success, txt
+    return = safe_shell_output('git', 'pull', 'origin', 'master')
 
 def shell_restart_service():
     #return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')

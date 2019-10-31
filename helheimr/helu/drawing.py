@@ -76,7 +76,10 @@ def rgb2gray(rgb):
 #   https://stackoverflow.com/questions/4042192/reduce-left-and-right-margins-in-matplotlib-plot
 # * Change font properties:
 #   https://matplotlib.org/3.1.1/gallery/text_labels_and_annotations/text_fontdict.html
-# * Grid https://stackoverflow.com/questions/8209568/how-do-i-draw-a-grid-onto-a-plot-in-python
+# * Grid 
+#   https://stackoverflow.com/questions/8209568/how-do-i-draw-a-grid-onto-a-plot-in-python
+# * Colormaps
+#   https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
 if __name__ == '__main__':
     target_fig_size = [1024, 768]
     default_dpi = 100
