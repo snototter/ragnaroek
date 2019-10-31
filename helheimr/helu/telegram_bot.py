@@ -432,6 +432,10 @@ class HelheimrBot:
         if chat_id is None:
             return txt
         else:
+            # Give user the opportunity to easily switch on/off:
+            txt += '\n\nHeizung /{:s}\u200aschalten?'.format(
+                'aus' if is_heating else 'ein'
+            )
             self.__safe_send(chat_id, txt)
 
 
