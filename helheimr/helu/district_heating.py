@@ -37,7 +37,6 @@ class DistrictHeatingQueryParser(HTMLParser):
         #TODO Don't forget to register the corresponding _div_mapping!
         self._status = {
             'eco_status': None,        # Button Eco
-            'eco_time': None,
             'medium_status': None,     # Button Mittel
             'medium_time': None,
             'high_status': None,       # Button Hoch
@@ -45,7 +44,6 @@ class DistrictHeatingQueryParser(HTMLParser):
             'very_high_status': None,  # Button Sehr Hoch
             'very_high_time': None,
             'transition_status': None, # Button Übergang
-            'transition_time': None,
 
             'consumption_state': None,       # Verbrauch '?geschaltet'
             'consumption_temperature': None, # Verbrauch °C
@@ -64,11 +62,9 @@ class DistrictHeatingQueryParser(HTMLParser):
             'pos37': 'very_high_status',
             'pos39': 'transition_status',
 
-            'posTODO1': 'eco_time', #TODO
             'pos35': 'medium_time',
             'pos29': 'high_time',
             'pos31': 'very_high_time',
-            'posTODO2': 'transition_time', #TODO Couldn't find the corresponding div id (as it's not always shown)
 
             'pos42': 'consumption_state',
             'pos40': 'consumption_temperature',
@@ -98,9 +94,6 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def eco_status(self):
         return self._status['eco_status']
-    @property
-    def eco_time(self):
-        return self._status['eco_time']
 
     @property
     def medium_status(self):
@@ -126,9 +119,6 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def transition_status(self):
         return self._status['transition_status']
-    @property
-    def transition_time(self):
-        return self._status['transition_time']
 
     def format_message(self, use_markdown=True):
         msg = list()
@@ -150,20 +140,12 @@ class DistrictHeatingQueryParser(HTMLParser):
 
         ### Button stats:
         if self.eco_status is not None:
-            txt = '\u2022 Eco ist {}'.format(
-                'ein' if self.eco_status else 'aus')
-            if self.eco_time is not None and self.eco_status:
-                txt += ', Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.eco_time)))
-            msg.append(txt)
+            msg.append('\u2022 Eco ist {}'.format(
+                'ein' if self.eco_status else 'aus'))
 
         if self.transition_status is not None:
-            txt = '\u2022 Übergang ist {}'.format(
-                'ein' if self.transition_status else 'aus')
-            if self.transition_time is not None and self.transition_status:
-                txt += ', Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.transition_time)))
-            msg.append(txt)
+            msg.append('\u2022 Übergang ist {}'.format(
+                'ein' if self.transition_status else 'aus'))
 
         if self.medium_status is not None:
             msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
@@ -302,8 +284,7 @@ class DistrictHeating:
     def get_buttons(self):
         """Returns the (sub-set of) buttons to control the district heating system."""
         return [
-            # ('Eco', DistrictHeatingRequest.ECO), 
-            ('55\u200a°', DistrictHeatingRequest.MEDIUM), # TODO not needed, may be removed soon
+            ('55\u200a°', DistrictHeatingRequest.MEDIUM), # TODO not needed, may be removed soon (?)
             ('60\u200a°', DistrictHeatingRequest.HIGH),
             ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
         ]
