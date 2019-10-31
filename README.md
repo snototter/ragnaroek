@@ -40,13 +40,20 @@ Installation instructions on RaspberryPi 3B+
     sudo apt update
     sudo apt install deconz
 
+    # Ensure it is running
+    sudo systemctl enable deconz-gui
+
+    # Install realvnc to use the deconz-gui remotely (to easily do the
+    # initial ZigBee network configuration)
+    sudo apt install realvnc-vnc-server realvnc-vnc-viewer
+
     ### RPi 4 requires additional steps, check their guide!
     ```
   * Start deCONZ application and pair devices.
 * Install software packages (TODO check history)
   ```bash
-  sudo apt install -y
-  #TODO (what else?) libatlas-base-dev python-dev
+  sudo apt install -y python3-dev python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev
+  sudo -H pip3 install rpi-rf
   ```
 * Checkout the source code and set up virtual environment
   ```bash

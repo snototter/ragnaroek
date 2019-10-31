@@ -47,6 +47,7 @@ import time
 
 from . import common
 from . import district_heating
+from . import drawing
 from . import heating
 from . import network_utils
 from . import scheduling
@@ -301,8 +302,18 @@ class HelheimrBot:
             return True
         except:
             err_msg = traceback.format_exc(limit=3)
-            logging.getLogger().error('[HelheimrBot] Error while sending message to chat ID {}:\n'.format(chat_id) + err_msg + '\n\nMessage text was:\n' + text)
+            logging.getLogger().error('[HelheimrBot] Error while sending message to chat ID {}.\n'.format(chat_id) + err_msg + '\n\nMessage text was:\n' + text)
             self._is_modifying_heating = False # Reset flag to allow editing again
+        return False
+
+    def __safe_photo_send(self, chat_id, image_buffer, **kwargs):
+        try:
+            self._bot.send_photo(chat_id, photo=image_buffer, **kwargs)
+            return True
+        except:
+            err_msg = traceback.format_exc(limit=3)
+            logging.getLogger().error('[HelheimrBot] Error while sending image to chat ID {}.\n'.format(chat_id) + err_msg)
+            # self._is_modifying_heating = False # Reset flag to allow editing again
         return False
 
 
@@ -1051,6 +1062,9 @@ class HelheimrBot:
         _, txt3 = common.shell_uptime()
 
         self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
+
+        img_buf = drawing.plot_temperature_curves(640, 480, temperature_log.TemperatureLog.instance().recent_readings(20), return_mem=True)
+        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
        
 
     def start(self):
