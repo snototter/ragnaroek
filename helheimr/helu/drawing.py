@@ -106,11 +106,16 @@ def curve_color(idx, colormap=plt.cm.jet, distinct_colors=10):
     return c[:3]
 
 #from . import time_utils
-def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=True, xkcd=True):
+def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=True, xkcd=True, reverse=True):
     alpha = 0.9
     linewidth = 2.5
     dpi = 100
+    every_nth_tick = 3 # show every n-th tick label
+    target_temperature_span = 10
     ### Prepare the data
+    if reverse:
+        temperature_log = temperature_log[::-1]
+
     # Get names and number of sensors
     sensor_names = set()
     for reading in temperature_log:
@@ -141,7 +146,11 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
     for idx in range(len(temperature_log)):
         dt_local, sensors = temperature_log[idx]
         # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
-        x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+
+        if idx % every_nth_tick == 0:
+            x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+        else:
+            x_tick_labels.append('')
 
         if sensors is None:
             continue
@@ -165,21 +174,32 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
             color=colors[sn], alpha=alpha, linestyle='-', linewidth=linewidth, \
             label=sn, marker='x', markersize=5*linewidth, markeredgewidth=linewidth)
 
-    ax.tick_params(axis ='x', rotation = 45) # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(range(len(x_tick_labels)), x_tick_labels)
+
+    # Adjust vertical scale
+    ymin, ymax = plt.ylim()
+    span = ymax - ymin
+    delta = np.ceil(target_temperature_span - span)
+    if delta > 0:
+        # ymin = np.floor(ymin - delta * 0.7)
+        # ymax = np.ceil(ymax + delta * 0.3)
+        ymin = ymin - delta * 0.7
+        ymax = ymax + delta * 0.3
+        plt.ylim(ymin, ymax)
+    ax.tick_params(axis='y', direction='in')
+    print('temperature span:', span)
+
+
 
     # plt.xlabel('Zeit...')
     # plt.ylabel('Temperatur °C')
     plt.title('Temperatur Verlauf °C +/- 123') # TODO circ sign!!!
     ax.grid(True, linewidth=linewidth-0.5, alpha=0.3)
-    ax.legend(loc='best', fancybox=True, framealpha=0.3) # See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+    ax.legend(loc='lower center', fancybox=True, frameon=False, ncol=3) #framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
         
     fig.tight_layout(pad=1.02) # pad=1.08 is default
     fig.canvas.draw()
-    # with plt.xkcd(): # TODO install humor sans
-    # p=fm.findfont('Humor Sans')
-# >>> #TODO plot text with 0x0b, change font
-
     
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)

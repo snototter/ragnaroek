@@ -73,6 +73,7 @@ class TemperatureLog:
 
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
+        self._sensor_abbreviations2display_names = dict()
         _sname2display = dict()
         for k in cfg['raspbee']['temperature']['display_names']:
             sensor_name = cfg['raspbee']['temperature']['sensor_names'][k]
@@ -80,11 +81,17 @@ class TemperatureLog:
             abbreviation = cfg['raspbee']['temperature']['abbreviations'][k]
             _sname2display[sensor_name] = abbreviation
             self._sensor_abbreviations[display_name] = abbreviation
+            self._sensor_abbreviations2display_names[abbreviation] = display_name
 
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
         
         logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(buffer_capacity, polling_interval_min, buffer_hours))
         logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
+
+
+    @property
+    def name_mapping(self):
+        return self._sensor_abbreviations2display_names
 
 
     def recent_readings(self, num_entries=None):
