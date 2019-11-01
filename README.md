@@ -15,7 +15,9 @@
 
 Installation instructions on RaspberryPi 3B+
 
-* Download Raspbian (tested with Buster)
+* Download Raspbian (tested with Buster lite)
+  * Enable ssh (create empty `ssh` file)
+  * Configure wifi via wpa_supplicant.conf (country code=.., update_config=1)
 * Set up RaspBee (deCONZ, Phoscon) following their [setup guide](https://phoscon.de/en/raspbee/install#raspbian)
   * For convenience (and fear of trusting external websites):
     ```bash

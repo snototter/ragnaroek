@@ -12,61 +12,113 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+# with plt.xkcd():
+#    x = np.linspace(0, 10)
+#    y1 = x * np.sin(x)
+#    y2 = x * np.cos(x)
+#    plt.fill(x, y1, 'red', alpha=0.4)
+#    plt.fill(x, y2, 'blue', alpha=0.4)
+#    plt.xlabel('x axis yo!')
+#    plt.ylabel("I don't even know")
+# plt.show()
+
+# fig = plt.figure()
+# with plt.xkcd():
+#    ax = fig.add_subplot(1, 1, 1)
+#    ax.fill(x, y1, 'red', alpha=0.4)
+#    ax.fill(x, y2, 'blue', alpha=0.4)
+#    plt.xlabel('x axis yo!')
+#    plt.ylabel("I don't even know")
+# fig.canvas.draw()
+# plt.show()
+
 from PIL import Image
 import io
 
+def curve_color(idx, colormap=plt.cm.jet, distinct_colors=10):
+    lookup = np.linspace(0., 1., distinct_colors)
+    c = colormap(lookup[idx % distinct_colors])
+    return c[:3]
+
 #from . import time_utils
-def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=True):
+def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=True, xkcd=True):
+    alpha = 0.9
+    linewidth = 2.5
     dpi = 100
-    # Prepare the data
-    # xticks = -5 min -10 -20, etc.
-    # skip none!!
-    x = np.arange(-10, 0, 0.5)
+    ### Prepare the data
+    # Get names and number of sensors
+    sensor_names = set()
+    for reading in temperature_log:
+        _, sensors = reading
+        if sensors is not None:
+            sensor_names.update(sensors.keys())
 
-    num_curves = 3
+    sensor_names = sorted(sensor_names)
+    num_sensors = len(sensor_names)
+    
+    if num_sensors == 0:
+        print('warning!!!') #TODO
+        if return_mem:
+            return None
+        else:
+            return
+
+    # Prepare curve colors
+    idx = 0
+    colors = dict()
+    for sn in sensor_names:
+        colors[sn] = curve_color(idx, colormap=plt.cm.viridis, distinct_colors=num_sensors)
+        idx += 1
+
+    # Extract curves
+    temperature_curves = {sn:list() for sn in sensor_names}
+    x_tick_labels = list()
+    for idx in range(len(temperature_log)):
+        dt_local, sensors = temperature_log[idx]
+        x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+
+        if sensors is None:
+            continue
+
+        for sn in sensors.keys():
+            if sensors[sn] is None:
+                continue
+            temperature_curves[sn].append((idx, sensors[sn]))
+    
+
+    ### Now we're ready to plot
+    # Prepare figure of proper size
     fig = plt.figure(figsize=(width_px/dpi, height_px/dpi))
-    # axes = fig.add_subplot(111)
-    axes = fig.gca()
+    if xkcd:
+        plt.xkcd(scale=1, length=100, randomness=2)
+    ax = fig.gca()
 
-    with plt.xkcd():
-        for i in range(num_curves):
-            y = 2*x - i**2
-            axes.plot(x, y, color=(0, 0, 1) if i == 0 else (1, 0, 0), linestyle='-', linewidth=1.5, marker='+', markersize=5.2, label='zimmer {:d}'.format(i)) 
-            # TODO color from hsv colormap or jet or something
+    for sn in sensor_names:
+        unzipped = tuple(zip(*temperature_curves[sn]))
+        ax.plot(unzipped[0], unzipped[1], \
+            color=colors[sn], alpha=alpha, linestyle='-', linewidth=linewidth, \
+            label=sn, marker='x', markersize=5*linewidth, markeredgewidth=linewidth)
 
-    # #     ax = fig.gca()
-    #     axes.set_xticks(np.arange(0, 5, 0.5))
-    #     axes.set_yticks(np.arange(0, 20, 2))
-    # # plt.scatter(x, y)
-    #     plt.xlim(-1, 4.4)
-    #     plt.ylim(0.25, 20)
-    #     # axes.grid()
-        plt.grid()
+    ax.tick_params(axis ='x', rotation = 45) # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
-        plt.title('Temperaturverlauf')
-        # # Change font, put labels, etc.
-        # font = {'family': 'xkcd Script', #'serif',
-        #     'color':  'darkred',
-        #     'weight': 'normal',
-        #     'size': 16,
-        #     }
-        # plt.title('Title Foo', fontdict=font)
-        # plt.text(2, 0.65, r'$\cos(2 \pi t) \exp(-t)$', fontdict=font)
-        # plt.xlabel('time (s)', fontdict=font)
-        # plt.ylabel('voltage (mV)', fontdict=font)
-
-    # Finally, remove the white space and ensure the canvas is populated:
+    plt.xlabel('Zeit...')
+    plt.ylabel('Temperatur °C')
+    ax.grid(True, linewidth=linewidth-0.5)
+    ax.legend(loc='best') # See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+        
     fig.tight_layout(pad=1.02) # pad=1.08 is default
     fig.canvas.draw()
-
+    # with plt.xkcd(): # TODO install humor sans
+    
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)
 
     if return_mem:
         return pil2memfile(img_pil)
-
-    img_pil.save('dummy-temperature.jpg')
-    plt.show()
+    else:
+        img_pil.save('dummy-temperature.jpg')
+        plt.show()
 
 
 def pil2np(img_pil, flip_channels=False):
@@ -156,6 +208,12 @@ def rgb2gray(rgb):
 #   https://stackoverflow.com/questions/8931268/using-colormaps-to-set-color-of-line-in-matplotlib
 
 if __name__ == '__main__':
+    plot_temperature_curves(1024, 768, 
+        [('a',{'K':23.5}), ('b',{'K':23.5, 'W':22}), ('c',{'K':25.5, 'W':24}),
+        ('d', {'K':None, 'W':23}), ('e', {'K':22}), ('f', None), ('g', {'Foo':25}), ('h', {'Foo':25.2, 'K':22.3})], return_mem=False)
+    if True:
+        raise RuntimeError('stop')
+
     target_fig_size_px = [1024, 768]
     dpi = 100
     fig = plt.figure(figsize=tuple([t/dpi for t in target_fig_size_px]))
@@ -205,4 +263,4 @@ if __name__ == '__main__':
 
     plt.show()
 
-    plot_temperature_curves(320, 240, [1,2,3], return_mem=False)
+    
