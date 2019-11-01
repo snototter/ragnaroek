@@ -64,12 +64,9 @@ class TemperatureLog:
         polling_interval_min = temp_cfg['update_interval_minutes']
         polling_job_label = temp_cfg['job_label']
         buffer_hours = 24
-        buffer_capacity = int(math.ceil(buffer_hours*60/polling_interval_min))
-        self._temperature_readings = common.circularlist(buffer_capacity)
+        self._buffer_capacity = int(math.ceil(buffer_hours*60/polling_interval_min))
+        self._temperature_readings = common.circularlist(self._buffer_capacity)
         self._num_readings_per_hour = int(math.ceil(60/polling_interval_min)) + 1 # one more to include the same minute, one hour ago
-
-        polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
-        scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
 
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
@@ -84,10 +81,23 @@ class TemperatureLog:
             self._sensor_abbreviations2display_names[abbreviation] = display_name
 
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
+
+        # Register periodic task with scheduler
+        polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
+        scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
         
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(buffer_capacity, polling_interval_min, buffer_hours))
+        # Load existing log file
+        self.load_log(temp_cfg['log_file'])
+
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, polling_interval_min, buffer_hours))
         logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
 
+
+    def load_log(self, filename):
+        # lines = common.tail(filename, lines=self._buffer_capacity)
+        lines = common.tail(filename, lines=10)
+        logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines))
+        #TODO continue
 
     @property
     def name_mapping(self):
