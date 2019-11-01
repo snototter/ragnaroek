@@ -96,8 +96,9 @@ class TemperatureLog:
     def load_log(self, filename):
         # lines = common.tail(filename, lines=self._buffer_capacity)
         lines = common.tail(filename, lines=10)
-        logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines))
+        logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines)))
         #TODO continue
+        
 
     @property
     def name_mapping(self):
