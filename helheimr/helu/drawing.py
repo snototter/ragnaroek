@@ -6,6 +6,7 @@
 import sys
 sys.path.append('.')
 
+
 # uninstall humor sans
 # rm .local/share/fonts/Humor-Sans-1.0.ttf
 # delete cache
@@ -17,33 +18,57 @@ sys.path.append('.')
 # fc-cache -f -v
 
 
-#TODO check
-# #https://matplotlib.org/3.1.1/api/font_manager_api.html
-# #http://jakevdp.github.io/blog/2012/10/07/xkcd-style-plots-in-matplotlib/
+# #What works:
+# replace xkcd font by my extension with circ + other extended glyphs (or replace rcParams directly after plt.xkcd() call)
+#
+#
+# # #https://matplotlib.org/3.1.1/api/font_manager_api.html
+# # #http://jakevdp.github.io/blog/2012/10/07/xkcd-style-plots-in-matplotlib/
+# # sudo fc-cache -fv
+# # rm -fr ~/.cache/matplotlib
 # import matplotlib
 # import matplotlib.pyplot as plt
 # import numpy as np
 # # Change all the fonts to humor-sans.
-# fig = plt.figure()
-# ax = fig.gca()
-# x = np.arange(0, 3, 0.2)
-# plt.plot(x, x**2)
-# import matplotlib.font_manager as fm
-# prop = fm.FontProperties(fname='Humor-Sans.ttf', size=16)
-# prop = fm.FontProperties(fname=fm.findfont('Humor Sans'), size=20)
+# with plt.xkcd():
+#     fig = plt.figure()
+#     # ax = fig.gca()
+#     ax = fig.add_subplot(1,1,1)
+#     # plt.rcParams['font.family'] = 'sans-serif'
+#     # plt.rcParams['font.sans-serif'] = 'xkcdext'
+#     x = np.arange(0, 3, 0.2)
+#     ax.plot(x, x**2)
+#     plt.xlabel('x °C $^\circ$Circ')
+#     plt.ylabel('y °C $^\circ$Circ')
+#     plt.title('Foo bla °C $^\circ$Circ')
+#     plt.show()
 
-# for text in ax.texts:
-#     text.set_fontproperties(prop)
-#
-#prop = fm.FontProperties(fname='Humor-Sans', size=16)
-#p=fm.findfont('Humor Sans')
+# # fig = plt.figure()
+# # # ax = fig.gca()
+# # ax = fig.add_subplot(1,1,1)
+# # plt.rcParams['font.family'] = 'sans-serif'
+# # plt.rcParams['font.sans-serif'] = 'xkcdext'
+# # plt.rcParams['font.size'] = 20
+# # x = np.arange(0, 3, 0.2)
+# # ax.plot(x, x**2)
+# # plt.xlabel('x °C $^\circ$Circ')
+# # plt.ylabel('y °C $^\circ$Circ')
+# # plt.title('Foo bla °C $^\circ$Circ')
+# # plt.show()
 
-##https://stackoverflow.com/questions/21321670/how-to-change-fonts-in-matplotlib-python
-# f = {'fontname':'Aniron'}
-# plt.title('Foobar Bla Bla', **f)
-p = fm.FontProperties(fname='Aniron', size=12)
-for text in ax.texts:
-    text.set_fontproperties(p)
+# with plt.xkcd():
+#     plt.rcParams['font.family'] = 'sans-serif'
+#     plt.rcParams['font.sans-serif'] = 'Humor Sans'
+#     fig = plt.figure()
+#     ax = fig.add_subplot(1,1,1)
+#     x = np.arange(0, 3, 0.2)
+#     ax.plot(x, x**2)
+#     ax.tick_params(axis='x', direction='in')
+#     plt.xlabel('x °C $^\circ$Circ')
+#     plt.ylabel('y °C $^\circ$Circ')
+#     plt.title('Foo bla °C $^\circ$Circ')
+#     plt.show()
+
 
 
 
