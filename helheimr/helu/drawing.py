@@ -16,6 +16,37 @@ sys.path.append('.')
 # rebuild font cache
 # fc-cache -f -v
 
+
+#TODO check
+# #https://matplotlib.org/3.1.1/api/font_manager_api.html
+# #http://jakevdp.github.io/blog/2012/10/07/xkcd-style-plots-in-matplotlib/
+# import matplotlib
+# import matplotlib.pyplot as plt
+# import numpy as np
+# # Change all the fonts to humor-sans.
+# fig = plt.figure()
+# ax = fig.gca()
+# x = np.arange(0, 3, 0.2)
+# plt.plot(x, x**2)
+# import matplotlib.font_manager as fm
+# prop = fm.FontProperties(fname='Humor-Sans.ttf', size=16)
+# prop = fm.FontProperties(fname=fm.findfont('Humor Sans'), size=20)
+
+# for text in ax.texts:
+#     text.set_fontproperties(prop)
+#
+#prop = fm.FontProperties(fname='Humor-Sans', size=16)
+#p=fm.findfont('Humor Sans')
+
+##https://stackoverflow.com/questions/21321670/how-to-change-fonts-in-matplotlib-python
+# f = {'fontname':'Aniron'}
+# plt.title('Foobar Bla Bla', **f)
+p = fm.FontProperties(fname='Aniron', size=12)
+for text in ax.texts:
+    text.set_fontproperties(p)
+
+
+
 import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
