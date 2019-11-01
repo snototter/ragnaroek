@@ -40,7 +40,7 @@ class Hel:
         file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",
                     interval=1, backupCount=8)    
         file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter) #TODO asctime format for disk log (but not for stdout/err log)
 
         # Also log to stdout/stderr
         stream_handler = logging.StreamHandler()
