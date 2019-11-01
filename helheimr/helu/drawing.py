@@ -6,6 +6,15 @@
 import sys
 sys.path.append('.')
 
+# uninstall humor sans
+# rm .local/share/fonts/Humor-Sans-1.0.ttf
+# delete cache
+# rm .cache/matplotlib/fontlist-v310.json
+# edit xkcd font, http://www.glyphrstudio.com/online/
+# name it Humor Sans, add degree sign, etc
+# install it
+# rebuild font cache
+# fc-cache -f -v
 
 import matplotlib
 # matplotlib.use('Agg')
@@ -105,13 +114,16 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
 
     # plt.xlabel('Zeit...')
     # plt.ylabel('Temperatur °C')
-    plt.title('Temperaturverlauf')
-    ax.grid(True, linewidth=linewidth-0.5)
-    ax.legend(loc='best') # See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+    plt.title('Temperatur Verlauf °C +/- 123') # TODO circ sign!!!
+    ax.grid(True, linewidth=linewidth-0.5, alpha=0.3)
+    ax.legend(loc='best', fancybox=True, framealpha=0.3) # See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
         
     fig.tight_layout(pad=1.02) # pad=1.08 is default
     fig.canvas.draw()
     # with plt.xkcd(): # TODO install humor sans
+    # p=fm.findfont('Humor Sans')
+# >>> #TODO plot text with 0x0b, change font
+
     
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)
@@ -210,9 +222,12 @@ def rgb2gray(rgb):
 #   https://stackoverflow.com/questions/8931268/using-colormaps-to-set-color-of-line-in-matplotlib
 
 if __name__ == '__main__':
+    import collections
+    dt = collections.namedtuple('dt', ['hour', 'minute'])
     plot_temperature_curves(1024, 768, 
-        [('a',{'K':23.5}), ('b',{'K':23.5, 'W':22}), ('c',{'K':25.5, 'W':24}),
-        ('d', {'K':None, 'W':23}), ('e', {'K':22}), ('f', None), ('g', {'Foo':25}), ('h', {'Foo':25.2, 'K':22.3})], return_mem=False)
+        [(dt(0,5),{'K':23.5}), (dt(0,10),{'K':23.5, 'W':22}), (dt(0,15),{'K':25.5, 'W':24}),
+        (dt(0,20), {'K':None, 'W':23}), (dt(0,25), {'K':22}), (dt(0,30), None), (dt(0,35), {'Foo':25}), 
+        (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False)
     if True:
         raise RuntimeError('stop')
 
