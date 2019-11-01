@@ -19,7 +19,8 @@ def degrees_to_compass(deg, num_directions=8):
     """:return: Compass direction (str, either 8 or 16) for the given angle (in degrees, 0 is north, 45 is east)."""
     if num_directions == 8:
         val = int((deg/45.0)+0.5)
-        lookup = ["Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest"]
+        # lookup = ["Nord", "Nordost", "Ost", "Südost", "Süd", "Südwest", "West", "Nordwest"]
+        lookup = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]
         return lookup[(val % 8)]
     elif num_directions == 16:
         val = int((deg/22.5)+0.5)
