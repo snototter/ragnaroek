@@ -75,7 +75,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
     x_tick_labels = list()
     for idx in range(len(temperature_log)):
         dt_local, sensors = temperature_log[idx]
-        x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+        # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+        x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
 
         if sensors is None:
             continue
@@ -102,8 +103,9 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
     ax.tick_params(axis ='x', rotation = 45) # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
-    plt.xlabel('Zeit...')
-    plt.ylabel('Temperatur °C')
+    # plt.xlabel('Zeit...')
+    # plt.ylabel('Temperatur °C')
+    plt.title('Temperaturverlauf')
     ax.grid(True, linewidth=linewidth-0.5)
     ax.legend(loc='best') # See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
         
