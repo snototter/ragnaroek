@@ -32,20 +32,20 @@ class Hel:
         # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
 
+        disk_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         # Suppress time (as it's added by journalctl by default)
-        # formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        formatter = logging.Formatter('%(levelname)s %(message)s')
+        stream_formatter = logging.Formatter('%(levelname)s %(message)s')
         
         # Save to disk and rotate logs each sunday
         file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",
                     interval=1, backupCount=8)    
         file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter) #TODO asctime format for disk log (but not for stdout/err log)
+        file_handler.setFormatter(disk_formatter)
 
         # Also log to stdout/stderr
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(logging.INFO)
-        stream_handler.setFormatter(formatter)
+        stream_handler.setFormatter(stream_formatter)
         
         # Configure this application's root logger
         logging.getLogger().addHandler(stream_handler)
