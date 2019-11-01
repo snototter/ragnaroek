@@ -52,7 +52,7 @@ Installation instructions on RaspberryPi 3B+
     ### RPi 4 requires additional steps, check their guide!
     ```
   * Start deCONZ application and pair devices.
-* Install software packages (TODO check history)
+* Install software packages
   ```bash
   sudo apt install -y python3-dev python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev
   sudo -H pip3 install rpi-rf
@@ -62,6 +62,13 @@ Installation instructions on RaspberryPi 3B+
   git clone https://github.com/snototter/ragnaroek.git
   cd ragnaroek/helheimr
   ./prepare_environment_py3.sh
+
+  # Install font
+  mkdir -p ~/.fonts
+  cp assets/xkcd-Regular.otf ~/.fonts/
+  fc-cache -f -v
+  # Check if it's listed
+  fc-list
   ```
 * Prepare configuration files, place them into `<prj-root>/helheimr/configs/`:
   * `bot.cfg` - everything related to the Telegram bot

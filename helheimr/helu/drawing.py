@@ -100,13 +100,24 @@ import numpy as np
 from PIL import Image
 import io
 
+from . import time_utils
+
 def curve_color(idx, colormap=plt.cm.jet, distinct_colors=10):
     lookup = np.linspace(0., 1., distinct_colors)
     c = colormap(lookup[idx % distinct_colors])
     return c[:3]
 
+
 #from . import time_utils
-def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=True, xkcd=True, reverse=True):
+def plot_temperature_curves(width_px, height_px, temperature_log, 
+    return_mem=True, xkcd=True, reverse=True, name_mapping=None):
+    """
+    return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
+    xkcd: :-)
+    reverse: reverse the temperature readings (if temperature_log[0] is the most recent reading)
+    name_mapping: provide a dictionary if you want to rename the curves
+    """
+    #TODO params
     alpha = 0.9
     linewidth = 2.5
     dpi = 100
@@ -133,11 +144,13 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
         else:
             return
 
-    # Prepare curve colors
+    # Prepare curve colors and names
     idx = 0
     colors = dict()
+    plot_labels = dict()
     for sn in sensor_names:
-        colors[sn] = curve_color(idx, colormap=plt.cm.viridis, distinct_colors=num_sensors)
+        colors[sn] = curve_color(idx, colormap=plt.cm.winter, distinct_colors=num_sensors)
+        plot_labels[sn] = sn if name_mapping is None else name_mapping[sn]
         idx += 1
 
     # Extract curves
@@ -146,6 +159,9 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
     for idx in range(len(temperature_log)):
         dt_local, sensors = temperature_log[idx]
         # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+
+        #time_utils.dt_now_local()
+        #TODO adjust every_nth_tick (if plotting the full day) + h instead of minutes
 
         if idx % every_nth_tick == 0:
             x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
@@ -172,29 +188,33 @@ def plot_temperature_curves(width_px, height_px, temperature_log, return_mem=Tru
         unzipped = tuple(zip(*temperature_curves[sn]))
         ax.plot(unzipped[0], unzipped[1], \
             color=colors[sn], alpha=alpha, linestyle='-', linewidth=linewidth, \
-            label=sn, marker='x', markersize=5*linewidth, markeredgewidth=linewidth)
+            label=plot_labels[sn], marker='.', markersize=5*linewidth, markeredgewidth=linewidth)
 
+    # Adjust x axis
     ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
-    # Adjust vertical scale
+    # Adjust y axis
     ymin, ymax = plt.ylim()
     span = ymax - ymin
     delta = np.ceil(target_temperature_span - span)
     if delta > 0:
-        # ymin = np.floor(ymin - delta * 0.7)
-        # ymax = np.ceil(ymax + delta * 0.3)
         ymin = ymin - delta * 0.7
         ymax = ymax + delta * 0.3
         plt.ylim(ymin, ymax)
+    
+    # Adjust y ticks
+    yminc = np.ceil(ymin)
+    if yminc - ymin < 0.5:
+        yminc += 1
+    
+    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32), 2)
+    y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
     ax.tick_params(axis='y', direction='in')
-    print('temperature span:', span)
-
-
-
-    # plt.xlabel('Zeit...')
-    # plt.ylabel('Temperatur °C')
-    plt.title('Temperatur Verlauf °C +/- 123') # TODO circ sign!!!
+    plt.yticks(y_ticks, y_tick_labels)
+    # TODO increase font size: legend, title, label
+    
+    plt.title('Temperaturverlauf [°C]')
     ax.grid(True, linewidth=linewidth-0.5, alpha=0.3)
     ax.legend(loc='lower center', fancybox=True, frameon=False, ncol=3) #framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
         
@@ -303,7 +323,7 @@ if __name__ == '__main__':
     plot_temperature_curves(1024, 768, 
         [(dt(0,5),{'K':23.5}), (dt(0,10),{'K':23.5, 'W':22}), (dt(0,15),{'K':25.5, 'W':24}),
         (dt(0,20), {'K':None, 'W':23}), (dt(0,25), {'K':22}), (dt(0,30), None), (dt(0,35), {'Foo':25}), 
-        (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False)
+        (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
     if True:
         raise RuntimeError('stop')
 

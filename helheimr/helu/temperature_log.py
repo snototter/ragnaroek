@@ -93,18 +93,20 @@ class TemperatureLog:
     def name_mapping(self):
         return self._sensor_abbreviations2display_names
 
+#TODO def past_readings(self, num_hours):
 
     def recent_readings(self, num_entries=None):
         """Returns the latest num_entries sensor readings, i.e. a
         tuple (time_stamp_local_timezone, readings), where the
         latter is None or a dict(abbreviation:temperature).
         If num_entries is None, readings from the past hour will
+        be returned. If num_entries is negative, all readings will
         be returned."""
         if num_entries is None:
             num_entries = self._num_readings_per_hour
 
         if num_entries < 1:
-            raise ValueError('Number of retrieved entries must be >= 1!')
+            num_entries = len(self._temperature_readings)
 
         # If there are no readings yet, try to populate the log:
         if len(self._temperature_readings) == 0:

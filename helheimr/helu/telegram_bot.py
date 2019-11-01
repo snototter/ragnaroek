@@ -1062,7 +1062,7 @@ class HelheimrBot:
         # _, txt3 = common.shell_uptime()
         # self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
 
-        img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(20), 
+        img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(-1), 
             return_mem=True, xkcd=True, reverse=True, 
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
         self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
