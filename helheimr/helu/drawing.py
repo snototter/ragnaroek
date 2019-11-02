@@ -47,7 +47,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Get names and number of sensors
     sensor_names = set()
     for reading in temperature_log:
-        _, sensors = reading
+        _, sensors, _ = reading
         if sensors is not None:
             sensor_names.update(sensors.keys())
 
