@@ -115,9 +115,7 @@ class TemperatureLog:
                     temps[abbreviation] = float(t)
                     t = float(tokens[i+1])
             # The last token holds the heating state
-            print('decode tokens[-1]:', tokens[-1])
-            hs = bool(tokens[-1])
-            print('  token is: {}'.format(hs))
+            hs = True if tokens[-1] == '1' else False
             self._temperature_readings.append((dt, temps, hs))
         
 
