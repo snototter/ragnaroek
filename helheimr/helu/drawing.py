@@ -28,7 +28,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     return_mem=True, xkcd=True, reverse=True, name_mapping=None,
     line_alpha=0.9, grid_alpha=0.3, linewidth=2.5, 
     every_nth_tick=3, tick_time_unit='minutes', #TODO!!!
-    min_temperature_span=8,
+    min_temperature_span=9,
     font_size=20, legend_columns=3):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)

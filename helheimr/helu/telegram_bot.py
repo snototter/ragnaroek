@@ -1066,7 +1066,7 @@ class HelheimrBot:
             return_mem=True, xkcd=True, reverse=True, 
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
         #TODO handle img_buf is None!
-        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
+        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True, filename='temperature-log.jpg')
        
 
     def start(self):
