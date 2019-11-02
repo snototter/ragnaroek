@@ -2,11 +2,12 @@
 # coding=utf-8
 """Basic drawing/plotting capabilities for temperature graphs, e-ink display, etc."""
 
-import os
 import matplotlib
 # Set up headless on pi
-if os.uname().machine.startswith('arm'):
-    matplotlib.use('Agg')
+# import os
+# if os.uname().machine.startswith('arm'):
+    # matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -29,7 +30,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     line_alpha=0.9, grid_alpha=0.3, linewidth=2.5, 
     every_nth_tick=3, tick_time_unit='minutes', #TODO!!!
     min_temperature_span=9,
-    font_size=20, legend_columns=3):
+    font_size=20, legend_columns=2):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
     xkcd: :-)
@@ -148,19 +149,27 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     ax.tick_params(axis='y', direction='in')
     plt.yticks(y_ticks, y_tick_labels)
 
-    # Plot a curve indicating if heating was active
+    # Plot a curve (z-order behind temperature plots but above of grid) 
+    # indicating if heating was active
     unzipped = tuple(zip(*was_heating))
     heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
     ax.plot(unzipped[0], heating_values, \
             color=(1,0,0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
-            label='Heizungsstatus', zorder=1)
-
+            label='Heizung', zorder=2)
+    
     # Title and legend
     plt.title('Temperaturverlauf [°C]')
     ax.grid(True, linewidth=linewidth-0.5, alpha=grid_alpha)
     ax.legend(loc='lower center', fancybox=True, 
         frameon=False, ncol=legend_columns)
-     #if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+    # => if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+
+    # If we need to change the legend ordering:
+    # https://stackoverflow.com/questions/22263807/how-is-order-of-items-in-matplotlib-legend-determined
+    # handles, labels = plt.gca().get_legend_handles_labels()
+    # order = range(len(labels))
+    # ax.legend([handles[idx] for idx in order], [labels[idx] for idx in order], loc='lower center', fancybox=True, 
+    #     frameon=False, ncol=legend_columns)
 
     ### Ensure that the figure is drawn/populated:
     # Remove white borders around the plot
