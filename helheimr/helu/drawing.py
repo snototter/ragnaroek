@@ -2,101 +2,15 @@
 # coding=utf-8
 """Basic drawing/plotting capabilities for temperature graphs, e-ink display, etc."""
 
-#TODO remove this import once we've finished testing
-import sys
-sys.path.append('.')
-
-
-# uninstall humor sans
-# rm .local/share/fonts/Humor-Sans-1.0.ttf
-# delete cache
-# rm .cache/matplotlib/fontlist-v310.json
-# edit xkcd font, http://www.glyphrstudio.com/online/
-# name it Humor Sans, add degree sign, etc
-# install it
-# rebuild font cache
-# fc-cache -f -v
-
-
-# #What works:
-# replace xkcd font by my extension with circ + other extended glyphs (or replace rcParams directly after plt.xkcd() call)
-#
-#
-# # #https://matplotlib.org/3.1.1/api/font_manager_api.html
-# # #http://jakevdp.github.io/blog/2012/10/07/xkcd-style-plots-in-matplotlib/
-# # sudo fc-cache -fv
-# # rm -fr ~/.cache/matplotlib
-# import matplotlib
-# import matplotlib.pyplot as plt
-# import numpy as np
-# # Change all the fonts to humor-sans.
-# with plt.xkcd():
-#     fig = plt.figure()
-#     # ax = fig.gca()
-#     ax = fig.add_subplot(1,1,1)
-#     # plt.rcParams['font.family'] = 'sans-serif'
-#     # plt.rcParams['font.sans-serif'] = 'xkcdext'
-#     x = np.arange(0, 3, 0.2)
-#     ax.plot(x, x**2)
-#     plt.xlabel('x °C $^\circ$Circ')
-#     plt.ylabel('y °C $^\circ$Circ')
-#     plt.title('Foo bla °C $^\circ$Circ')
-#     plt.show()
-
-# # fig = plt.figure()
-# # # ax = fig.gca()
-# # ax = fig.add_subplot(1,1,1)
-# # plt.rcParams['font.family'] = 'sans-serif'
-# # plt.rcParams['font.sans-serif'] = 'xkcdext'
-# # plt.rcParams['font.size'] = 20
-# # x = np.arange(0, 3, 0.2)
-# # ax.plot(x, x**2)
-# # plt.xlabel('x °C $^\circ$Circ')
-# # plt.ylabel('y °C $^\circ$Circ')
-# # plt.title('Foo bla °C $^\circ$Circ')
-# # plt.show()
-
-# with plt.xkcd():
-#     plt.rcParams['font.family'] = 'sans-serif'
-#     plt.rcParams['font.sans-serif'] = 'Humor Sans'
-#     fig = plt.figure()
-#     ax = fig.add_subplot(1,1,1)
-#     x = np.arange(0, 3, 0.2)
-#     ax.plot(x, x**2)
-#     ax.tick_params(axis='x', direction='in')
-#     plt.xlabel('x °C $^\circ$Circ')
-#     plt.ylabel('y °C $^\circ$Circ')
-#     plt.title('Foo bla °C $^\circ$Circ')
-#     plt.show()
-
-
-
-
+import os
 import matplotlib
-# matplotlib.use('Agg')
+# Set up headless on pi
+if os.uname().machine.startswith('arm'):
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
 
-# with plt.xkcd():
-#    x = np.linspace(0, 10)
-#    y1 = x * np.sin(x)
-#    y2 = x * np.cos(x)
-#    plt.fill(x, y1, 'red', alpha=0.4)
-#    plt.fill(x, y2, 'blue', alpha=0.4)
-#    plt.xlabel('x axis yo!')
-#    plt.ylabel("I don't even know")
-# plt.show()
-
-# fig = plt.figure()
-# with plt.xkcd():
-#    ax = fig.add_subplot(1, 1, 1)
-#    ax.fill(x, y1, 'red', alpha=0.4)
-#    ax.fill(x, y2, 'blue', alpha=0.4)
-#    plt.xlabel('x axis yo!')
-#    plt.ylabel("I don't even know")
-# fig.canvas.draw()
-# plt.show()
 
 from PIL import Image
 import io
