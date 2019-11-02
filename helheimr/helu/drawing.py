@@ -76,6 +76,7 @@ import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 
 # with plt.xkcd():
 #    x = np.linspace(0, 10)
@@ -134,11 +135,12 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         if sensors is not None:
             sensor_names.update(sensors.keys())
 
+    # Sort sensor names to ensure consistent colors
     sensor_names = sorted(sensor_names)
     num_sensors = len(sensor_names)
     
     if num_sensors == 0:
-        print('warning!!!') #TODO
+        logging.getLogger().warning('plot_temperature_curves() called with empty list!')
         if return_mem:
             return None
         else:
@@ -182,6 +184,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     fig = plt.figure(figsize=(width_px/dpi, height_px/dpi))
     if xkcd:
         plt.xkcd(scale=1, length=100, randomness=2)
+    plt.rcParams.update({'font.size': 22})
     ax = fig.gca()
 
     for sn in sensor_names:

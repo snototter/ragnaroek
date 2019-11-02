@@ -110,13 +110,11 @@ class TemperatureLog:
                 abbreviation = self._sensor_abbreviations[display_name]
                 t = tokens[i+1].strip()
                 if t.lower() == 'n/a':
-                    continue
+                    temps[abbreviation] = None
                 else:
                     temps[abbreviation] = float(t)
                     t = float(tokens[i+1])
-            data = (dt, temps)
-            print('Add to log:', data)
-            # self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
+            self._temperature_readings.append((dt, temps))
         
 
     @property
@@ -179,14 +177,13 @@ class TemperatureLog:
         msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]))
 
         # Table content
-        #TODO check reachable! if not => None, csv: N/A
         for r in readings:
             dt_local, sensors = r
             if sensors is None:
                 temp_str = '  '.join(['----' for _ in range(len(self._table_ordering))])
             else:
                 def _fmttemp(t):
-                    return 'N/A ' if t is None else '{:4.1}'.format(t)
+                    return 'n/a!' if t is None else '{:4.1f}'.format(t)
                 temp_str = '  '.join([_fmttemp(sensors[k]) for k in self._table_ordering])
             msg.append('{:02d}:{:02d}  {:s}'.format(dt_local.hour, dt_local.minute, temp_str))
 

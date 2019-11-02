@@ -43,7 +43,7 @@ def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
     return dt.astimezone(tz.tzlocal()).strftime(fmt)
 
 def dt_fromstr(s, fmt="%Y-%m-%d %H:%M:%S %Z"):
-    return datetime.strptime(s, fmt)
+    return datetime.datetime.strptime(s, fmt)
 
 
 def local_time_as_utc(hour, minute, second):
