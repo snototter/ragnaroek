@@ -122,15 +122,15 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
     # Adjust y-axis
-    ymin, ymax = plt.ylim()
-    span = ymax - ymin
+    ymin_initial, ymax = plt.ylim()
+    span = ymax - ymin_initial
     # ... ensure y-axis spans a minimum amount of degrees
     delta = np.ceil(min_temperature_span - span)
     # ... if there are even more, increase the range slightly so 
     # we get a nice top/bottom border
     if delta < 0:
         delta = 2
-    ymin = ymin - delta * 0.7
+    ymin = ymin_initial - delta * 0.7
     ymax = ymax + delta * 0.3
     plt.ylim(ymin, ymax)
     
@@ -150,10 +150,10 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
 
     # Plot a curve indicating if heating was active
     unzipped = tuple(zip(*was_heating))
-    heating_values = [ymax-1 if wh else yminc for wh in unzipped[1]]
+    heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
     ax.plot(unzipped[0], heating_values, \
             color=(1,0,0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
-            label='Heizungsstatus')
+            label='Heizungsstatus', zorder=1)
 
     # Title and legend
     plt.title('Temperaturverlauf [°C]')
