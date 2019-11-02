@@ -42,6 +42,9 @@ def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
     """Returns the string representation localized to the user's timezone."""
     return dt.astimezone(tz.tzlocal()).strftime(fmt)
 
+def dt_fromstr(s, fmt="%Y-%m-%d %H:%M:%S %Z"):
+    return datetime.strptime(s, fmt)
+
 
 def local_time_as_utc(hour, minute, second):
     t_local = datetime.time(hour=hour, minute=minute, second=second, tzinfo=tz.tzlocal())

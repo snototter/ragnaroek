@@ -28,7 +28,7 @@ def slurp_stripped_lines(filename):
 
 
 def tail(filename, lines=10, as_list=True):
-    """efficient implementation to 'tail' a file, based on https://stackoverflow.com/a/136368"""
+    """efficient implementation to 'tail' a file, adapted from https://stackoverflow.com/a/136368"""
     total_lines_wanted = lines
     with open(filename, 'rb') as f:
 
@@ -49,11 +49,11 @@ def tail(filename, lines=10, as_list=True):
                 f.seek(0,0)
                 # only read what was not read
                 blocks.append(f.read(block_end_byte))
-            lines_found = blocks[-1].count('\n')
+            lines_found = blocks[-1].count('\n'.encode('utf-8'))
             lines_to_go -= lines_found
             block_end_byte -= BLOCK_SIZE
             block_number -= 1
-        all_read_text = ''.join(reversed(blocks))
+        all_read_text = ''.join(reversed([b.decode('utf-8') for b in blocks]))
         if as_list:
             return all_read_text.splitlines()[-total_lines_wanted:]
         else:

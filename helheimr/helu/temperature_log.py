@@ -94,10 +94,29 @@ class TemperatureLog:
 
 
     def load_log(self, filename):
-        # lines = common.tail(filename, lines=self._buffer_capacity)
-        lines = common.tail(filename, lines=10)
-        logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines)))
+        lines = common.tail(filename, lines=self._buffer_capacity)
+        # lines = common.tail(filename, lines=10)
+        # logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines)))
         #TODO continue
+        if lines is None:
+            return
+
+        for line in lines:
+            tokens = line.split(';')
+            dt = time_utils.dt_fromstr(tokens[0])
+            temps = dict()
+            for i in range(1, len(tokens), 2):
+                display_name = tokens[i]
+                abbreviation = self._sensor_abbreviations[display_name]
+                t = tokens[i+1].strip()
+                if t.lower() == 'n/a':
+                    continue
+                else:
+                    temps[abbreviation] = float(t)
+                    t = float(tokens[i+1])
+            data = (dt, temps)
+            print('Add to log:', data)
+            # self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
         
 
     @property
@@ -160,12 +179,15 @@ class TemperatureLog:
         msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]))
 
         # Table content
+        #TODO check reachable! if not => None, csv: N/A
         for r in readings:
             dt_local, sensors = r
             if sensors is None:
                 temp_str = '  '.join(['----' for _ in range(len(self._table_ordering))])
             else:
-                temp_str = '  '.join(['{:4.1f}'.format(sensors[k]) for k in self._table_ordering])
+                def _fmttemp(t):
+                    return 'N/A ' if t is None else '{:4.1}'.format(t)
+                temp_str = '  '.join([_fmttemp(sensors[k]) for k in self._table_ordering])
             msg.append('{:02d}:{:02d}  {:s}'.format(dt_local.hour, dt_local.minute, temp_str))
 
         if use_markdown:
@@ -180,10 +202,13 @@ class TemperatureLog:
             self._temperature_readings.append((dt_local, None))
             self._logger.log(logging.INFO, '{:s}'.format(time_utils.format(dt_local)))
         else:
-            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature for s in sensors}))
+            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}))
 
             def _tocsv(s):
-                return '{:s};{:.1f}'.format(s.display_name, s.temperature)
+                if s.reachable:
+                    return '{:s};{:.1f}'.format(s.display_name, s.temperature)
+                else:
+                    return '{:s};N/A'.format(s.display_name)
 
             self._logger.log(logging.INFO, '{:s};{:s}'.format(
                     time_utils.format(dt_local),
