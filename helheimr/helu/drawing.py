@@ -122,6 +122,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     alpha = 0.9
     linewidth = 2.5
     dpi = 100
+    font_size = 20
+    legend_columns = 3
     every_nth_tick = 3 # show every n-th tick label
     target_temperature_span = 10
     ### Prepare the data
@@ -162,8 +164,10 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         dt_local, sensors = temperature_log[idx]
         # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
 
-        #time_utils.dt_now_local()
-        #TODO adjust every_nth_tick (if plotting the full day) + h instead of minutes
+        #TODO 
+        # timedelta(time_utils.dt_now_local() - dt_local)
+        # Then either minutes or hours
+        # adjust every_nth_tick (if plotting the full day) + h instead of minutes
 
         if idx % every_nth_tick == 0:
             x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
@@ -184,7 +188,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     fig = plt.figure(figsize=(width_px/dpi, height_px/dpi))
     if xkcd:
         plt.xkcd(scale=1, length=100, randomness=2)
-    plt.rcParams.update({'font.size': 22})
+    # Always change rcParams AFTER xkcd(), as it messes with the rcParams
+    plt.rcParams.update({'font.size': font_size})
     ax = fig.gca()
 
     for sn in sensor_names:
@@ -208,20 +213,26 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     
     # Adjust y ticks
     yminc = np.ceil(ymin)
+    # ... we want a sufficient padding between bottom and the lowest temperature grid line
     if yminc - ymin < 0.5:
+        yminc += 1
+    # ... be consistent: only show even temperature ticks
+    if yminc.astype(np.int32) % 2 == 1:
         yminc += 1
     
     y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32), 2)
     y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
     ax.tick_params(axis='y', direction='in')
     plt.yticks(y_ticks, y_tick_labels)
-    # TODO increase font size: legend, title, label
-    
+
+    # Title and legend
     plt.title('Temperaturverlauf [°C]')
     ax.grid(True, linewidth=linewidth-0.5, alpha=0.3)
-    ax.legend(loc='lower center', fancybox=True, frameon=False, ncol=3) #framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
+    ax.legend(loc='lower center', fancybox=True, frameon=False, ncol=legend_columns)
+     #if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
         
-    fig.tight_layout(pad=1.02) # pad=1.08 is default
+    # Remove white borders around the plot
+    fig.tight_layout(pad=1.02) # Default is pad=1.08
     fig.canvas.draw()
     
     img_np = plt2img(fig, dpi=dpi)
