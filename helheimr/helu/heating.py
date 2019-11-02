@@ -413,11 +413,11 @@ class Heating:
                     # ... and warn the users (but avoid spamming them)
                     if self._last_trend_warning_issue_time is None or \
                         (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
-                        msg = 'Temperatur steigt zu wenig an, {:s}{:.2f}\u200a° ({:d} * {:.2f}\u200a°) innerhalb von {}'.format(
+                        msg = 'Temperatur steigt zu wenig an, {:s}{:s}\u200a° ({:d} x {:s}\u200a°) innerhalb von {}'.format(
                                 '' if temperature_inc < 0 else '+',
-                                temperature_inc,
+                                common.format_num('.2f', temperature_inc),
                                 len(temperatures),
-                                temperature_slope, 
+                                common.format_num('.2f', temperature_slope),
                                 time_utils.format_timedelta(datetime.timedelta(seconds=trend_period))
                             )
                         broadcasting.MessageBroadcaster.instance().error(msg)

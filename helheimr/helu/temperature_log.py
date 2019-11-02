@@ -105,7 +105,7 @@ class TemperatureLog:
             tokens = line.split(';')
             dt = time_utils.dt_fromstr(tokens[0])
             temps = dict()
-            for i in range(1, len(tokens), 2):
+            for i in range(1, len(tokens)-1, 2):
                 display_name = tokens[i]
                 abbreviation = self._sensor_abbreviations[display_name]
                 t = tokens[i+1].strip()
@@ -114,7 +114,9 @@ class TemperatureLog:
                 else:
                     temps[abbreviation] = float(t)
                     t = float(tokens[i+1])
-            self._temperature_readings.append((dt, temps))
+            # The last token holds the heating state
+            hs = bool(tokens[-1])
+            self._temperature_readings.append((dt, temps, hs))
         
 
     @property
@@ -173,19 +175,19 @@ class TemperatureLog:
         if use_markdown:
             msg.append('```')
 
-        msg.append('       {:s}'.format('  '.join([_header(h) for h in self._table_ordering])))
-        msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]))
+        msg.append('       {:s} H '.format('  '.join([_header(h) for h in self._table_ordering])))
+        msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]) + '---')
 
         # Table content
         for r in readings:
-            dt_local, sensors = r
+            dt_local, sensors, is_heating = r
             if sensors is None:
                 temp_str = '  '.join(['----' for _ in range(len(self._table_ordering))])
             else:
                 def _fmttemp(t):
                     return 'n/a!' if t is None else '{:4.1f}'.format(t)
                 temp_str = '  '.join([_fmttemp(sensors[k]) for k in self._table_ordering])
-            msg.append('{:02d}:{:02d}  {:s}'.format(dt_local.hour, dt_local.minute, temp_str))
+            msg.append('{:02d}:{:02d}  {:s} {:s} '.format(dt_local.hour, dt_local.minute, temp_str, '!' if is_heating else ' '))
 
         if use_markdown:
             msg.append('```')
@@ -195,11 +197,12 @@ class TemperatureLog:
     def log_temperature(self):
         sensors = heating.Heating.instance().query_temperature()
         dt_local = time_utils.dt_now_local()
+        is_heating, _ = heating.Heating.instance().query_heating_state()
         if sensors is None:
-            self._temperature_readings.append((dt_local, None))
-            self._logger.log(logging.INFO, '{:s}'.format(time_utils.format(dt_local)))
+            self._temperature_readings.append((dt_local, None, is_heating))
+            self._logger.log(logging.INFO, '{:s};{:d}'.format(time_utils.format(dt_local), is_heating))
         else:
-            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}))
+            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}, is_heating))
 
             def _tocsv(s):
                 if s.reachable:
@@ -207,7 +210,8 @@ class TemperatureLog:
                 else:
                     return '{:s};N/A'.format(s.display_name)
 
-            self._logger.log(logging.INFO, '{:s};{:s}'.format(
+            self._logger.log(logging.INFO, '{:s};{:s};{:d}'.format(
                     time_utils.format(dt_local),
-                    ';'.join(map(_tocsv, [s for s in sensors]))
+                    ';'.join(map(_tocsv, [s for s in sensors])),
+                    is_heating
                 ))
