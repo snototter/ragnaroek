@@ -74,8 +74,9 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Extract curves
     temperature_curves = {sn:list() for sn in sensor_names}
     x_tick_labels = list()
+    was_heating = list()
     for idx in range(len(temperature_log)):
-        dt_local, sensors = temperature_log[idx]
+        dt_local, sensors, heating = temperature_log[idx]
         # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
 
         #TODO 
@@ -87,6 +88,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
             x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
         else:
             x_tick_labels.append('')
+
+        was_heating.append((idx, heating))
 
         if sensors is None:
             continue
@@ -144,6 +147,13 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
     ax.tick_params(axis='y', direction='in')
     plt.yticks(y_ticks, y_tick_labels)
+
+    # Plot a curve indicating if heating was active
+    unzipped = tuple(zip(*was_heating))
+    heating_values = [ymax-1 if wh else yminc for wh in unzipped[1]]
+    ax.plot(unzipped[0], heating_values, \
+            color=(1,0,0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+            label='Heizungsstatus')
 
     # Title and legend
     plt.title('Temperaturverlauf [°C]')
