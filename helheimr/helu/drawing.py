@@ -9,37 +9,37 @@ if os.uname().machine.startswith('arm'):
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+
 import logging
-
-
 from PIL import Image
 import io
 
 from . import time_utils
 
-def curve_color(idx, colormap=plt.cm.jet, distinct_colors=10):
+
+def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
+    """Return a unique color for the given idx (if idx < distinct_colors)."""
     lookup = np.linspace(0., 1., distinct_colors)
     c = colormap(lookup[idx % distinct_colors])
     return c[:3]
 
 
-#from . import time_utils
 def plot_temperature_curves(width_px, height_px, temperature_log, 
-    return_mem=True, xkcd=True, reverse=True, name_mapping=None):
+    return_mem=True, xkcd=True, reverse=True, name_mapping=None,
+    line_alpha=0.9, grid_alpha=0.3, linewidth=2.5, 
+    every_nth_tick=3, tick_time_unit='minutes', #TODO!!!
+    min_temperature_span=8,
+    font_size=20, legend_columns=3):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
     xkcd: :-)
     reverse: reverse the temperature readings (if temperature_log[0] is the most recent reading)
     name_mapping: provide a dictionary if you want to rename the curves
+
+    every_nth_tick: label every n-th tick only
+    tick_time_unit: should the time difference (tick label) be stated as 'minutes' or 'hours'
+    min_temperature_span: the y-axis should span at least these many degrees
     """
-    #TODO params
-    alpha = 0.9
-    linewidth = 2.5
-    dpi = 100
-    font_size = 20
-    legend_columns = 3
-    every_nth_tick = 3 # show every n-th tick label
-    target_temperature_span = 10
     ### Prepare the data
     if reverse:
         temperature_log = temperature_log[::-1]
@@ -99,6 +99,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
 
     ### Now we're ready to plot
     # Prepare figure of proper size
+    dpi = 100 # Dummy DPI value to compute figure size in inches
     fig = plt.figure(figsize=(width_px/dpi, height_px/dpi))
     if xkcd:
         plt.xkcd(scale=1, length=100, randomness=2)
@@ -106,26 +107,31 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     plt.rcParams.update({'font.size': font_size})
     ax = fig.gca()
 
+    # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
         ax.plot(unzipped[0], unzipped[1], \
-            color=colors[sn], alpha=alpha, linestyle='-', linewidth=linewidth, \
+            color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
             label=plot_labels[sn], marker='.', markersize=5*linewidth, markeredgewidth=linewidth)
 
-    # Adjust x axis
+    # Adjust x-axis
     ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
-    # Adjust y axis
+    # Adjust y-axis
     ymin, ymax = plt.ylim()
     span = ymax - ymin
-    delta = np.ceil(target_temperature_span - span)
-    if delta > 0:
-        ymin = ymin - delta * 0.7
-        ymax = ymax + delta * 0.3
-        plt.ylim(ymin, ymax)
+    # ... ensure y-axis spans a minimum amount of degrees
+    delta = np.ceil(min_temperature_span - span)
+    # ... if there are even more, increase the range slightly so 
+    # we get a nice top/bottom border
+    if delta < 0:
+        delta = 2
+    ymin = ymin - delta * 0.7
+    ymax = ymax + delta * 0.3
+    plt.ylim(ymin, ymax)
     
-    # Adjust y ticks
+    # Adjust ticks on y-axis
     yminc = np.ceil(ymin)
     # ... we want a sufficient padding between bottom and the lowest temperature grid line
     if yminc - ymin < 0.5:
@@ -141,14 +147,17 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
 
     # Title and legend
     plt.title('Temperaturverlauf [°C]')
-    ax.grid(True, linewidth=linewidth-0.5, alpha=0.3)
-    ax.legend(loc='lower center', fancybox=True, frameon=False, ncol=legend_columns)
+    ax.grid(True, linewidth=linewidth-0.5, alpha=grid_alpha)
+    ax.legend(loc='lower center', fancybox=True, 
+        frameon=False, ncol=legend_columns)
      #if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
-        
+
+    ### Ensure that the figure is drawn/populated:
     # Remove white borders around the plot
-    fig.tight_layout(pad=1.02) # Default is pad=1.08
+    fig.tight_layout(pad=1.01) # Default is pad=1.08
     fig.canvas.draw()
-    
+
+    ### Export figure (and return or show it)
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)
 
@@ -183,7 +192,7 @@ def np2pil(img_np):
     return Image.fromarray(img_np)
 
 
-def np2memfile(np_data):
+def np2memfile(img_np):
     """Convert numpy (image) array to ByteIO stream"""
     # print('converting {}'.format(np_data.shape))
     # TODO handle grayvalue (call standard data.transpose)
@@ -206,22 +215,11 @@ def plt2img(fig, dpi=180):
         img_np = img_np[:, :, :3]
     return img_np
 
-# # Make a random plot...
-# fig = plt.figure()
-# fig.add_subplot(111)
-
-# # If we haven't already shown or saved the plot, then we need to
-# # draw the figure first...
-# fig.canvas.draw()
-
-# # Now we can save it to a numpy array.
-
-def plt2img_lowres(fig):
-    #TODO check quality!
-    img_np = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    print(fig.canvas.get_width_height())
-    img_np = img_np.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    return img_np
+# def plt2img_lowres(fig):
+#     img_np = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+#     print(fig.canvas.get_width_height())
+#     img_np = img_np.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+#     return img_np
 
 
 def rgb2gray(rgb):
@@ -294,9 +292,10 @@ if __name__ == '__main__':
     # If run headless, we must ensure that the figure canvas is populated:
     fig.canvas.draw()
 
-    img_lowres = plt2img_lowres(fig)
-    img_pil = np2pil(img_lowres)
-    img_pil.save('dummy-lowres.jpg')
+    ## Export lowres first (hires changes the figure, so there would be no difference)
+    # img_lowres = plt2img_lowres(fig)
+    # img_pil = np2pil(img_lowres)
+    # img_pil.save('dummy-lowres.jpg')
 
     img_highres = plt2img(fig, dpi=2*dpi)
     img_pil = np2pil(img_highres)
