@@ -64,7 +64,7 @@ Installation instructions on RaspberryPi 3B+
   cd ragnaroek/helheimr
   ./prepare_environment_py3.sh
 
-  # Install font
+  # Install xkcd font (added some missing glyphs to the original xkcd-Script font)
   mkdir -p ~/.fonts
   cp assets/xkcd-Regular.otf ~/.fonts/
   fc-cache -f -v
