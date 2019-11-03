@@ -1047,6 +1047,8 @@ class HelheimrBot:
         else:
             self.__safe_send(update.message.chat_id, 'Fehler beim Auslesen des Logs. ' + txt)
 
+        #TODO tail heating.log
+
 
     def __cmd_update(self, update, context):
         # Perform git update
