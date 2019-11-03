@@ -9,11 +9,7 @@
     * Telegram bot
 
 # Installation Helheimr
-
-
-
-
-Installation instructions on RaspberryPi 3B+
+Installation instructions on RaspberryPi 3B+:
 
 * Download Raspbian (tested with Buster lite)
   * Enable ssh (create empty `ssh` file)
@@ -85,3 +81,10 @@ Installation instructions on RaspberryPi 3B+
     journalctl -f -u helheimr-heating.service
   ```
 
+# TODOs
+* [ ] REST API for e-ink display
+* [ ] e-ink display tests
+* [ ] e-ink cover
+* [ ] code refactoring
+* [ ] pip freeze exact versions
+* [ ] add exemplary config files
