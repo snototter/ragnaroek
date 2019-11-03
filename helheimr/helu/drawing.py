@@ -43,19 +43,12 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     dt_end = _tm(temperature_log[-1])
     # dt_end = time_utils.dt_now_local()
     dt_start = _tm(temperature_log[0])
-    # reverse = dt_start > dt_end
-    # if reverse: #TODO needs additional handling, or at least thorough testing (e.g. adding now to the front)
-    #     dt_end = _tm(temperature_log[0])
-    #     dt_start = time_utils.dt_now_local()
-    #     # dt_start = _tm(temperature_log[-1])
-    print('CHECK INPUT:', dt_start, _tm(temperature_log[-1]))
-
     
     # Find best fitting tick interval
     # time_span = dt_end - dt_start
     time_span = __naive_time_diff(dt_end, dt_start)
     sec_per_tick = time_span.total_seconds() / desired_num_ticks
-    print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
+    # print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
 
     def _m(x):
         return x * 60
@@ -73,11 +66,10 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # ## Version A, ceil
     # num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     # offset = 0
-    ## Version B, floor #TODO check
+    ## Version B, floor
     num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     offset = closest_tick_unit
-    #TODO log and check
-    print('Num ticks:', num_ticks, num_ticks*closest_tick_unit, time_utils.days_hours_minutes_seconds_from_sec(num_ticks*closest_tick_unit))
+
     tick_values = list()
     tick_labels = list()
     for i in range(num_ticks):
@@ -98,6 +90,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
         tick_labels.append(dt_tick.strftime('%d.%m.%Y %H:%M'))
     
     return tick_values, tick_labels, dt_tick_start
+
 
 def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
     temperature_curves = {sn:list() for sn in sensor_names}
@@ -220,7 +213,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Adjust ticks on y-axis
     yminc = np.ceil(ymin)
     # ... we want a sufficient padding between bottom and the lowest temperature grid line
-    if yminc - ymin < 0.5:
+    if yminc - ymin < 0.8:
         yminc += 1
     # # ... be consistent: only show even temperature ticks
     # if yminc.astype(np.int32) % 2 == 1:

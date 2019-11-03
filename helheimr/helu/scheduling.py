@@ -993,10 +993,10 @@ class HelheimrScheduler(Scheduler):
     def __scheduling_loop(self):
         self._condition_var.acquire()
         while self._run_loop:
-            #TODO Remove debug output:
-            logging.getLogger().info('DEBUG JOB LIST::::::::::::::::::::::::::::::HelheimrScheduler:::::::::')
-            for job in self.jobs:
-                logging.getLogger().info('  * {}'.format(job))
+            # # Debug output:
+            # logging.getLogger().info('DEBUG JOB LIST::::::::::::::::::::::::::::::HelheimrScheduler:::::::::')
+            # for job in self.jobs:
+            #     logging.getLogger().info('  * {}'.format(job))
 
             # Run all pending jobs:
             try:
