@@ -940,7 +940,7 @@ class HelheimrBot:
                 render_table = True
             else:    
                 try:
-                    num_entries = int(context.args[0])
+                    num_entries = int(arg)
                 except:
                     self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
                     return

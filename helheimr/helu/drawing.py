@@ -76,6 +76,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     ## Version B, floor #TODO check
     num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     offset = closest_tick_unit
+    #TODO log and check
     print('Num ticks:', num_ticks, num_ticks*closest_tick_unit, time_utils.days_hours_minutes_seconds_from_sec(num_ticks*closest_tick_unit))
     tick_values = list()
     tick_labels = list()
