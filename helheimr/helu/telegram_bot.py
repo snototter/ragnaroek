@@ -389,6 +389,8 @@ class HelheimrBot:
 /temp oder /t - Temperaturverlauf.
     Letzte Stunde: /temp
     Letzten N Messungen: /temp 15
+    Alle gespeicherten: /temp -1
+    Zusätzlich als  Tabelle: /temp t
 
 /wetter - :partly_sunny: Wetterbericht.
 
@@ -932,14 +934,30 @@ class HelheimrBot:
 
     def __cmd_temp(self, update, context):
         num_entries = None
-        if len(context.args) > 0:
-            try:
-                num_entries = common.check_positive_int(context.args[0])
-            except:
-                self.__safe_send(update.message.chat_id, 'Parameterfehler: Anzahl der Messungen muss eine positive Ganzzahl sein!')
-                return
-        msg = temperature_log.TemperatureLog.instance().format_table(num_entries, use_markdown=True)
-        self.__safe_send(update.message.chat_id, msg)
+        render_table = False
+        for arg in context.args:
+            if arg.lower() == 't' or arg.lower() == 'tab' or arg.lower() == 'table':
+                render_table = True
+            else:    
+                try:
+                    num_entries = int(context.args[0])
+                except:
+                    self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
+                    return
+        if render_table:
+            msg = temperature_log.TemperatureLog.instance().format_table(num_entries, use_markdown=True)
+            self.__safe_send(update.message.chat_id, msg)
+
+        # Get temperature plot
+        img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(num_entries), 
+            return_mem=True, xkcd=True, reverse=True, 
+            name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
+        if img_buf is None:
+            self.__safe_send(update.message.chat_id, ':bangbang: Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
+        else:
+            self.__safe_photo_send(update.message.chat_id, img_buf, 
+                caption='Yabba-dabba-doo', disable_notification=True)
+        
 
     
     def __cmd_list_jobs(self, update, context):
