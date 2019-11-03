@@ -128,6 +128,10 @@ def shell_service_log(num_lines):
     """Returns the last num_lines log lines of this service's log."""
     return safe_shell_output('journalctl', '-u', 'helheimr-heating.service', '--no-pager', '-n', str(num_lines))
 
+def shell_heating_log(num_lines):
+    """Returns the last num_lines logged by the heating system wrapper."""
+    return safe_shell_output('/bin/bash', '-c', r"journalctl -u helheimr-heating.service --no-pager | grep '\[Heating\]' | tail -n {:d}".format(num_lines))
+
 def shell_update_repository():
     # We set the service's working directory accordingly.
     # If you need something similar but 'cd ...' first, the
@@ -308,6 +312,17 @@ def slugify(s):
     s = to_unicode(re.sub('[^\w\s-]', '', s).strip().lower())
     s = to_unicode(re.sub('[-\s]+', '-', s))
     return s
+
+
+# regexp to extract numbers from strings taken from https://stackoverflow.com/questions/4289331/how-to-extract-numbers-from-a-string-in-python/4289415
+def extract_integers(string):
+    """Extract all integers from the string into a list (used to parse the CMI gateway's cgi output)."""
+    return [int(t) for t in re.findall(r'\d+', string)]
+
+
+def extract_floats(string):
+    """Extract all real numbers from the string into a list (used to parse the CMI gateway's cgi output)."""
+    return [float(t) for t in re.findall(r'[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?', string)]
 
 
 def find_first_index(l, x):

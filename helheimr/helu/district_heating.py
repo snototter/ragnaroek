@@ -5,7 +5,6 @@
 import datetime
 from html.parser import HTMLParser
 import logging
-import re
 import traceback
 
 from . import broadcasting
@@ -15,16 +14,6 @@ from . import network_utils
 # from . import lpd433
 # from . import raspbee
 from . import time_utils
-# from . import scheduling
-# from . import telegram_bot
-
-# regexp to extract numbers from strings taken from https://stackoverflow.com/questions/4289331/how-to-extract-numbers-from-a-string-in-python/4289415
-def extract_integers(string):
-    return [int(t) for t in re.findall(r'\d+', string)]
-
-
-def extract_floats(string):
-    return [float(t) for t in re.findall(r'[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?', string)]
 
 
 class DistrictHeatingQueryParser(HTMLParser):
@@ -199,7 +188,7 @@ class DistrictHeatingQueryParser(HTMLParser):
 
         elif self._store_data_to.endswith('_time'):
             # Need to parse an "remaining time" string which should contain 'Xm Ys'
-            times = extract_integers(trimmed)
+            times = common.extract_integers(trimmed)
             if len(times) == 2:
                 self._status[self._store_data_to] = times[0] * 60 + times[1]
             elif len(times) == 1:
@@ -213,7 +202,7 @@ class DistrictHeatingQueryParser(HTMLParser):
         elif self._store_data_to.endswith('_temperature') or \
             self._store_data_to.endswith('_power'):
             # Should be a float
-            nums = extract_floats(trimmed.replace(',', '.')) # Even the decimal point for floats changes on this wonderful gateway website...
+            nums = common.extract_floats(trimmed.replace(',', '.')) # Even the decimal point for floats changes on this wonderful gateway website...
             if len(nums) == 1:
                 self._status[self._store_data_to] = nums[0]
             else:

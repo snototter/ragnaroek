@@ -99,12 +99,32 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     
     return tick_values, tick_labels, dt_tick_start
 
+def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
+    temperature_curves = {sn:list() for sn in sensor_names}
+    was_heating = list()
+    for reading in temperature_log:
+        dt_local, sensors, heating = reading
+
+        td = __naive_time_diff(dt_local, dt_tick_start)
+        dt_tick_offset = td.total_seconds()
+        # print('\n', time_utils.format(dt_local), ' VS ', time_utils.format(dt_tick_start), ' === ', time_utils.days_hours_minutes_seconds(td))
+
+        was_heating.append((dt_tick_offset, heating))
+
+        if sensors is None:
+            continue
+
+        for sn in sensors.keys():
+            if sensors[sn] is None:
+                continue
+            temperature_curves[sn].append((dt_tick_offset, sensors[sn]))
+    return temperature_curves, was_heating
+
 
 
 def plot_temperature_curves(width_px, height_px, temperature_log, 
     return_mem=True, xkcd=True, reverse=True, name_mapping=None,
     line_alpha=0.9, grid_alpha=0.3, linewidth=2.5, 
-    every_nth_tick=3, tick_time_unit='minutes', #TODO!!!
     min_temperature_span=9,
     font_size=20, legend_columns=2,
     draw_marker=False):
@@ -153,54 +173,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # First, get suitable ticks based on the time span of the provided data
     x_tick_values, x_tick_labels, dt_tick_start = __prepare_ticks(temperature_log, desired_num_ticks=10)
     
-    #TODO refactor into its own function
-    print(x_tick_values, '\n\n', x_tick_labels, '\n', dt_tick_start)
-
-    temperature_curves = {sn:list() for sn in sensor_names}
-    was_heating = list()
-    for reading in temperature_log:
-        dt_local, sensors, heating = reading
-
-        td = __naive_time_diff(dt_local, dt_tick_start)
-        dt_tick_offset = td.total_seconds()
-        # print('\n', time_utils.format(dt_local), ' VS ', time_utils.format(dt_tick_start), ' === ', time_utils.days_hours_minutes_seconds(td))
-
-        was_heating.append((dt_tick_offset, heating))
-
-        if sensors is None:
-            continue
-
-        for sn in sensors.keys():
-            if sensors[sn] is None:
-                continue
-            temperature_curves[sn].append((dt_tick_offset, sensors[sn]))
-    # print(temperature_curves)
-    # temperature_curves = {sn:list() for sn in sensor_names}
-    # x_tick_labels = list()
-    # was_heating = list()
-    # for idx in range(len(temperature_log)):
-        # dt_local, sensors, heating = temperature_log[idx]
-        # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
-
-        # # #TODO 
-        # # # timedelta(time_utils.dt_now_local() - dt_local)
-        # # # Then either minutes or hours
-        # # # adjust every_nth_tick (if plotting the full day) + h instead of minutes
-
-        # if idx % every_nth_tick == 0:
-        #     x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
-        # else:
-        #     x_tick_labels.append('')
-
-        # was_heating.append((idx, heating))
-
-        # if sensors is None:
-        #     continue
-
-        # for sn in sensors.keys():
-        #     if sensors[sn] is None:
-        #         continue
-        #     temperature_curves[sn].append((idx, sensors[sn]))
+    # Then extract the data points
+    temperature_curves, was_heating = __prepare_curves(sensor_names, temperature_log, dt_tick_start)
     
 
     ### Now we're ready to plot
@@ -229,8 +203,6 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Adjust x-axis
     ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(x_tick_values, x_tick_labels)
-    # ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
-    # plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
     # Adjust y-axis
     ymin_initial, ymax = plt.ylim()
@@ -250,11 +222,11 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # ... we want a sufficient padding between bottom and the lowest temperature grid line
     if yminc - ymin < 0.5:
         yminc += 1
-    # ... be consistent: only show even temperature ticks
-    if yminc.astype(np.int32) % 2 == 1:
-        yminc += 1
+    # # ... be consistent: only show even temperature ticks
+    # if yminc.astype(np.int32) % 2 == 1:
+    #     yminc += 1
     
-    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32), 2)
+    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32))#, 2)
     y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
     ax.tick_params(axis='y', direction='in')
     plt.yticks(y_ticks, y_tick_labels)

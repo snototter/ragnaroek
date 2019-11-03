@@ -63,10 +63,11 @@ class TemperatureLog:
         # Compute size of circular buffer to store readings of the past 24 hours
         polling_interval_min = temp_cfg['update_interval_minutes']
         polling_job_label = temp_cfg['job_label']
-        buffer_hours = 24
+        buffer_hours = 72
         self._buffer_capacity = int(math.ceil(buffer_hours*60/polling_interval_min))
         self._temperature_readings = common.circularlist(self._buffer_capacity)
         self._num_readings_per_hour = int(math.ceil(60/polling_interval_min)) + 1 # one more to include the same minute, one hour ago
+        self._num_readings_per_day = int(math.ceil(24*60/polling_interval_min))
 
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
@@ -99,7 +100,7 @@ class TemperatureLog:
         logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, polling_interval_min, buffer_hours))
         logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
 
-
+ 
     def load_log(self, filename):
         lines = common.tail(filename, lines=self._buffer_capacity)
         if lines is None:
@@ -127,17 +128,21 @@ class TemperatureLog:
     def name_mapping(self):
         return self._sensor_abbreviations2display_names
 
-#TODO def past_readings(self, num_hours):
 
     def recent_readings(self, num_entries=None):
         """Returns the latest num_entries sensor readings, i.e. a
         tuple (time_stamp_local_timezone, readings), where the
         latter is None or a dict(abbreviation:temperature).
-        If num_entries is None, readings from the past hour will
+        If num_entries is None, readings from the past day will
         be returned. If num_entries is negative, all readings will
         be returned."""
         if num_entries is None:
-            num_entries = self._num_readings_per_hour
+            num_entries = self._num_readings_per_day
+
+        # if isinstance(num_entries, str):
+        #     if num_entries
+        #TODO if num_entries contains 'd', replace, parse int num_days
+        # if contains 'h', parse int num_hours
 
         if num_entries < 1:
             num_entries = len(self._temperature_readings)

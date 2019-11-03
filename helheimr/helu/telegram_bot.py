@@ -1047,7 +1047,17 @@ class HelheimrBot:
         else:
             self.__safe_send(update.message.chat_id, 'Fehler beim Auslesen des Logs. ' + txt)
 
-        #TODO tail heating.log
+        # Send separate message which only lists [Heating] messages
+        success, txt = common.shell_heating_log(num_lines)
+        if success:
+            # Clip the most recent messages if log would be too long:
+            header = 'Heizungsmeldungen:\n\n'
+            max_len = type(self).MESSAGE_MAX_LENGTH - len(header)
+            if len(txt) > max_len:
+                txt = txt[-max_len:]
+            self.__safe_send(update.message.chat_id, txt, parse_mode=None)
+        else:
+            self.__safe_send(update.message.chat_id, 'Fehler beim Auslesen des Heizungslogs. ' + txt)
 
 
     def __cmd_update(self, update, context):
