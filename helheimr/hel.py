@@ -60,8 +60,6 @@ class Hel:
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
 
 
-        # temperature_log.TemperatureLog.init_instance(ctrl_cfg)#TODO remove!
-
         # Start the heater/heating controller
         try:
             self._heating = heating.Heating.init_instance(ctrl_cfg)
