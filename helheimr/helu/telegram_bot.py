@@ -387,10 +387,10 @@ class HelheimrBot:
 /pause - Heizungsprogramme pausieren.
 
 /temp oder /t - Temperaturverlauf.
-    Letzte Stunde: /temp
+    Letzter Tag: /temp
     Letzten N Messungen: /temp 15
     Alle gespeicherten: /temp -1
-    Zusätzlich als  Tabelle: /temp t
+    Zusätzlich als Tabelle: /temp t
 
 /wetter - :partly_sunny: Wetterbericht.
 
@@ -419,8 +419,6 @@ class HelheimrBot:
 
 /hilfe oder /help - Diese Hilfe."""
         self.__safe_send(update.message.chat_id, txt)
-
-#TODO temp => plot
     
     def __cmd_start(self, update, context):
         self.__safe_send(update.message.chat_id, 
@@ -945,8 +943,11 @@ class HelheimrBot:
                     self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
                     return
         if render_table:
-            msg = temperature_log.TemperatureLog.instance().format_table(num_entries, use_markdown=True)
-            self.__safe_send(update.message.chat_id, msg)
+            msg = temperature_log.TemperatureLog.instance().format_table(num_entries)
+            max_len = type(self).MESSAGE_MAX_LENGTH - 8
+            if len(msg) > max_len:
+                msg = msg[-max_len:]
+            self.__safe_send(update.message.chat_id, '```\n' + msg + '\n```')
 
         # Get temperature plot
         img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(num_entries), 
@@ -1095,7 +1096,6 @@ class HelheimrBot:
         img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
             return_mem=True, xkcd=True, reverse=True, 
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
-        #TODO handle img_buf is None!
         self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True, filename='temperature-log.jpg') #TODO filename is ignored!
        
 

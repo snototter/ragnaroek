@@ -161,7 +161,7 @@ class TemperatureLog:
         return ls
 
 
-    def format_table(self, num_entries=None, use_markdown=True):
+    def format_table(self, num_entries=None):
         """Returns an ASCII table showing the last
         num_entries readings (or the last hour if
         num_entries is None).
@@ -181,9 +181,6 @@ class TemperatureLog:
                 return '{:4s}'.format(h[:4])
             return ' {:3s}'.format(h)
 
-        if use_markdown:
-            msg.append('```')
-
         msg.append('       {:s} H '.format('  '.join([_header(h) for h in self._table_ordering])))
         msg.append('-------' + '--'.join(['----' for _ in self._table_ordering]) + '---')
 
@@ -197,9 +194,6 @@ class TemperatureLog:
                     return 'n/a!' if t is None else '{:4.1f}'.format(t)
                 temp_str = '  '.join([_fmttemp(sensors[k]) for k in self._table_ordering])
             msg.append('{:02d}:{:02d}  {:s} {:s} '.format(dt_local.hour, dt_local.minute, temp_str, '!' if is_heating else ' '))
-
-        if use_markdown:
-            msg.append('```')
         return '\n'.join(msg)
 
 
