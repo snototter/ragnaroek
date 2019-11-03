@@ -82,6 +82,13 @@ class TemperatureLog:
 
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
 
+# #TODO remove
+#         self.load_log(temp_cfg['log_file'])
+#         from . import drawing
+#         drawing.plot_temperature_curves(1024, 768, self.recent_readings(288), 
+#             return_mem=False, xkcd=True, reverse=True, 
+#             name_mapping=self.name_mapping)
+
         # Register periodic task with scheduler
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
@@ -95,9 +102,6 @@ class TemperatureLog:
 
     def load_log(self, filename):
         lines = common.tail(filename, lines=self._buffer_capacity)
-        # lines = common.tail(filename, lines=10)
-        # logging.getLogger().info('[TemperatureLog] Loaded log tail:  type {}, len {}'.format(type(lines), len(lines)))
-        #TODO continue
         if lines is None:
             return
 

@@ -7,15 +7,17 @@ import matplotlib
 # import os
 # if os.uname().machine.startswith('arm'):
     # matplotlib.use('Agg')
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
+import datetime
 import logging
 from PIL import Image
 import io
 
 from . import time_utils
+from dateutil import tz
 
 
 def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
@@ -24,13 +26,87 @@ def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
     c = colormap(lookup[idx % distinct_colors])
     return c[:3]
 
+def __replace_tz(dt):
+    return dt.replace(tzinfo=tz.tzutc())
+
+def __naive_time_diff(dt_a, dt_b):
+    a = __replace_tz(dt_a)
+    b = __replace_tz(dt_b)
+    if a > b:
+        return a - b
+    return b - a
+
+
+def __prepare_ticks(temperature_log, desired_num_ticks=10):
+    def _tm(reading):
+        return reading[0]
+    dt_end = _tm(temperature_log[-1])
+    # dt_end = time_utils.dt_now_local()
+    dt_start = _tm(temperature_log[0])
+    # reverse = dt_start > dt_end
+    # if reverse: #TODO needs additional handling, or at least thorough testing (e.g. adding now to the front)
+    #     dt_end = _tm(temperature_log[0])
+    #     dt_start = time_utils.dt_now_local()
+    #     # dt_start = _tm(temperature_log[-1])
+    print('CHECK INPUT:', dt_start, _tm(temperature_log[-1]))
+
+    
+    # Find best fitting tick interval
+    # time_span = dt_end - dt_start
+    time_span = __naive_time_diff(dt_end, dt_start)
+    sec_per_tick = time_span.total_seconds() / desired_num_ticks
+    print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
+
+    def _m(x):
+        return x * 60
+    def _h(x):
+        return x * _m(60)
+    def _d(x):
+        return x * _h(24)
+    tick_units = [_m(5), _m(15), _m(30), _h(1), _h(2), _h(3), _h(6), _h(12), _d(1), _d(7)]
+    closest_tick_idx = np.argmin([abs(sec_per_tick - tu) for tu in tick_units])
+    closest_tick_unit = tick_units[closest_tick_idx]
+    
+    # Compute ticks and labels (x-axis represents seconds passed since a reference datetime object)
+    num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    dt_tick_start = dt_end - datetime.timedelta(seconds=num_ticks_ceil * closest_tick_unit)
+    # ## Version A, ceil
+    # num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    # offset = 0
+    ## Version B, floor #TODO check
+    num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    offset = closest_tick_unit
+    print('Num ticks:', num_ticks, num_ticks*closest_tick_unit, time_utils.days_hours_minutes_seconds_from_sec(num_ticks*closest_tick_unit))
+    tick_values = list()
+    tick_labels = list()
+    for i in range(num_ticks):
+        tick_sec = i * closest_tick_unit + offset
+        dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
+        tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
+        tick_values.append(tick_sec)
+        tick_labels.append(tick_lbl)
+    # Add end/current date
+    dt_now = time_utils.dt_now_local()
+
+    tick_sec = num_ticks * closest_tick_unit + offset
+    tick_values.append(tick_sec)
+    dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
+    if dt_now.date() == dt_tick.date():
+        tick_labels.append('{:02d}:{:02d}'.format(dt_tick.hour, dt_tick.minute))
+    else:
+        tick_labels.append(dt_tick.strftime('%d.%m.%Y %H:%M'))
+    
+    return tick_values, tick_labels, dt_tick_start
+
+
 
 def plot_temperature_curves(width_px, height_px, temperature_log, 
     return_mem=True, xkcd=True, reverse=True, name_mapping=None,
     line_alpha=0.9, grid_alpha=0.3, linewidth=2.5, 
     every_nth_tick=3, tick_time_unit='minutes', #TODO!!!
     min_temperature_span=9,
-    font_size=20, legend_columns=2):
+    font_size=20, legend_columns=2,
+    draw_marker=False):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
     xkcd: :-)
@@ -72,25 +148,23 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         plot_labels[sn] = sn if name_mapping is None else name_mapping[sn]
         idx += 1
 
-    # Extract curves
+    ### Extract curves
+    # First, get suitable ticks based on the time span of the provided data
+    x_tick_values, x_tick_labels, dt_tick_start = __prepare_ticks(temperature_log, desired_num_ticks=10)
+    
+    #TODO refactor into its own function
+    print(x_tick_values, '\n\n', x_tick_labels, '\n', dt_tick_start)
+
     temperature_curves = {sn:list() for sn in sensor_names}
-    x_tick_labels = list()
     was_heating = list()
-    for idx in range(len(temperature_log)):
-        dt_local, sensors, heating = temperature_log[idx]
-        # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+    for reading in temperature_log:
+        dt_local, sensors, heating = reading
 
-        #TODO 
-        # timedelta(time_utils.dt_now_local() - dt_local)
-        # Then either minutes or hours
-        # adjust every_nth_tick (if plotting the full day) + h instead of minutes
+        td = __naive_time_diff(dt_local, dt_tick_start)
+        dt_tick_offset = td.total_seconds()
+        # print('\n', time_utils.format(dt_local), ' VS ', time_utils.format(dt_tick_start), ' === ', time_utils.days_hours_minutes_seconds(td))
 
-        if idx % every_nth_tick == 0:
-            x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
-        else:
-            x_tick_labels.append('')
-
-        was_heating.append((idx, heating))
+        was_heating.append((dt_tick_offset, heating))
 
         if sensors is None:
             continue
@@ -98,7 +172,34 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         for sn in sensors.keys():
             if sensors[sn] is None:
                 continue
-            temperature_curves[sn].append((idx, sensors[sn]))
+            temperature_curves[sn].append((dt_tick_offset, sensors[sn]))
+    # print(temperature_curves)
+    # temperature_curves = {sn:list() for sn in sensor_names}
+    # x_tick_labels = list()
+    # was_heating = list()
+    # for idx in range(len(temperature_log)):
+        # dt_local, sensors, heating = temperature_log[idx]
+        # x_tick_labels.append(dt_local) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+
+        # # #TODO 
+        # # # timedelta(time_utils.dt_now_local() - dt_local)
+        # # # Then either minutes or hours
+        # # # adjust every_nth_tick (if plotting the full day) + h instead of minutes
+
+        # if idx % every_nth_tick == 0:
+        #     x_tick_labels.append('{:d}:{:d}'.format(dt_local.hour, dt_local.minute)) # TODO dt_local.hour : dt_local.minute or timedelta (now-dt_local) in minutes!
+        # else:
+        #     x_tick_labels.append('')
+
+        # was_heating.append((idx, heating))
+
+        # if sensors is None:
+        #     continue
+
+        # for sn in sensors.keys():
+        #     if sensors[sn] is None:
+        #         continue
+        #     temperature_curves[sn].append((idx, sensors[sn]))
     
 
     ### Now we're ready to plot
@@ -114,13 +215,21 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
-        ax.plot(unzipped[0], unzipped[1], \
-            color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
-            label=plot_labels[sn], marker='.', markersize=5*linewidth, markeredgewidth=linewidth)
+        if draw_marker:
+            ax.plot(unzipped[0], unzipped[1], \
+                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+                label=plot_labels[sn], 
+                marker='.', markersize=5*linewidth, markeredgewidth=linewidth, zorder=10)
+        else:
+            ax.plot(unzipped[0], unzipped[1], \
+                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+                label=plot_labels[sn], zorder=10)
 
     # Adjust x-axis
     ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
-    plt.xticks(range(len(x_tick_labels)), x_tick_labels)
+    plt.xticks(x_tick_values, x_tick_labels)
+    # ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    # plt.xticks(range(len(x_tick_labels)), x_tick_labels)
 
     # Adjust y-axis
     ymin_initial, ymax = plt.ylim()

@@ -68,23 +68,28 @@ def days_hours_minutes_seconds(td):
     """Convert datetime.timedelta to days, hours, minutes"""
     return td.days, td.seconds//3600, (td.seconds//60)%60, td.seconds%60
 
+def days_hours_minutes_seconds_from_sec(seconds):
+    """Convenience wrapper to @see days_hours_minutes_seconds()."""
+    return days_hours_minutes_seconds(datetime.timedelta(seconds=seconds))
 
-def format_timedelta(td):
+
+
+def format_timedelta(td, small_space=True):
     """Returns a simplified string representation of the datetime.timedelta object td."""
     days, hours, minutes, seconds = days_hours_minutes_seconds(td)
-    s = '' if days == 0 else '{:d}\u200ad'.format(days)
+    s = '' if days == 0 else '{:d}{:s}d'.format(days, '\u200a' if small_space else ' ')
     if hours > 0:
         if len(s) > 0:
             s += ' '
-        s += '{:d}\u200ah'.format(hours)
+        s += '{:d}{:s}h'.format(hours, '\u200a' if small_space else ' ')
     if minutes > 0:
         if len(s) > 0:
             s += ' '
-        s += '{:d}\u200amin'.format(minutes)
+        s += '{:d}{:s}min'.format(minutes, '\u200a' if small_space else ' ')
     if seconds > 0 or len(s) == 0:
         if len(s) > 0:
             s += ' '
-        s += '{:d}\u200asec'.format(seconds)
+        s += '{:d}{:s}sec'.format(seconds, '\u200a' if small_space else ' ')
     return s
 
 
