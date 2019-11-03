@@ -946,7 +946,7 @@ class HelheimrBot:
             msg = temperature_log.TemperatureLog.instance().format_table(num_entries)
             max_len = type(self).MESSAGE_MAX_LENGTH - 8
             if len(msg) > max_len:
-                msg = msg[-max_len:]
+                msg = msg[:max_len] # most recent rows are on top (!)
             self.__safe_send(update.message.chat_id, '```\n' + msg + '\n```')
 
         # Get temperature plot
