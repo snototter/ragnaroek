@@ -52,8 +52,8 @@ class TemperatureLog:
         self._logger = logging.getLogger(type(self).LOGGER_NAME)
         formatter = logging.Formatter('%(message)s')
         file_handler = logging.handlers.TimedRotatingFileHandler(temp_cfg['log_file'], 
-                    when=temp_cfg['rotation_when'], interval=int(temp_cfg['rotation_interval']),
-                    backupCount=int(temp_cfg['rotation_backup_count']))
+                    when=temp_cfg['log_rotation_when'], interval=int(temp_cfg['log_rotation_interval']),
+                    backupCount=int(temp_cfg['log_rotation_backup_count']))
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
         
