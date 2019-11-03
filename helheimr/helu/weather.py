@@ -14,6 +14,10 @@ from . import network_utils
 from . import scheduling
 from . import time_utils
 
+#TODO nice-to-have: moon phase
+# https://pypi.org/project/skyfield/
+# skyfield.almanac.phase_angle fraction_illuminated
+# https://pypi.org/project/skyfield-data/ or download the DE430 ephemeris manually?
 
 def degrees_to_compass(deg, num_directions=8):
     """:return: Compass direction (str, either 8 or 16) for the given angle (in degrees, 0 is north, 45 is east)."""

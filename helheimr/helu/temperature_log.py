@@ -83,13 +83,6 @@ class TemperatureLog:
 
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
 
-# #TODO remove
-#         self.load_log(temp_cfg['log_file'])
-#         from . import drawing
-#         drawing.plot_temperature_curves(1024, 768, self.recent_readings(288), 
-#             return_mem=False, xkcd=True, reverse=True, 
-#             name_mapping=self.name_mapping)
-
         # Register periodic task with scheduler
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
@@ -139,9 +132,10 @@ class TemperatureLog:
         if num_entries is None:
             num_entries = self._num_readings_per_day
 
+        #TODO nice-to-have: parse a "num_entries" string (e.g. 1d, 3d, 10h)
         # if isinstance(num_entries, str):
         #     if num_entries
-        #TODO if num_entries contains 'd', replace, parse int num_days
+        # if num_entries contains 'd', replace, parse int num_days
         # if contains 'h', parse int num_hours
 
         if num_entries < 1:

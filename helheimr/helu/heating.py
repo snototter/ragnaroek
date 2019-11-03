@@ -459,4 +459,4 @@ class Heating:
                         # Also send the list of temperatures:
                         broadcasting.MessageBroadcaster.instance().info(
                             '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
-                            'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```') # TODO remove?
+                            'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```') # TODO remove once we found suitable threshold/regression parameters?

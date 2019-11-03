@@ -16,10 +16,12 @@ class OnOffController:
 
     
     def set_desired_value(self, desired_value):
+        """Set target value to reach (+/- hysteresis)."""
         self._desired_value = desired_value
 
 
     def set_hysteresis(self, threshold):
+        """Change the hysteresis threshold."""
         self._hysteresis_threshold = threshold
 
 
@@ -29,9 +31,11 @@ class OnOffController:
             logging.getLogger().error('OnOffController.update() called without setting a desired value first!')
             return False
 
+        # Compute upper/lower bounds for turning on/off
         minv = self._desired_value if self._hysteresis_threshold is None else self._desired_value - self._hysteresis_threshold
         maxv = self._desired_value if self._hysteresis_threshold is None else self._desired_value + self._hysteresis_threshold
 
+        # Hysteresis thresholding
         response = False
         if actual_value < minv:
             response = True

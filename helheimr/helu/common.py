@@ -183,9 +183,10 @@ def format_num(fmt, num, use_markdown=True):
         return s.format(num)
 
 
-# Adapted from https://stackoverflow.com/a/40784706
-# TODO: For more complex use cases, we need to support slicing
 class circularlist(object):
+    """A ring buffer, adapted from https://stackoverflow.com/a/40784706
+    Note that this doesn't support slicing (yet).
+    """
     def __init__(self, size):
         self.index = 0
         self.size = size

@@ -288,15 +288,19 @@ class DistrictHeating:
             err_msg = traceback.format_exc(limit=3)
             return False, 'Vorlauftemperatur konnte keiner Adresse zugeordnet werden: {}'.format(err_msg)
 
-        print('You requested', request_type, 'btn id:', btn_id)
         params = (
             (self._param_name_button, btn_id),
             self._param_change
         )
-        # response = network_utils.safe_http_get(self._url_change, self._headers, params) #TODO enable once we're done
-        #TODO check response (if None => exception, else r.status_code should be 200)
-        return False, 'Not implemented'
-
+        response = network_utils.safe_http_get(self._url_change, headers=self._headers, params=params, verify=False)
+        if response is None:
+            return False, 'Fehler während der Kommunikation mit dem Fernwärme-Gateway, bitte Log überprüfen.'
+        else:
+            if response.status_code == 200:
+                return True, 'Fernwärme wurde eingeschaltet'
+            else:
+                return False, 'Fehler beim Kontaktieren des Fernwärme-Gateways, HTTP Status {}. {}'.format(response.status_code, response.content)
+        
 
     def query_heating(self, use_markdown=True):
         response = network_utils.safe_http_get(self._url_query, headers=self._headers)

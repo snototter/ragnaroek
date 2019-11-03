@@ -10,6 +10,7 @@ import time
 # Time stuff
 
 def dt_as_local(dt):
+    """Convenience wrapper, converting the datetime object dt to local timezone."""
     return dt.astimezone(tz.tzlocal())
 
 
@@ -42,11 +43,14 @@ def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
     """Returns the string representation localized to the user's timezone."""
     return dt.astimezone(tz.tzlocal()).strftime(fmt)
 
+
 def dt_fromstr(s, fmt="%Y-%m-%d %H:%M:%S %Z"):
+    """Parses a date string, convenience wrapper. Uses the same default formatstring as @see format()."""
     return datetime.datetime.strptime(s, fmt)
 
 
 def local_time_as_utc(hour, minute, second):
+    """Convert HH:MM:SS in localtime to UTC."""
     t_local = datetime.time(hour=hour, minute=minute, second=second, tzinfo=tz.tzlocal())
     dt_local = datetime.datetime.combine(datetime.datetime.today(), t_local, tzinfo=tz.tzlocal())
     return dt_local.astimezone(tz.tzutc()).timetz()

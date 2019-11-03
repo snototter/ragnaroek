@@ -288,10 +288,6 @@ def np2pil(img_np):
 
 def np2memfile(img_np):
     """Convert numpy (image) array to ByteIO stream"""
-    # print('converting {}'.format(np_data.shape))
-    # TODO handle grayvalue (call standard data.transpose)
-    # if rotate:
-    #     np_data = np.flip(np.transpose(np_data, (1,0,2)), axis=1)
     return pil2memfile(np2pil(img_np))
 
 

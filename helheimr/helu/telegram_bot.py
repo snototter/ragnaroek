@@ -761,19 +761,23 @@ class HelheimrBot:
             else:
                 self.__safe_edit_callback_query(query, "Programm ({:s}) wurde entfernt.".format(removed.teaser(use_markdown=True)))
 
+
         elif response == type(self).CALLBACK_PAUSE_CONFIRM_TOGGLE:
             is_paused = self._heating.toggle_pause(query.from_user.first_name)
             msg = 'Heizungsprogramme sind pausiert.' if is_paused else 'Heizungsprogramme sind wieder aktiviert.'
             self.__safe_edit_callback_query(query, msg)
             self._is_modifying_heating = False
 
+
         elif response == type(self).CALLBACK_PAUSE_CANCEL:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
 
+
         elif response == type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
+
 
         elif response == type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM:
             request_type = tokens[1]
@@ -781,20 +785,24 @@ class HelheimrBot:
             if not success:
                 self.__safe_edit_callback_query(query, ':bangbang: Fehler: ' + txt)
             else:
-                self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.\nFür Statusabfrage bitte /fernwaerme verwenden.')
+                self.__safe_edit_callback_query(query, 'Fernwärme wurde eingeschaltet.\n\nStatusabfrage über /fernwaerme möglich.')
             self._is_modifying_heating = False
+
 
         elif response == type(self).CALLBACK_SYSTEM_CANCEL:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
 
+
         elif response == type(self).CALLBACK_SYSTEM_POWEROFF:
             self._is_modifying_heating = False
             self.__poweroff_helper(query)
 
+
         elif response == type(self).CALLBACK_SYSTEM_REBOOT:
             self._is_modifying_heating = False
             self.__reboot_helper(query)
+
 
 
     def __rm_helper_keyboard_type_select(self):
@@ -1096,7 +1104,7 @@ class HelheimrBot:
         img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
             return_mem=True, xkcd=True, reverse=True, 
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
-        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True, filename='temperature-log.jpg') #TODO filename is ignored!
+        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
        
 
     def start(self):
