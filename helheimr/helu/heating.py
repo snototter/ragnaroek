@@ -105,17 +105,16 @@ class Heating:
         self._is_heating = False            # Used to notify the __heating_loop() that there was a stop_heating() request
         self._is_paused = False             # While paused, scheduled heating tasks will be ignored
 
-        # Set up a separate log file to log whenever we're heating
-        self._heating_logger = logging.getLogger(type(self).LOGGER_NAME)
-        formatter = logging.Formatter('* %(message)s')
-        file_handler = logging.handlers.TimedRotatingFileHandler(config['heating']['log_file'], 
-                    when=config['heating']['log_rotation_when'], interval=int(config['heating']['log_rotation_interval']),
-                    backupCount=int(config['heating']['log_rotation_backup_count']))
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
-        
-        self._heating_logger.addHandler(file_handler)
-        self._heating_logger.setLevel(logging.INFO)
+        # # Set up a separate log file to log whenever we're heating
+        # self._heating_logger = logging.getLogger(type(self).LOGGER_NAME)
+        # formatter = logging.Formatter('* %(message)s')
+        # file_handler = logging.handlers.TimedRotatingFileHandler(config['heating']['log_file'], 
+        #             when=config['heating']['log_rotation_when'], interval=int(config['heating']['log_rotation_interval']),
+        #             backupCount=int(config['heating']['log_rotation_backup_count']))
+        # file_handler.setLevel(logging.INFO)
+        # file_handler.setFormatter(formatter)
+        # self._heating_logger.addHandler(file_handler)
+        # self._heating_logger.setLevel(logging.INFO)
 
         # Members related to the heating loop thread
         self._latest_request_by = None            # Name of user who requested the most recent heating job
@@ -288,24 +287,24 @@ class Heating:
                         ' once (stop afterwards) ' if self._reach_temperature_only_once else '',
                         self._latest_request_by)
                     logging.getLogger().info('[Heating] ' + msg)
-                    self._heating_logger.info(msg)
+                    # self._heating_logger.info(msg)
                 else:
                     use_controller = False
                     msg = "Starting manually (i.e. always on) as requested by '{:s}'".format(self._latest_request_by)
                     logging.getLogger().info("[Heating] " + msg)
-                    self._heating_logger.info(msg)
+                    # self._heating_logger.info(msg)
 
                 if self._heating_duration is None:
                     end_time = None
                     if not self._reach_temperature_only_once:
                         msg = "This heating request can only be stopped manually!"
                         logging.getLogger().info("[Heating] " + msg)
-                        self._heating_logger.info(msg)
+                        # self._heating_logger.info(msg)
                 else:
                     end_time = time_utils.dt_offset(self._heating_duration)
                     msg = "This heating request will end at {}".format(time_utils.format(end_time))
                     logging.getLogger().info("[Heating] " + msg)
-                    self._heating_logger.info(msg)
+                    # self._heating_logger.info(msg)
 
 
             if self._is_heating:
@@ -319,7 +318,7 @@ class Heating:
                         should_heat = True
                         msg = 'Cannot query temperature for bangbang, falling back to turning heating on!'
                         logging.getLogger().error('[Heating] ' + msg)
-                        self._heating_logger.error(msg)
+                        # self._heating_logger.error(msg)
                     else:
                         should_heat = self._controller.update(current_temperature)
                         if self._reach_temperature_only_once and not should_heat:
@@ -335,7 +334,7 @@ class Heating:
                                     self._target_temperature
                                 )
                             logging.getLogger().info('[Heating] ' + msg)
-                            self._heating_logger.info(msg)
+                            # self._heating_logger.info(msg)
                 else:
                     should_heat = True
 
@@ -346,11 +345,12 @@ class Heating:
                     should_heat = False
                     msg = "Heating request by '{:s}' has timed out, turning off the heater.".format(self._latest_request_by)
                     logging.getLogger().info("[Heating] " + msg)
-                    self._heating_logger.info(msg)
+                    # self._heating_logger.info(msg)
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
-                    self._heating_logger.info('Turning heating ON')
+                    logging.getLogger().info('[Heating] Turning heating power on.')
+                    # self._heating_logger.info('Turning heating ON')
                     ret = self._lpd433_gateway.turn_on()
                 else:
                     ret = self._lpd433_gateway.turn_off()
@@ -359,7 +359,7 @@ class Heating:
                 if not ret:
                     msg = 'LPD433 gateway could not execute turn {:s}'.format('on' if should_heat else 'off')
                     logging.getLogger().error('[Heating] ' + msg)
-                    self._heating_logger.error(msg)
+                    # self._heating_logger.error(msg)
                     self._broadcaster.error('Fehler beim {}schalten!'.format('Ein' if should_heat else 'Aus'))
                 else:
                     # Check if heating is actually on/off (with LPD this should never
@@ -370,7 +370,7 @@ class Heating:
                         consecutive_errors += 1
                         msg = "Status of LPD433 plugs ({}) doesn't match heating request ({})!".format(is_heating, should_heat)
                         logging.getLogger().error("[Heating] " + msg)
-                        self._heating_logger.error(msg)
+                        # self._heating_logger.error(msg)
 
                 # Check whether temperature actually increases
                 reference_temperature_log.append((current_temperature, should_heat))
@@ -410,7 +410,7 @@ class Heating:
 
         self._condition_var.release()
         logging.getLogger().info('[Heating] Heating system has been shut down.')
-        self._heating_logger.info('Shutting down')
+        # self._heating_logger.info('Shutting down')
 
 
     def __check_temperature_trend(self, reference_temperature_log):
