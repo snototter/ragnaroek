@@ -4,10 +4,10 @@
 
 import matplotlib
 # Set up headless on pi
-# import os
-# if os.uname().machine.startswith('arm'):
-    # matplotlib.use('Agg')
-# matplotlib.use('Agg')
+import os
+if os.uname().machine.startswith('arm'):
+    matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -30,6 +30,7 @@ def __replace_tz(dt):
     return dt.replace(tzinfo=tz.tzutc())
 
 def __naive_time_diff(dt_a, dt_b):
+    """Returns the time difference between a and b, assuming both are within the same timezone."""
     a = __replace_tz(dt_a)
     b = __replace_tz(dt_b)
     if a > b:
@@ -38,6 +39,7 @@ def __naive_time_diff(dt_a, dt_b):
 
 
 def __prepare_ticks(temperature_log, desired_num_ticks=10):
+    """Returns the best fitting x-axis ticks depending on the time spanned by the temperature-log."""
     def _tm(reading):
         return reading[0]
     dt_end = _tm(temperature_log[-1])
@@ -93,6 +95,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
 
 
 def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
+    """Prepares the temperature curves (x ticks are offsets from the given datetime dt_tick_start)."""
     temperature_curves = {sn:list() for sn in sensor_names}
     was_heating = list()
     for reading in temperature_log:

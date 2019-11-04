@@ -95,6 +95,7 @@ class TemperatureLog:
 
  
     def load_log(self, filename):
+        """Fills the internal buffer by parsing an existing log file."""
         lines = common.tail(filename, lines=self._buffer_capacity)
         if lines is None:
             return
@@ -119,6 +120,7 @@ class TemperatureLog:
 
     @property
     def name_mapping(self):
+        """Returns a dictionary mapping sensor abbreviations to more descriptive display names."""
         return self._sensor_abbreviations2display_names
 
 
@@ -187,19 +189,24 @@ class TemperatureLog:
                 def _fmttemp(t):
                     return 'n/a!' if t is None else '{:4.1f}'.format(t)
                 temp_str = '  '.join([_fmttemp(sensors[k]) for k in self._table_ordering])
-            msg.append('{:02d}:{:02d}  {:s} {:s} '.format(dt_local.hour, dt_local.minute, temp_str, '!' if is_heating else ' '))
+            msg.append('{:02d}:{:02d}  {:s} {:s} '.format(
+                dt_local.hour, dt_local.minute, temp_str, '!' if is_heating else ' '))
         return '\n'.join(msg)
 
 
     def log_temperature(self):
+        """Queries the temperature sensors and logs them to file and internal 
+        buffer. To be used by the scheduled logging job."""
         sensors = heating.Heating.instance().query_temperature()
         dt_local = time_utils.dt_now_local()
         is_heating, _ = heating.Heating.instance().query_heating_state()
         if sensors is None:
             self._temperature_readings.append((dt_local, None, is_heating))
-            self._logger.log(logging.INFO, '{:s};{:d}'.format(time_utils.format(dt_local), is_heating))
+            self._logger.log(logging.INFO, '{:s};{:d}'.format(time_utils.format(
+                dt_local), is_heating))
         else:
-            self._temperature_readings.append((dt_local, {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}, is_heating))
+            self._temperature_readings.append((dt_local, 
+                {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}, is_heating))
 
             def _tocsv(s):
                 if s.reachable:

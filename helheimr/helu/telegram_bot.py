@@ -56,14 +56,18 @@ from . import time_utils
 from . import weather
 
 #TODOs:
-# * Unicode: black circle, medium black circle, bullet: \u23fa \u25cf \u2022
-# * altmannschalter aktivieren fuer tepidarium (braucht wireshark session)
 # * reminder alle config minuten, falls heizung laeuft (zB 12h)
+# * The python bot api wrapper supports pattern matching, so
+#   we might want to clean up the callback handler a bit:
+#   https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
 # List of telegram emojis: 
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 # https://k3a.me/telegram-emoji-list-codes-descriptions/
 
+# Unicodes:
+# black circle, medium black circle, bullet: \u23fa \u25cf \u2022
+# small space \u200a
 
 def _rand_flower():
     """Return a random flower emoji."""
@@ -134,10 +138,6 @@ class HelheimrBot:
     CALLBACK_SYSTEM_POWEROFF = 'sys1'
     CALLBACK_SYSTEM_REBOOT = 'sys2'
 
-
-    #TODO the python bot api wrapper supports pattern matching, so
-    # we might want to clean up the callback handler a bit:
-    # https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
 
 
     # Markdown: uses bold, italics and monospace (to prevent interpreting numbers as phone numbers...)
@@ -270,8 +270,9 @@ class HelheimrBot:
         dh_query_handler = CommandHandler('fernwaerme', self.__cmd_query_district_heating, self._user_filter)
         self._dispatcher.add_handler(dh_query_handler)
 
+        # TODO remove this handler once we're done testing ;-)
         debug_handler = CommandHandler('debug', self.__cmd_debug, self._user_filter)
-        self._dispatcher.add_handler(debug_handler) # TODO remove once we're done testing ;-)
+        self._dispatcher.add_handler(debug_handler) 
 
         update_handler = CommandHandler('update', self.__cmd_update, self._user_filter)
         self._dispatcher.add_handler(update_handler)
@@ -473,7 +474,10 @@ class HelheimrBot:
         msg.append('\u2022 PID: `{}`'.format(pid))
         msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
 
-        #TODO system info (cpu/mem/uptime)
+        #TODO Add system info (cpu/mem/uptime), check:
+        # https://pypi.org/project/psutil/
+        # https://psutil.readthedocs.io/en/latest/#recipes/
+        # https://stackoverflow.com/a/556411 os.times
 
         txt = '\n'.join(msg)
         

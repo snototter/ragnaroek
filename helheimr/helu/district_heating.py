@@ -10,9 +10,6 @@ import traceback
 from . import broadcasting
 from . import common
 from . import network_utils
-# from . import controller
-# from . import lpd433
-# from . import raspbee
 from . import time_utils
 
 
