@@ -1127,7 +1127,7 @@ class HelheimrScheduler(Scheduler):
             msg_lines.append('*Registrierte Heizungsprogramme:*')
             
             for j in heating_jobs:
-                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown)) #TODO list end time instead of duration
         
         msg_lines.append('')
         if len(non_heating_jobs) == 0:
