@@ -138,6 +138,12 @@ class Forecast:
             lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
         return '\n'.join(lines)
 
+def _get_precipitation(weather_dict):
+    keys = ['1h', '3h']
+    for k in keys:
+        if k in weather_dict:
+            return weather_dict[k]
+    return None
 
 
 class WeatherReport:
@@ -171,13 +177,10 @@ class WeatherReport:
         self.weather_code = w.get_weather_code()
 
         self.clouds = w.get_clouds()
-        rain = w.get_rain()
-        if rain:
-            self.rain = rain['3h']
 
-        snow = w.get_snow()
-        if snow:
-            self.snow = snow['3h']
+        self.rain = _get_precipitation(w.get_rain())
+
+        self.snow = _get_precipitation(w.get_snow())
 
         wind = w.get_wind(unit='meters_sec')
         if wind:
@@ -254,7 +257,7 @@ class WeatherReport:
 
         if self.wind is not None and self.wind['speed'] is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
-                    self.wind['speed'],
+                    common.format_num('.1f', self.wind['speed']),
                     ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else ''
                 ))
         lines.append('') # Will be joined with a newline
