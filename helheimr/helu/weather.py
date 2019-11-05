@@ -139,10 +139,11 @@ class Forecast:
         return '\n'.join(lines)
 
 def _get_precipitation(weather_dict):
-    keys = ['1h', '3h']
-    for k in keys:
-        if k in weather_dict:
-            return weather_dict[k]
+    if weather_dict:
+        keys = ['1h', '3h']
+        for k in keys:
+            if k in weather_dict:
+                return weather_dict[k]
     return None
 
 
