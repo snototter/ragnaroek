@@ -116,7 +116,7 @@ class TemperatureLog:
             # The last token holds the heating state
             hs = True if tokens[-1] == '1' else False
             self._temperature_readings.append((dt, temps, hs))
-        logging.getLogger().info('[TemperatureLog] Loaded {:d} past temperature readings.'.format(len(lines))))
+        logging.getLogger().info('[TemperatureLog] Loaded {:d} past temperature readings.'.format(len(lines)))
         
 
     @property
