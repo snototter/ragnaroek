@@ -87,11 +87,11 @@ class TemperatureLog:
         polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
         
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, polling_interval_min, buffer_hours))
+        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
         # Load existing log file
         self.load_log(temp_cfg['log_file'])
 
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, polling_interval_min, buffer_hours))
-        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
 
  
     def load_log(self, filename):
@@ -112,10 +112,11 @@ class TemperatureLog:
                     temps[abbreviation] = None
                 else:
                     temps[abbreviation] = float(t)
-                    t = float(tokens[i+1])
+                    # t = float(tokens[i+1])
             # The last token holds the heating state
             hs = True if tokens[-1] == '1' else False
             self._temperature_readings.append((dt, temps, hs))
+        logging.getLogger().info('[TemperatureLog] Loaded {:d} past temperature readings.'.format(len(lines))))
         
 
     @property
