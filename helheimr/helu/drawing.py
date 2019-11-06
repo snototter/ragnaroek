@@ -72,6 +72,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # dt_start = _tm(temperature_log[0])
     # dt_end = time_utils.ceil_dt_hour(dt_end)
     dt_start = time_utils.floor_dt_hour(_tm(temperature_log[0]))
+    dt_now = time_utils.dt_now_local()
     
     # Find best fitting tick interval
     # time_span = dt_end - dt_start
@@ -86,8 +87,10 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     def _d(x):
         return x * _h(24)
     tick_units = [_m(5), _m(15), _m(30), _h(1), _h(2), _h(3), _h(6), _h(12), _d(1), _d(7)]
+    full_label = [12,    4,      4,      3,     3,     2,     2,     2,      1,     1]
     closest_tick_idx = np.argmin([abs(sec_per_tick - tu) for tu in tick_units])
     closest_tick_unit = tick_units[closest_tick_idx]
+    full_label_every_nth = full_label[closest_tick_idx]
     
     # Compute ticks and labels (x-axis represents seconds passed since a reference datetime object)
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
@@ -104,12 +107,16 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     for i in range(num_ticks):
         tick_sec = i * closest_tick_unit + offset
         dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
-        tick_lbl = dt_tick.strftime('%H:%M') + '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
+        if i % full_label_every_nth == 0:
+            if dt_now.date() == dt_tick.date():
+                tick_lbl = dt_tick.strftime('%H:%M')
+            else:
+                tick_lbl = dt_tick.strftime('%d.%m.%Y %H:%M')
+        else:
+            tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
     # Add end/current date
-    dt_now = time_utils.dt_now_local()
-
     tick_sec = num_ticks * closest_tick_unit + offset
     tick_values.append(tick_sec)
     dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
