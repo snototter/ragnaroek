@@ -67,11 +67,12 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     """Returns the best fitting x-axis ticks depending on the time spanned by the temperature-log."""
     def _tm(reading):
         return reading[0]
-    dt_end = _tm(temperature_log[-1])
+    # dt_end = _tm(temperature_log[-1])
+    dt_end = time_utils.round_nearest(_tm(temperature_log[-1]), datetime.timedelta(minutes=10))
     # dt_end = time_utils.dt_now_local()
     # dt_start = _tm(temperature_log[0])
     # dt_end = time_utils.ceil_dt_hour(dt_end)
-    dt_start = time_utils.floor_dt_hour(_tm(temperature_log[0]))
+    dt_start = _tm(temperature_log[0])
     dt_now = time_utils.dt_now_local()
     
     # Find best fitting tick interval
@@ -102,7 +103,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
 
     tick_values = list()
     tick_labels = list()
-    for i in range(num_ticks):
+    for i in range(num_ticks + 1):
         tick_sec = i * closest_tick_unit + offset
         dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
         if dt_now.date() == dt_tick.date():
@@ -112,14 +113,14 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
         #     tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
-    # Add end/current date
-    tick_sec = num_ticks * closest_tick_unit + offset
-    tick_values.append(tick_sec)
-    dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
-    if dt_now.date() == dt_tick.date():
-        tick_labels.append('{:02d}:{:02d}'.format(dt_tick.hour, dt_tick.minute))
-    else:
-        tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
+    # # Add end date
+    # tick_sec = num_ticks * closest_tick_unit + offset
+    # tick_values.append(tick_sec)
+    # dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
+    # if dt_now.date() == dt_tick.date():
+    #     tick_labels.append('{:02d}:{:02d}'.format(dt_tick.hour, dt_tick.minute))
+    # else:
+    #     tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
     
     return tick_values, tick_labels, dt_tick_start
     #TODO round dt_tick_start to closest hour/...

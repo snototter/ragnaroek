@@ -117,6 +117,13 @@ def floor_dt_hour(dt):
 def ceil_dt_hour(dt):
     return ceil_dt(dt, datetime.timedelta(hours=1))
 
+def round_nearest(dt, delta):
+    c = ceil_dt(dt, delta)
+    f = floor_dt(dt, delta)
+    dc = c - dt
+    df = dt - f
+    return c if dc < df else f
+
 # def date_str(delimiter=['','','-','',''], ):
 #     """Returns a YYYY*MM*DD*hh*mm*ss string using the given delimiters.
 #     Provide less delimiter to return shorter strings, e.g.
