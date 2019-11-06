@@ -70,6 +70,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     dt_end = _tm(temperature_log[-1])
     # dt_end = time_utils.dt_now_local()
     dt_start = _tm(temperature_log[0])
+    dt_end = time_utils.ceil_dt_hour(dt_end)
+    dt_start = time_utils.floor_dt_hour(dt_start)
     
     # Find best fitting tick interval
     # time_span = dt_end - dt_start

@@ -103,6 +103,20 @@ def format_time(t):
     return t.strftime('%H:%M')
 
 
+def ceil_dt(dt, delta):
+    q, r = divmod(dt - datetime.datetime.min, delta)
+    return (datetime.datetime.min + (q + 1)*delta) if r else dt
+
+def floor_dt(dt, delta):
+    q, r = divmod(dt - datetime.datetime.min, delta)
+    return (datetime.datetime.min + q*delta) if r else dt
+
+def floor_dt_hour(dt):
+    return floor_dt(dt, datetime.timedelta(hours=1))
+
+def ceil_dt_hour(dt):
+    return ceil_dt(dt, datetime.timedelta(hours=1))
+
 # def date_str(delimiter=['','','-','',''], ):
 #     """Returns a YYYY*MM*DD*hh*mm*ss string using the given delimiters.
 #     Provide less delimiter to return shorter strings, e.g.
