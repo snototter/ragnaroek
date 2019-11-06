@@ -94,29 +94,21 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     dt_tick_start = dt_end - datetime.timedelta(seconds=num_ticks_ceil * closest_tick_unit)
     # ## Version A, ceil
-    num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    offset = 0
+    # num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    # offset = 0
     ## Version B, floor
-    # num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    # offset = closest_tick_unit
+    num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    offset = closest_tick_unit
 
     tick_values = list()
     tick_labels = list()
-    prev_date = dt_now.date()
     for i in range(num_ticks):
         tick_sec = i * closest_tick_unit + offset
         dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
-        if prev_date == dt_tick.date():
+        if dt_now.date() == dt_tick.date():
             tick_lbl = dt_tick.strftime('%H:%M')
         else:
             tick_lbl = dt_tick.strftime('%d.%m. %H:%M')
-            prev_date = dt_tick.date()
-        # if i % full_label_every_nth == 0:
-        #     if dt_now.date() == dt_tick.date():
-        #         tick_lbl = dt_tick.strftime('%H:%M')
-        #     else:
-        #         tick_lbl = dt_tick.strftime('%d.%m. %H:%M')
-        # else:
         #     tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
