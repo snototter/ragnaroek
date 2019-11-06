@@ -26,8 +26,6 @@ def parse_duration_string(s):
     for l in lookups:
         v = _extract(s, l[0], l[1])
         if v is not None:
-            #TODO remove debug output
-            print('Parsed input duration string "{}" into {} minutes'.format(s, v))
             return v
     return None
     
