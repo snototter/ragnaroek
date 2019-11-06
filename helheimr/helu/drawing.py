@@ -67,8 +67,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     """Returns the best fitting x-axis ticks depending on the time spanned by the temperature-log."""
     def _tm(reading):
         return reading[0]
-    # dt_end = _tm(temperature_log[-1])
-    dt_end = time_utils.dt_now_local()
+    dt_end = _tm(temperature_log[-1])
+    # dt_end = time_utils.dt_now_local()
     # dt_start = _tm(temperature_log[0])
     # dt_end = time_utils.ceil_dt_hour(dt_end)
     dt_start = time_utils.floor_dt_hour(_tm(temperature_log[0]))
@@ -87,10 +87,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     def _d(x):
         return x * _h(24)
     tick_units = [_m(5), _m(15), _m(30), _h(1), _h(2), _h(3), _h(6), _h(12), _d(1), _d(7)]
-    full_label = [12,    4,      4,      3,     3,     2,     2,     2,      1,     1]
     closest_tick_idx = np.argmin([abs(sec_per_tick - tu) for tu in tick_units])
     closest_tick_unit = tick_units[closest_tick_idx]
-    full_label_every_nth = full_label[closest_tick_idx]
     
     # Compute ticks and labels (x-axis represents seconds passed since a reference datetime object)
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
@@ -104,16 +102,22 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
 
     tick_values = list()
     tick_labels = list()
+    prev_date = dt_now.date()
     for i in range(num_ticks):
         tick_sec = i * closest_tick_unit + offset
         dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
-        if i % full_label_every_nth == 0:
-            if dt_now.date() == dt_tick.date():
-                tick_lbl = dt_tick.strftime('%H:%M')
-            else:
-                tick_lbl = dt_tick.strftime('%d.%m.%Y %H:%M')
+        if prev_date == dt_tick.date():
+            tick_lbl = dt_tick.strftime('%H:%M')
         else:
-            tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
+            tick_lbl = dt_tick.strftime('%d.%m. %H:%M')
+            prev_date = dt_tick.date()
+        # if i % full_label_every_nth == 0:
+        #     if dt_now.date() == dt_tick.date():
+        #         tick_lbl = dt_tick.strftime('%H:%M')
+        #     else:
+        #         tick_lbl = dt_tick.strftime('%d.%m. %H:%M')
+        # else:
+        #     tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
     # Add end/current date
@@ -123,7 +127,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     if dt_now.date() == dt_tick.date():
         tick_labels.append('{:02d}:{:02d}'.format(dt_tick.hour, dt_tick.minute))
     else:
-        tick_labels.append(dt_tick.strftime('%d.%m.%Y %H:%M'))
+        tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
     
     return tick_values, tick_labels, dt_tick_start
     #TODO round dt_tick_start to closest hour/...
@@ -237,7 +241,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
                 label=plot_labels[sn], zorder=10)
 
     # Adjust x-axis
-    ax.tick_params(axis ='x', rotation=45, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    ax.tick_params(axis ='x', rotation=60, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     plt.xticks(x_tick_values, x_tick_labels)
 
     # Adjust y-axis
