@@ -26,8 +26,33 @@ def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
     c = colormap(lookup[idx % distinct_colors])
     return c[:3]
 
+
+def smooth(values, win_size):
+    if win_size < 3:
+        return values
+    smoothed = list()
+    neighbors = int((win_size - 1)//2)
+    for idx in range(len(values)):
+        ifrom = max(0, idx - neighbors)
+        ito = min(len(values)-1, idx + neighbors)
+
+        # Reduce span at the beginning/end (where there are less neighbors).
+        actual_neighbors = min(idx - ifrom, ito - idx)
+        ifrom = idx - actual_neighbors
+        ito = idx + actual_neighbors
+
+        # Average all values within the span.
+        to_average = 0.0
+        for win_idx in range(ifrom, ito+1):
+            to_average += values[win_idx]
+        avg = to_average / (2*actual_neighbors + 1)
+        smoothed.append(avg)
+  return smoothed
+
+
 def __replace_tz(dt):
     return dt.replace(tzinfo=tz.tzutc())
+
 
 def __naive_time_diff(dt_a, dt_b):
     """Returns the time difference between a and b, assuming both are within the same timezone."""
@@ -186,13 +211,15 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
+        #TODO smooth
+        values = smooth(unzipped[1], 7) # TODO param
         if draw_marker:
-            ax.plot(unzipped[0], unzipped[1], \
+            ax.plot(unzipped[0], values, \
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
                 label=plot_labels[sn], 
                 marker='.', markersize=5*linewidth, markeredgewidth=linewidth, zorder=10)
         else:
-            ax.plot(unzipped[0], unzipped[1], \
+            ax.plot(unzipped[0], values, \
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
                 label=plot_labels[sn], zorder=10)
 
