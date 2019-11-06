@@ -26,8 +26,33 @@ def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
     c = colormap(lookup[idx % distinct_colors])
     return c[:3]
 
+
+def smooth(values, win_size):
+    if win_size < 3:
+        return values
+    smoothed = list()
+    neighbors = int((win_size - 1)//2)
+    for idx in range(len(values)):
+        ifrom = max(0, idx - neighbors)
+        ito = min(len(values)-1, idx + neighbors)
+
+        # Reduce span at the beginning/end (where there are less neighbors).
+        actual_neighbors = min(idx - ifrom, ito - idx)
+        ifrom = idx - actual_neighbors
+        ito = idx + actual_neighbors
+
+        # Average all values within the span.
+        to_average = 0.0
+        for win_idx in range(ifrom, ito+1):
+            to_average += values[win_idx]
+        avg = to_average / (2*actual_neighbors + 1)
+        smoothed.append(avg)
+    return smoothed
+
+
 def __replace_tz(dt):
     return dt.replace(tzinfo=tz.tzutc())
+
 
 def __naive_time_diff(dt_a, dt_b):
     """Returns the time difference between a and b, assuming both are within the same timezone."""
@@ -66,11 +91,11 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     dt_tick_start = dt_end - datetime.timedelta(seconds=num_ticks_ceil * closest_tick_unit)
     # ## Version A, ceil
-    # num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    # offset = 0
+    num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    offset = 0
     ## Version B, floor
-    num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    offset = closest_tick_unit
+    # num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    # offset = closest_tick_unit
 
     tick_values = list()
     tick_labels = list()
@@ -123,7 +148,7 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
 def plot_temperature_curves(width_px, height_px, temperature_log, 
     return_mem=True, xkcd=True, reverse=True, name_mapping=None,
     line_alpha=0.7, grid_alpha=0.3, linewidth=3.5, 
-    min_temperature_span=9,
+    min_temperature_span=9, smoothing_window=7,
     font_size=20, legend_columns=2,
     draw_marker=False):
     """
@@ -188,13 +213,17 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
+        if smoothing_window > 2:
+            values = smooth(unzipped[1], smoothing_window)
+        else:
+            values = unzipped[1]
         if draw_marker:
-            ax.plot(unzipped[0], unzipped[1], \
+            ax.plot(unzipped[0], values, \
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
                 label=plot_labels[sn], 
                 marker='.', markersize=5*linewidth, markeredgewidth=linewidth, zorder=10)
         else:
-            ax.plot(unzipped[0], unzipped[1], \
+            ax.plot(unzipped[0], values, \
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
                 label=plot_labels[sn], zorder=10)
 

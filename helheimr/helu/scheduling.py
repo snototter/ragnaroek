@@ -655,18 +655,27 @@ class PeriodicHeatingJob(Job):
     
     def to_msg_str(self, use_markdown=True):
         """Return a human-readable representation for telegram, etc."""
-        next_run_str = time_utils.format(self.next_run)
+        # next_run_str = time_utils.format(self.next_run)
         at_time_str = time_utils.format_time(self.at_time)
-        duration_str = time_utils.format_timedelta(self.heating_duration)
-        
-        return 'tgl. {:s}{:s}, {:s}, nächster Start: {:s}'.format(
+        # duration_str = time_utils.format_timedelta(self.heating_duration)
+        next_end_time = self.next_run + self.heating_duration
+        end_time_str = time_utils.format(next_end_time, fmt='%H:%M')
+        #TODO check!
+        # return 'tgl. {:s}{:s}, {:s}, nächster Start: {:s}'.format(
+        #         at_time_str,
+        #         '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
+        #                 common.format_num('.1f', self.target_temperature, use_markdown),
+        #                 common.format_num('.1f', self.temperature_hysteresis, use_markdown)
+        #             ),
+        #         duration_str,
+        #         next_run_str)
+        return 'tgl. {:s}-{:s}{:s}'.format(
                 at_time_str,
+                end_time_str,
                 '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
                         common.format_num('.1f', self.target_temperature, use_markdown),
                         common.format_num('.1f', self.temperature_hysteresis, use_markdown)
-                    ),
-                duration_str,
-                next_run_str)
+                    ))
 
     def teaser(self, use_markdown=False):
         at_time_str = time_utils.format_time(self.at_time)
@@ -1127,7 +1136,7 @@ class HelheimrScheduler(Scheduler):
             msg_lines.append('*Registrierte Heizungsprogramme:*')
             
             for j in heating_jobs:
-                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown)) #TODO list end time instead of duration
+                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
         
         msg_lines.append('')
         if len(non_heating_jobs) == 0:

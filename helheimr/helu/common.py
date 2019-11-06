@@ -132,6 +132,10 @@ def shell_heating_log(num_lines):
     """Returns the last num_lines logged by the heating system wrapper."""
     return safe_shell_output('/bin/bash', '-c', r"journalctl -u helheimr-heating.service --no-pager | grep '\[Heating\]' | tail -n {:d}".format(num_lines))
 
+def shell_exec_command(cmd_str):
+    """Executes the given command and returns stdout."""
+    return safe_shell_output('/bin/bash', '-c', cmd_str)
+
 def shell_update_repository():
     # We set the service's working directory accordingly.
     # If you need something similar but 'cd ...' first, the

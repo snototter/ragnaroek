@@ -10,7 +10,8 @@ Uses https://pypi.org/project/rpi-rf/ to transmit LPD433 codes.
 If you need to find out your device's codes, protocols, etc. use
 https://github.com/ninjablocks/433Utils
 
-I followed this tutorial https://tutorials-raspberrypi.de/raspberry-pi-funksteckdosen-433-mhz-steuern/
+I followed this tutorial:
+  https://tutorials-raspberrypi.de/raspberry-pi-funksteckdosen-433-mhz-steuern/
 Basically, all you need to do is `make && sudo ./RFSniffer`
 If you have a cheap receiver, make sure to hold the remote/device
 as close as possible to the rx (mine lost connection as soon as I was
@@ -19,7 +20,7 @@ as close as possible to the rx (mine lost connection as soon as I was
 Worked out-of-the-box (once you figure out the GPIO pin numbering)
 and has less configuration overhead (and almost no installation
 headache) compared to pilight (search for pilight installation on
-latest raspbian to get a glimpse of the (currently) necessary 
+latest raspbian to get a glimpse of the (currently) necessary
 workarounds needed ;-)
 """
 
@@ -33,7 +34,8 @@ try:
 except RuntimeError:
     logging.getLogger().error('[LPD433] Can only be run on Raspberry Pi - declaring a dummy RFDevice for debugging now.')
     # Can only be run on Raspberry Pi ;-) 
-    class RFDevice:
+    class RFDevice(object):
+        """Dummy RFDevice class for debugging on non-raspberrypi platforms."""
         def __init__(self, gpio):
             self.tx_repeat = None
         def enable_tx(self):
@@ -44,7 +46,7 @@ except RuntimeError:
             pass
 
 
-class LpdDeviceState:
+class LpdDeviceState(object):
     def __init__(self, display_name, powered_on):
         self._display_name = display_name
         self._powered_on = powered_on
@@ -57,7 +59,7 @@ class LpdDeviceState:
 
 
 
-class LpdDevice:
+class LpdDevice(object):
     """Abstraction of an LPD433 device (i.e. a power plug).
     Use this to turn the device on/off.
     """
@@ -122,7 +124,7 @@ class LpdDevice:
             return False
 
 
-class Lpd433Wrapper:
+class Lpd433Wrapper(object):
     def __init__(self, cfg):
         # GPIO pin number to send the radio data.
         self._tx_gpio_pin = cfg['lpd433']['gpio_pin_tx']

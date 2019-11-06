@@ -948,12 +948,15 @@ class HelheimrBot:
         for arg in context.args:
             if arg.lower() == 't' or arg.lower() == 'tab' or arg.lower() == 'table':
                 render_table = True
-            else:    
-                try:
-                    num_entries = int(arg)
-                except:
-                    self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
-                    return
+            else:
+                if 'd' in arg or 'h' in arg or 'm' in arg:
+                    num_entries = arg 
+                else:   
+                    try:
+                        num_entries = int(arg)
+                    except:
+                        self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
+                        return
         if render_table:
             msg = temperature_log.TemperatureLog.instance().format_table(num_entries)
             max_len = type(self).MESSAGE_MAX_LENGTH - 8
@@ -1100,15 +1103,19 @@ class HelheimrBot:
 
     def __cmd_debug(self, update, context):
         # All sorts of debug stuff, tests, etc.
-        # _, txt1 = common.shell_pwd()
-        # _, txt2 = common.shell_whoami()
-        # _, txt3 = common.shell_uptime()
-        # self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
+        # img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
+        #     return_mem=True, xkcd=True, reverse=True, 
+        #     name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
+        # self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
+        if len(context.args) > 0:
+            s, txt = common.shell_exec_command(' '.join(context.args))
+            self.__safe_send(update.message.chat_id, 'Command succeeded: {}, Output:\n{}'.format(s, txt))
+        else:
+            _, txt1 = common.shell_pwd()
+            _, txt2 = common.shell_whoami()
+            _, txt3 = common.shell_uptime()
+            self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
 
-        img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
-            return_mem=True, xkcd=True, reverse=True, 
-            name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
-        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
        
 
     def start(self):
