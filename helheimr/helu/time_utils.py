@@ -102,13 +102,13 @@ def format_time(t):
     t = time_as_local(t)
     return t.strftime('%H:%M')
 
-# taken from https://stackoverflow.com/a/32657466
+# adapted from https://stackoverflow.com/a/32657466
 def ceil_dt(dt, delta):
-    q, r = divmod(dt - datetime.datetime.min, delta)
+    q, r = divmod(dt - datetime.datetime.min.replace(tzinfo=dt.tzinfo), delta)
     return (datetime.datetime.min + (q + 1)*delta) if r else dt
 
 def floor_dt(dt, delta):
-    q, r = divmod(dt - datetime.datetime.min, delta)
+    q, r = divmod(dt - datetime.datetime.min.replace(tzinfo=dt.tzinfo), delta)
     return (datetime.datetime.min + q*delta) if r else dt
 
 def floor_dt_hour(dt):
