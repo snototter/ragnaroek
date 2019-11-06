@@ -123,8 +123,6 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     #     tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
     
     return tick_values, tick_labels, dt_tick_start
-    #TODO round dt_tick_start to closest hour/...
-    #TODO show time every n-th tick (e.g. every 6hrs if span is 1d, every 12hrs if span is 2d)
 
 
 def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
@@ -136,7 +134,6 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
 
         td = __naive_time_diff(dt_local, dt_tick_start)
         dt_tick_offset = td.total_seconds()
-        # print('\n', time_utils.format(dt_local), ' VS ', time_utils.format(dt_tick_start), ' === ', time_utils.days_hours_minutes_seconds(td))
 
         was_heating.append((dt_tick_offset, heating))
 
@@ -234,7 +231,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
                 label=plot_labels[sn], zorder=10)
 
     # Adjust x-axis
-    ax.tick_params(axis ='x', rotation=60, direction='in') # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+    ax.tick_params(axis ='x', rotation=65, direction='in') 
     plt.xticks(x_tick_values, x_tick_labels)
 
     # Adjust y-axis

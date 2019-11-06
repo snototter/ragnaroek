@@ -102,22 +102,32 @@ def format_time(t):
     t = time_as_local(t)
     return t.strftime('%H:%M')
 
-# adapted from https://stackoverflow.com/a/32657466
+
 def ceil_dt(dt, delta):
+    """Round the given datetime.datetime object up to the nearest datetime.timedelta."""
+    # adapted from https://stackoverflow.com/a/32657466
     q, r = divmod(dt - datetime.datetime.min.replace(tzinfo=dt.tzinfo), delta)
-    return (datetime.datetime.min + (q + 1)*delta) if r else dt
+    return (datetime.datetime.min.replace(tzinfo=dt.tzinfo) + (q + 1)*delta) if r else dt
+
 
 def floor_dt(dt, delta):
+    """Round the given datetime.datetime object down to the nearest datetime.timedelta."""
     q, r = divmod(dt - datetime.datetime.min.replace(tzinfo=dt.tzinfo), delta)
-    return (datetime.datetime.min + q*delta) if r else dt
+    return (datetime.datetime.min.replace(tzinfo=dt.tzinfo) + q*delta) if r else dt
+
 
 def floor_dt_hour(dt):
+    """Round the datetime down to the nearest hour."""
     return floor_dt(dt, datetime.timedelta(hours=1))
 
+
 def ceil_dt_hour(dt):
+    """Round the datetime up to the nearest hour."""
     return ceil_dt(dt, datetime.timedelta(hours=1))
 
+
 def round_nearest(dt, delta):
+    """Round the datetime to the nearest timedelta (e.g. 5 minutes, 2 hours, etc.)"""
     c = ceil_dt(dt, delta)
     f = floor_dt(dt, delta)
     dc = c - dt
