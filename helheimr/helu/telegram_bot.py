@@ -1100,15 +1100,19 @@ class HelheimrBot:
 
     def __cmd_debug(self, update, context):
         # All sorts of debug stuff, tests, etc.
-        # _, txt1 = common.shell_pwd()
-        # _, txt2 = common.shell_whoami()
-        # _, txt3 = common.shell_uptime()
-        # self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
+        # img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
+        #     return_mem=True, xkcd=True, reverse=True, 
+        #     name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
+        # self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
+        if len(context.args) > 0:
+            s, txt = common.shell_exec_command(' '.join(context.args))
+            self.__safe_send(update.message.chat_id, 'Command succeeded: {}, Output:\n{}'.format(s, txt))
+        else:
+            _, txt1 = common.shell_pwd()
+            _, txt2 = common.shell_whoami()
+            _, txt3 = common.shell_uptime()
+            self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
 
-        img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
-            return_mem=True, xkcd=True, reverse=True, 
-            name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
-        self.__safe_photo_send(update.message.chat_id, img_buf, caption='Yabba-dabba-doo', disable_notification=True)
        
 
     def start(self):
