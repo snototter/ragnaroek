@@ -92,6 +92,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
         tick_labels.append(dt_tick.strftime('%d.%m.%Y %H:%M'))
     
     return tick_values, tick_labels, dt_tick_start
+    #TODO round dt_tick_start to closest hour/...
+    #TODO show time every n-th tick (e.g. every 6hrs if span is 1d, every 12hrs if span is 2d)
 
 
 def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
