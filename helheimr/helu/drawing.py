@@ -67,11 +67,11 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     """Returns the best fitting x-axis ticks depending on the time spanned by the temperature-log."""
     def _tm(reading):
         return reading[0]
-    dt_end = _tm(temperature_log[-1])
-    # dt_end = time_utils.dt_now_local()
-    dt_start = _tm(temperature_log[0])
-    dt_end = time_utils.ceil_dt_hour(dt_end)
-    dt_start = time_utils.floor_dt_hour(dt_start)
+    # dt_end = _tm(temperature_log[-1])
+    dt_end = time_utils.dt_now_local()
+    # dt_start = _tm(temperature_log[0])
+    # dt_end = time_utils.ceil_dt_hour(dt_end)
+    dt_start = time_utils.floor_dt_hour(_tm(temperature_log[0]))
     
     # Find best fitting tick interval
     # time_span = dt_end - dt_start
@@ -104,7 +104,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     for i in range(num_ticks):
         tick_sec = i * closest_tick_unit + offset
         dt_tick = dt_tick_start + datetime.timedelta(seconds=tick_sec)
-        tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
+        tick_lbl = dt_tick.strftime('%H:%M') + '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
     # Add end/current date
