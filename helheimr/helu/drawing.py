@@ -79,7 +79,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # time_span = dt_end - dt_start
     time_span = __naive_time_diff(dt_end, dt_start)
     sec_per_tick = time_span.total_seconds() / desired_num_ticks
-    # print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
+    print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
 
     def _m(x):
         return x * 60
