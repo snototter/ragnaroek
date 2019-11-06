@@ -87,7 +87,7 @@ class TemperatureLog:
         buffer_hours = 72
         self._buffer_capacity = int(math.ceil(buffer_hours*60/self._polling_interval_min))
         self._temperature_readings = common.circularlist(self._buffer_capacity)
-        self._num_readings_per_hour = int(math.ceil(60/self._polling_interval_min)) + 1 # one more to include the same minute, one hour ago
+        self._num_readings_per_hour = int(math.ceil(60/self._polling_interval_min))
         self._num_readings_per_day = int(math.ceil(24*60/self._polling_interval_min))
 
         # Map internal display names of temperature sensors to their abbreviations
