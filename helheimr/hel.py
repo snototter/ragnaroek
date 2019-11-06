@@ -3,9 +3,7 @@
 """The main controlling script."""
 
 import logging
-import os
 import signal
-import sys
 
 from helu import broadcasting
 from helu import common
@@ -19,9 +17,15 @@ from helu import weather
 
 
 
-class Hel:
+class Hel(object):
     def __init__(self):
         self._is_terminating = False
+        self._logger = None
+        self._heating = None
+        self._scheduler = None
+        self._telegram_bot = None
+        self._weather_service = None
+
 
     def control_heating(self):
         # Register signal handler to be notified upon system shutdown:
@@ -29,16 +33,17 @@ class Hel:
         signal.signal(signal.SIGHUP, self.__shutdown_signal)
 
         ## Set up logging
-        # see examples at http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
+        # see examples at:
+        #   http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
 
         disk_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         # Suppress time (as it's added by journalctl by default)
         stream_formatter = logging.Formatter('%(levelname)s %(message)s')
-        
+
         # Save to disk and rotate logs each sunday
         file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",
-                    interval=1, backupCount=8)    
+                    interval=1, backupCount=8)
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(disk_formatter)
 
@@ -46,7 +51,7 @@ class Hel:
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(logging.INFO)
         stream_handler.setFormatter(stream_formatter)
-        
+
         # Configure this application's root logger
         logging.getLogger().addHandler(stream_handler)
         logging.getLogger().addHandler(file_handler)
@@ -85,11 +90,12 @@ class Hel:
         broadcasting.MessageBroadcaster.instance().set_telegram_bot(self._telegram_bot)
 
         # Set up network connectivity tester
-        network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg, 
+        network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg,
             'control': ctrl_cfg})
 
         # Then, start the job scheduler
-        self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, schedule_job_list_path)
+        self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, 
+            schedule_job_list_path)
 
         # Set up the temperature log (after the scheduler!)
         temperature_log.TemperatureLog.init_instance(ctrl_cfg)

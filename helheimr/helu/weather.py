@@ -2,16 +2,14 @@
 # coding=utf-8
 
 import datetime
-from dateutil import tz
 import logging
 import math
-from pyowm import OWM
-
 import traceback
 
+from dateutil import tz
+from pyowm import OWM
+
 from . import common
-from . import network_utils
-from . import scheduling
 from . import time_utils
 
 #TODO nice-to-have: moon phase
