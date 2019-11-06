@@ -47,7 +47,7 @@ def smooth(values, win_size):
             to_average += values[win_idx]
         avg = to_average / (2*actual_neighbors + 1)
         smoothed.append(avg)
-  return smoothed
+    return smoothed
 
 
 def __replace_tz(dt):
@@ -146,7 +146,7 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
 def plot_temperature_curves(width_px, height_px, temperature_log, 
     return_mem=True, xkcd=True, reverse=True, name_mapping=None,
     line_alpha=0.7, grid_alpha=0.3, linewidth=3.5, 
-    min_temperature_span=9,
+    min_temperature_span=9, smoothing_window=7,
     font_size=20, legend_columns=2,
     draw_marker=False):
     """
@@ -211,8 +211,10 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
-        #TODO smooth
-        values = smooth(unzipped[1], 7) # TODO param
+        if smoothing_window > 2:
+            values = smooth(unzipped[1], smoothing_window)
+        else:
+            values = unzipped[1]
         if draw_marker:
             ax.plot(unzipped[0], values, \
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
