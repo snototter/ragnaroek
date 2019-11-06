@@ -948,12 +948,15 @@ class HelheimrBot:
         for arg in context.args:
             if arg.lower() == 't' or arg.lower() == 'tab' or arg.lower() == 'table':
                 render_table = True
-            else:    
-                try:
-                    num_entries = int(arg)
-                except:
-                    self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
-                    return
+            else:
+                if 'd' in arg or 'h' in arg or 'm' in arg:
+                    num_entries = arg 
+                else:   
+                    try:
+                        num_entries = int(arg)
+                    except:
+                        self.__safe_send(update.message.chat_id, ':bangbang: Parameterfehler: Anzahl der Messungen muss eine Ganzzahl sein!')
+                        return
         if render_table:
             msg = temperature_log.TemperatureLog.instance().format_table(num_entries)
             max_len = type(self).MESSAGE_MAX_LENGTH - 8
