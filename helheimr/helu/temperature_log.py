@@ -12,6 +12,27 @@ from . import raspbee
 from . import time_utils
 from . import scheduling
 
+
+def parse_duration_string(s):
+    """Returns the given duration ('1h', '10m') in minutes."""
+    def _extract(duration_str, txt, factor):    
+        idx = duration_str.find(txt)
+        if idx >= 0:
+            return int(duration_str[:idx]) * factor
+        else:
+            return None
+    lookups = [('min', 1), ('m', 1),
+        ('h', 60), ('d', 24*60)]
+    for l in lookups:
+        v = _extract(s, l[0], l[1])
+        if v is not None:
+            #TODO remove debug output
+            print('Parsed input duration string "{}" into {} minutes'.format(s, v))
+            return v
+    return None
+    
+
+
 def compute_temperature_trend(readings, time_steps=None):
     """Fits a least-squares line to the temperature readings (list-like, np.array, etc.) and
     returns the tuple (slope, r_squared)."""
@@ -61,13 +82,13 @@ class TemperatureLog:
         self._logger.setLevel(logging.INFO)
 
         # Compute size of circular buffer to store readings of the past 24 hours
-        polling_interval_min = temp_cfg['update_interval_minutes']
+        self._polling_interval_min = temp_cfg['update_interval_minutes']
         polling_job_label = temp_cfg['job_label']
         buffer_hours = 72
-        self._buffer_capacity = int(math.ceil(buffer_hours*60/polling_interval_min))
+        self._buffer_capacity = int(math.ceil(buffer_hours*60/self._polling_interval_min))
         self._temperature_readings = common.circularlist(self._buffer_capacity)
-        self._num_readings_per_hour = int(math.ceil(60/polling_interval_min)) + 1 # one more to include the same minute, one hour ago
-        self._num_readings_per_day = int(math.ceil(24*60/polling_interval_min))
+        self._num_readings_per_hour = int(math.ceil(60/self._polling_interval_min)) + 1 # one more to include the same minute, one hour ago
+        self._num_readings_per_day = int(math.ceil(24*60/self._polling_interval_min))
 
         # Map internal display names of temperature sensors to their abbreviations
         self._sensor_abbreviations = dict()
@@ -84,10 +105,10 @@ class TemperatureLog:
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
 
         # Register periodic task with scheduler
-        polling_job = scheduling.NonSerializableNonHeatingJob(polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
+        polling_job = scheduling.NonSerializableNonHeatingJob(self._polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
         
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, polling_interval_min, buffer_hours))
+        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, self._polling_interval_min, buffer_hours))
         logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
         # Load existing log file
         self.load_log(temp_cfg['log_file'])
@@ -135,11 +156,14 @@ class TemperatureLog:
         if num_entries is None:
             num_entries = self._num_readings_per_day
 
-        #TODO nice-to-have: parse a "num_entries" string (e.g. 1d, 3d, 10h)
-        # if isinstance(num_entries, str):
-        #     if num_entries
-        # if num_entries contains 'd', replace, parse int num_days
-        # if contains 'h', parse int num_hours
+
+        # Parse a "num_entries" string (e.g. 1d, 3d, 10h)
+        if isinstance(num_entries, str):
+            duration_min = parse_duration_string(num_entries)
+            if duration_min is None:
+                num_entries = self._num_readings_per_day
+            else:
+                num_entries = int(math.ceil(duration_min/self._polling_interval_min))
 
         if num_entries < 1:
             num_entries = len(self._temperature_readings)
