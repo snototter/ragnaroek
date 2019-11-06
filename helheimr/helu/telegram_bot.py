@@ -972,7 +972,7 @@ class HelheimrBot:
             self.__safe_send(update.message.chat_id, ':bangbang: Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
         else:
             self.__safe_photo_send(update.message.chat_id, img_buf, 
-                caption='{}Yabba-dabba-doo'.format('' if num_entries is None else '{:d} x '.format(num_entries)), disable_notification=True)
+                caption='Yabba-dabba-doo', disable_notification=True)
         
 
     
