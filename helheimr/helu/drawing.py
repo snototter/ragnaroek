@@ -94,11 +94,11 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     dt_tick_start = dt_end - datetime.timedelta(seconds=num_ticks_ceil * closest_tick_unit)
     # ## Version A, ceil
-    # num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    # offset = 0
+    num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    offset = 0
     ## Version B, floor
-    num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
-    offset = closest_tick_unit
+    # num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
+    # offset = closest_tick_unit
 
     tick_values = list()
     tick_labels = list()
