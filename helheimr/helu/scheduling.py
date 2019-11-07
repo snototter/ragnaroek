@@ -669,9 +669,11 @@ class PeriodicHeatingJob(Job):
         #             ),
         #         duration_str,
         #         next_run_str)
-        return 'tgl. {:s}-{:s}{:s}'.format(
+        return 'tgl. {:s}{:s}-{:s}{:s}{:s}'.format(
+                '`' if use_markdown else '',
                 at_time_str,
                 end_time_str,
+                '`' if use_markdown else '',
                 '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
                         common.format_num('.1f', self.target_temperature, use_markdown),
                         common.format_num('.1f', self.temperature_hysteresis, use_markdown)
