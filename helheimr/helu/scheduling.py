@@ -660,15 +660,6 @@ class PeriodicHeatingJob(Job):
         # duration_str = time_utils.format_timedelta(self.heating_duration)
         next_end_time = self.next_run + self.heating_duration
         end_time_str = time_utils.format(next_end_time, fmt='%H:%M')
-        #TODO check!
-        # return 'tgl. {:s}{:s}, {:s}, nächster Start: {:s}'.format(
-        #         at_time_str,
-        #         '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
-        #                 common.format_num('.1f', self.target_temperature, use_markdown),
-        #                 common.format_num('.1f', self.temperature_hysteresis, use_markdown)
-        #             ),
-        #         duration_str,
-        #         next_run_str)
         return 'tgl. {:s}{:s}-{:s}{:s}{:s}'.format(
                 '`' if use_markdown else '',
                 at_time_str,

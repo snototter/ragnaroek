@@ -61,7 +61,7 @@ def time_as_local(t):
     Returns the datetime.time t localized to the user's timezone.
     If it has no tzinfo, we assume it is UTC.
     """
-    if t.tzinfo is None or t.tzinfo.utcoffset(t) is None:
+    if t.tzinfo is None or t.tzinfo.utcoffset(dt_now()) is None:
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=tz.tzutc())
     else:
         dt = datetime.datetime.combine(datetime.datetime.today(), t, tzinfo=t.tzinfo)

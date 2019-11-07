@@ -68,7 +68,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     def _tm(reading):
         return reading[0]
     # dt_end = _tm(temperature_log[-1])
-    dt_end = time_utils.round_nearest(_tm(temperature_log[-1]), datetime.timedelta(minutes=10))
+    dt_end = time_utils.round_nearest(_tm(temperature_log[-1]), datetime.timedelta(minutes=15))
     # dt_end = time_utils.dt_now_local()
     # dt_start = _tm(temperature_log[0])
     # dt_end = time_utils.ceil_dt_hour(dt_end)
