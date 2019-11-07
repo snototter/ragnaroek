@@ -79,8 +79,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # time_span = dt_end - dt_start
     time_span = __naive_time_diff(dt_end, dt_start)
     sec_per_tick = time_span.total_seconds() / desired_num_ticks
-    print('PREPARE TICKS:', dt_start, "...", dt_end, ' time spanned: ', time_span)
-
+    
     def _m(x):
         return x * 60
     def _h(x):
@@ -121,6 +120,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     #     tick_labels.append('{:02d}:{:02d}'.format(dt_tick.hour, dt_tick.minute))
     # else:
     #     tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
+
+    logging.getLogger().info('DRAW ticks start {}, end {}, time_span {}, dt_tick_start {}'.format(dt_start.strftime('%d.%m %H:%M'), dt_end.strftime('%d.%m %H:%M'), time_span, dt_tick_start.strftime('%d.%m %H:%M')))
     
     return tick_values, tick_labels, dt_tick_start
 
