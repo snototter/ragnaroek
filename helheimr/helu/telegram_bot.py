@@ -11,6 +11,7 @@ config - :clock8: Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
 fernwaerme - Fernwärmestatus
+h - :high_brightness: Heizung umschalten
 help - Liste verfügbarer Befehle
 progs - :wrench: Programme/Aufgaben auflisten
 on - :high_brightness: Heizung einschalten
@@ -231,9 +232,8 @@ class HelheimrBot:
         off_handler = CommandHandler('aus', self.__cmd_off, self._user_filter)
         self._dispatcher.add_handler(off_handler)
 
-        # TODO another convenience handler /h (if currently on: offer to turn off and vice versa)
-        # add to botfather
-        # add to help
+        toggle_handler = CommandHandler('h', self.__cmd_toggle_heating, self._user_filter)
+        self._dispatcher.add_handler(toggle_handler)
 
         stop_handler = CommandHandler('stop', self.__cmd_stop, self._user_filter)
         self._dispatcher.add_handler(stop_handler)
@@ -384,6 +384,8 @@ class HelheimrBot:
     Temperatur & Dauer: /on `23c` `2h`
     Alles: /on `22c` `0.5c` `1.5h`
 
+/h Heizung umschalten.
+
 /einmal oder /once - :thermometer: Einmalig
     auf bestimmte Temperatur aufheizen.
 
@@ -487,6 +489,29 @@ class HelheimrBot:
         
         self.__safe_send(update.message.chat_id, txt)
 
+
+    def __cmd_toggle_heating(self, update, context):
+        # Check if another user is currently sending an on/off command:
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id, 
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\n\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True # Set flag to prevent other users from concurrently modifying heating
+        is_heating, _ = self._heating.query_heating_state()
+        if is_heating:
+            msg = 'Heizung ist ein, möchtest du sie ausschalten?'
+            keyboard = [[telegram.InlineKeyboardButton("Ja", callback_data=type(self).CALLBACK_TURN_OFF_CONFIRM),
+                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
+        else:
+            msg = 'Heizung ist aus, möchtest du sie einschalten?'
+            self._config_temperature = None
+            self._config_hysteresis = None
+            self._config_duration = None
+            keyboard = [[telegram.InlineKeyboardButton("Ja", callback_data=type(self).CALLBACK_TURN_ON_CONFIRM),
+                 telegram.InlineKeyboardButton("Nein", callback_data=type(self).CALLBACK_TURN_ON_OFF_CANCEL)]]
+        reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+        self._is_modifying_heating = self.__safe_message_reply(update, 
+            msg, reply_markup=reply_markup)
 
 
     def __cmd_on(self, update, context):
