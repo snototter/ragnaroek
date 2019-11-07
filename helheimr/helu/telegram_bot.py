@@ -232,6 +232,8 @@ class HelheimrBot:
         self._dispatcher.add_handler(off_handler)
 
         # TODO another convenience handler /h (if currently on: offer to turn off and vice versa)
+        # add to botfather
+        # add to help
 
         stop_handler = CommandHandler('stop', self.__cmd_stop, self._user_filter)
         self._dispatcher.add_handler(stop_handler)
