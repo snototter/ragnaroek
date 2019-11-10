@@ -440,6 +440,10 @@ class HelheimrBot:
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
 
+        paused = self._heating.is_paused
+        if paused:
+            txt += '\n\nHeizungsprogramme sind aktuell pausiert!'
+
         # Query temperatures
         sensors = self._heating.query_temperature()
         txt += '\n\n' + format_msg_temperature(sensors,
@@ -454,6 +458,8 @@ class HelheimrBot:
             txt += '\n\nHeizung /{:s}\u200aschalten?'.format(
                 'aus' if is_heating else 'ein'
             )
+            if paused:
+                txt += '\nProgramme über /pause wieder aktivieren?'
             self.__safe_send(chat_id, txt)
 
 
