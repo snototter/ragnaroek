@@ -3,9 +3,11 @@
 """Our solar/district heating system can be 'boosted' on really cold days."""
 
 import datetime
-from html.parser import HTMLParser
 import logging
 import traceback
+
+from enum import Enum
+from html.parser import HTMLParser
 
 from . import broadcasting
 from . import common
@@ -213,12 +215,19 @@ class DistrictHeatingQueryParser(HTMLParser):
             pass
 
 
-DistrictHeatingRequest = common.enum(ECO=1, MEDIUM=2, HIGH=3, VERY_HIGH=4, TRANSITION=5)
+class DistrictHeatingRequest(Enum):
+    """Type of district heating 'button'"""
+    ECO = 1
+    MEDIUM = 2
+    HIGH = 3
+    VERY_HIGH = 4
+    TRANSITION = 5
+
 
 class DistrictHeating:
     __instance = None
 
-    
+
     @staticmethod
     def instance():
         """Returns the singleton."""
@@ -252,9 +261,11 @@ class DistrictHeating:
 
         # Prepare the button mapping
         self._buttons = dict()
-        tmp_request_type = DistrictHeatingRequest()
-        for request_type in [r for r in dir(DistrictHeatingRequest) if not r.startswith('__')]:
-            self._buttons[getattr(tmp_request_type, request_type)] = dhcfg['button_{:s}'.format(request_type.lower())]
+        # tmp_request_type = DistrictHeatingRequest()
+        # for request_type in [r for r in dir(DistrictHeatingRequest) if not r.startswith('__')]:
+        #     self._buttons[getattr(tmp_request_type, request_type)] = dhcfg['button_{:s}'.format(request_type.lower())] #TODO remove
+        for request_type in DistrictHeatingRequest:
+            self._buttons[request_type] = dhcfg['button_{:s}'.format(request_type.name.lower())]
 
         # Parameters which need to be set properly to switch on district heating
         self._param_change = (dhcfg['param_name_change'], dhcfg['param_value_change'])
@@ -267,19 +278,30 @@ class DistrictHeating:
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 
 
-    def get_buttons(self):
-        """Returns the (sub-set of) buttons to control the district heating system."""
-        return [
-            ('55\u200a°', DistrictHeatingRequest.MEDIUM), # TODO not needed, may be removed soon (?)
-            ('60\u200a°', DistrictHeatingRequest.HIGH),
-            ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
-        ]
+    def get_buttons(self, as_int=False):
+        """Returns the (sub-set of) buttons to control the district 
+        heating system. Each button is a tuple (label, button type).
+        If as_int==True, 'button type' will be integer, otherwise
+        see Enum DistrictHeatingRequest."""
+        if as_int:
+            return [
+                ('55\u200a°', DistrictHeatingRequest.MEDIUM.value),
+                ('60\u200a°', DistrictHeatingRequest.HIGH.value),
+                ('65\u200a°', DistrictHeatingRequest.VERY_HIGH.value)
+            ]
+        else:
+            return [
+                ('55\u200a°', DistrictHeatingRequest.MEDIUM),
+                ('60\u200a°', DistrictHeatingRequest.HIGH),
+                ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
+            ]
 
 
     def start_heating(self, request_type):
         """request_type is a DistrictHeatingRequest, specifying which physical button press should be simulated."""
         try:
-            request_type = int(request_type)
+            # Integers can be cast to Enums in py3
+            request_type = DistrictHeatingRequest(int(request_type))
             btn_id = self._buttons[request_type]
         except:
             err_msg = traceback.format_exc(limit=3)
@@ -300,7 +322,7 @@ class DistrictHeating:
         
 
     def query_heating(self, use_markdown=True):
-        response = network_utils.safe_http_get(self._url_query, headers=self._headers)
+        response = network_utils.safe_http_get(self._url_query, headers=self._headers, verify=False)
         if response is None:
             return False, 'Netzwerkfehler bei der Fernwärmeabfrage'
         

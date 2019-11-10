@@ -14,7 +14,7 @@ from . import heating
 from . import raspbee
 from . import telegram_bot
 
-def safe_http_get(url, headers=None, params=None, timeout=2.0, verify=False):
+def safe_http_get(url, headers=None, params=None, timeout=2.0, verify=True):
     """
     Performs a GET request at the given url (string) with the given headers and parameters 
     and returns the response if one was received within timeout (float) seconds. Otherwise, 

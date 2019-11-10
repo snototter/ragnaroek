@@ -38,7 +38,8 @@ def compute_temperature_trend(readings, time_steps=None):
         return None, None
     if time_steps is None:
         time_steps = range(len(readings))
-    slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(time_steps, readings)
+    # slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(time_steps, readings)
+    slope, _, r_value, _, _ = scipy.stats.linregress(time_steps, readings)
     return slope, r_value**2
 
 

@@ -540,8 +540,6 @@ class HelheimrBot:
                         temperature = val
                     else:
                         hysteresis = val
-                elif ':' in a:
-                    at_time = a
                 elif a[-1] == 'h':
                     h = float(a[:-1].replace(',','.'))
                     hours = int(h)
@@ -617,9 +615,9 @@ class HelheimrBot:
             return
         self._is_modifying_heating = True
 
-        btns = district_heating.DistrictHeating.instance().get_buttons()
+        btns = district_heating.DistrictHeating.instance().get_buttons(as_int=True)
         temp_buttons = [telegram.InlineKeyboardButton(b[0], 
-            callback_data=type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM + ':{}'.format(b[1])) for b in btns]
+            callback_data=type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM + ':{:d}'.format(b[1])) for b in btns]
         keyboard = [temp_buttons, # First row
             [telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL)]]
 
@@ -1029,7 +1027,9 @@ class HelheimrBot:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
             return
-        threading.Thread(target=self.shutdown, daemon=True).start()
+        thread = threading.Thread(target=self.shutdown)
+        thread.daemon = True
+        thread.start()
 
 
     def __reboot_helper(self, query):
@@ -1041,7 +1041,9 @@ class HelheimrBot:
             logging.getLogger().error('[HelheimrBot] Error rebooting the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Neustarten. ' + txt)
         else:
-            threading.Thread(target=self.shutdown, daemon=True).start()
+            thread = threading.Thread(target=self.shutdown)
+            thread.daemon = True
+            thread.start()
 
 
     def __cmd_reboot(self, update, context):
@@ -1065,7 +1067,9 @@ class HelheimrBot:
             logging.getLogger().error('[HelheimrBot] Error shutting down the pi. ' + txt)
             self.__safe_edit_callback_query(query, 'Fehler beim Herunterfahren. ' + txt)
         else:
-            threading.Thread(target=self.shutdown, daemon=True).start()
+            thread = threading.Thread(target=self.shutdown)
+            thread.daemon = True
+            thread.start()
 
 
     def __cmd_poweroff(self, update, context):

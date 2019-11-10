@@ -5,6 +5,7 @@
 import datetime
 import logging
 import threading
+from enum import Enum
 
 from . import broadcasting
 from . import common
@@ -17,7 +18,10 @@ from . import temperature_log
 from . import scheduling
 
 """Heating can be turned on via manual request or via a scheduled job."""
-HeatingRequest = common.enum(MANUAL=1, SCHEDULED=2)
+class HeatingRequest(Enum):
+    MANUAL = 1
+    SCHEDULED = 2
+    
 
 class Heating:
     __instance = None
@@ -135,7 +139,7 @@ class Heating:
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
         self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
         self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
-        self._temperature_trend_max_num_readings = config['heating']['temperature_trend_max_num_readings'] # Consider only the most recent N readings for trend computation
+        #self._temperature_trend_max_num_readings = config['heating']['temperature_trend_max_num_readings'] # Consider only the most recent N readings for trend computation
         self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
 
 
@@ -277,6 +281,8 @@ class Heating:
                 # Something's changed, let's check how we should heat
                 self._is_heating = True
                 self._start_heating = False
+                # Reset temperature trend warning time
+                self._last_trend_warning_issue_time = None
 
                 if self._target_temperature is not None:
                     self._controller.set_desired_value(self._target_temperature)
@@ -413,19 +419,36 @@ class Heating:
         # self._heating_logger.info('Shutting down')
 
 
+    def __compact_temperature_trend_log(self, reference_temperature_log):
+        # Cut off unreliable 1/100th-degree readings
+        def _round_temp(t):
+            return int(t*10)
+        rtl = list()
+        prev = None
+        for log_entry in reference_temperature_log:
+            rt = _round_temp(log_entry[0])
+            if prev != rt:
+                prev = rt
+                rtl.append(log_entry)
+
+        # Extract only the last "should-be-heating period"
+        temperatures = list()
+        # for i in range(len(rtl)-1, \
+            # max(0, len(rtl)-(self._temperature_trend_max_num_readings+1)), \ #TODO removed!!!!!
+                # -1): # Keep at most 10 recent readings
+        for i in range(len(rtl)-1, 0, -1):
+            t, sh = rtl[i]
+            if not sh:
+                break
+            temperatures.append(t)
+        return temperatures
+
+
     def __check_temperature_trend(self, reference_temperature_log):
         # For how long have we collected the log?
         trend_period = len(reference_temperature_log) * self._max_idle_time
         if trend_period >= self._temperature_trend_waiting_time:
-            # Extract the temperatures (only from the last "should-be-heating period")
-            temperatures = list()
-            for i in range(len(reference_temperature_log)-1, \
-                max(0, len(reference_temperature_log)-(self._temperature_trend_max_num_readings+1)), \
-                    -1): # Keep at most 10 recent readings
-                t, sh = reference_temperature_log[i]
-                if not sh:
-                    break
-                temperatures.append(t)
+            temperatures = self.__compact_temperature_trend_log(reference_temperature_log)
 
             # Adjust period for reporting:
             trend_period = len(temperatures) * self._max_idle_time
@@ -448,6 +471,7 @@ class Heating:
                     # ... and warn the users (but avoid spamming them)
                     if self._last_trend_warning_issue_time is None or \
                         (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
+                        self._last_trend_warning_issue_time = time_utils.dt_now()
                         msg = 'Temperatur steigt zu wenig an, {:s}{:s}\u200a° ({:d} x {:s}\u200a°) innerhalb von {}'.format(
                                 '' if temperature_inc < 0 else '+',
                                 common.format_num('.2f', temperature_inc),

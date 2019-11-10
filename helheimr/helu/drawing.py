@@ -268,7 +268,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     unzipped = tuple(zip(*was_heating))
     heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
     ax.plot(unzipped[0], heating_values, \
-            color=(1,0,0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+            color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
             label='Heizung', zorder=2)
     
     # Title and legend
@@ -304,7 +304,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
 def pil2np(img_pil, flip_channels=False):
     """Convert Pillow.Image to numpy.array."""
     img_np = np.array(img_pil)
-    if len(img_np.shape) == 3 and img_np.shape[2] == 3 and flip_channels:
+    if flip_channels and len(img_np.shape) == 3 and img_np.shape[2] == 3:
         # Convert RGB to BGR or vice versa
         return img_np[:, :, ::-1]
     else:
@@ -331,6 +331,7 @@ def np2memfile(img_np):
 
 
 def plt2img(fig, dpi=180):
+    """Render the matplotlib figure 'fig' as an image (numpy array)."""
     # Save plot to buffer...
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi)
@@ -352,6 +353,7 @@ def plt2img(fig, dpi=180):
 
 
 def rgb2gray(rgb):
+    """Grayscale conversion for np.array inputs"""
     r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
     gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
     return gray.astype(rgb.dtype)
@@ -372,64 +374,64 @@ def rgb2gray(rgb):
 #   https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
 #   https://stackoverflow.com/questions/8931268/using-colormaps-to-set-color-of-line-in-matplotlib
 
-if __name__ == '__main__':
-    import collections
-    dt = collections.namedtuple('dt', ['hour', 'minute'])
-    plot_temperature_curves(1024, 768, 
-        [(dt(0,5),{'K':23.5}), (dt(0,10),{'K':23.5, 'W':22}), (dt(0,15),{'K':25.5, 'W':24}),
-        (dt(0,20), {'K':None, 'W':23}), (dt(0,25), {'K':22}), (dt(0,30), None), (dt(0,35), {'Foo':25}), 
-        (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
-    if True:
-        raise RuntimeError('stop')
+# if __name__ == '__main__':
+#     import collections
+#     dt = collections.namedtuple('dt', ['hour', 'minute'])
+#     plot_temperature_curves(1024, 768, 
+#         [(dt(0,5),{'K':23.5}), (dt(0,10),{'K':23.5, 'W':22}), (dt(0,15),{'K':25.5, 'W':24}),
+#         (dt(0,20), {'K':None, 'W':23}), (dt(0,25), {'K':22}), (dt(0,30), None), (dt(0,35), {'Foo':25}), 
+#         (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
+#     if True:
+#         raise RuntimeError('stop')
 
-    target_fig_size_px = [1024, 768]
-    dpi = 100
-    fig = plt.figure(figsize=tuple([t/dpi for t in target_fig_size_px]))
-    axes = fig.add_subplot(111)
-    # axes = fig.gca()
+#     target_fig_size_px = [1024, 768]
+#     dpi = 100
+#     fig = plt.figure(figsize=tuple([t/dpi for t in target_fig_size_px]))
+#     axes = fig.add_subplot(111)
+#     # axes = fig.gca()
 
-    with plt.xkcd():
-        x = np.arange(0., 5., 0.2)
-        axes.plot(x, x, 'r--')
-        axes.plot(x, x**2, 'bs')
+#     with plt.xkcd():
+#         x = np.arange(0., 5., 0.2)
+#         axes.plot(x, x, 'r--')
+#         axes.plot(x, x**2, 'bs')
         
 
-    #     ax = fig.gca()
-        axes.set_xticks(np.arange(0, 5, 0.5))
-        axes.set_yticks(np.arange(0, 20, 2))
-    # plt.scatter(x, y)
-        plt.xlim(-1, 4.4)
-        plt.ylim(0.25, 20)
-        # axes.grid()
-        plt.grid()
-    # plt.show()
+#     #     ax = fig.gca()
+#         axes.set_xticks(np.arange(0, 5, 0.5))
+#         axes.set_yticks(np.arange(0, 20, 2))
+#     # plt.scatter(x, y)
+#         plt.xlim(-1, 4.4)
+#         plt.ylim(0.25, 20)
+#         # axes.grid()
+#         plt.grid()
+#     # plt.show()
 
-        plt.title('jabadabadoo')
-        # # Change font, put labels, etc.
-        # font = {'family': 'xkcd Script', #'serif',
-        #     'color':  'darkred',
-        #     'weight': 'normal',
-        #     'size': 16,
-        #     }
-        # plt.title('Title Foo', fontdict=font)
-        # plt.text(2, 0.65, r'$\cos(2 \pi t) \exp(-t)$', fontdict=font)
-        # plt.xlabel('time (s)', fontdict=font)
-        # plt.ylabel('voltage (mV)', fontdict=font)
+#         plt.title('jabadabadoo')
+#         # # Change font, put labels, etc.
+#         # font = {'family': 'xkcd Script', #'serif',
+#         #     'color':  'darkred',
+#         #     'weight': 'normal',
+#         #     'size': 16,
+#         #     }
+#         # plt.title('Title Foo', fontdict=font)
+#         # plt.text(2, 0.65, r'$\cos(2 \pi t) \exp(-t)$', fontdict=font)
+#         # plt.xlabel('time (s)', fontdict=font)
+#         # plt.ylabel('voltage (mV)', fontdict=font)
 
-    # After all axes have been added, we can remove the white space around the axes:
-    fig.tight_layout()
-    # If run headless, we must ensure that the figure canvas is populated:
-    fig.canvas.draw()
+#     # After all axes have been added, we can remove the white space around the axes:
+#     fig.tight_layout()
+#     # If run headless, we must ensure that the figure canvas is populated:
+#     fig.canvas.draw()
 
-    ## Export lowres first (hires changes the figure, so there would be no difference)
-    # img_lowres = plt2img_lowres(fig)
-    # img_pil = np2pil(img_lowres)
-    # img_pil.save('dummy-lowres.jpg')
+#     ## Export lowres first (hires changes the figure, so there would be no difference)
+#     # img_lowres = plt2img_lowres(fig)
+#     # img_pil = np2pil(img_lowres)
+#     # img_pil.save('dummy-lowres.jpg')
 
-    img_highres = plt2img(fig, dpi=2*dpi)
-    img_pil = np2pil(img_highres)
-    img_pil.save('dummy-hires.jpg')
+#     img_highres = plt2img(fig, dpi=2*dpi)
+#     img_pil = np2pil(img_highres)
+#     img_pil.save('dummy-hires.jpg')
 
-    plt.show()
+#     plt.show()
 
     
