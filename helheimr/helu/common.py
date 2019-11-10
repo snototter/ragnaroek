@@ -337,8 +337,8 @@ def slugify(s):
     """Converts a string to a slug (strip special characters, replace white space, convert to lowercase...) to be used for file names or URLs."""
     import unicodedata
     s = unicodedata.normalize('NFKD', to_unicode(s)).encode('ascii', 'ignore').decode('ascii')
-    s = to_unicode(re.sub('[^\w\s-]', '', s).strip().lower())
-    s = to_unicode(re.sub('[-\s]+', '-', s))
+    s = to_unicode(re.sub(r'[^\w\s-]', '', s).strip().lower())
+    s = to_unicode(re.sub(r'[-\s]+', '-', s))
     return s
 
 
@@ -408,5 +408,5 @@ def check_positive_int(value):
 def check_positive_real(value):
     fv = float(value)
     if fv <= 0:
-        raise ValueError('{} must be > 0.0'.format(iv))
+        raise ValueError('{} must be > 0.0'.format(fv))
     return fv

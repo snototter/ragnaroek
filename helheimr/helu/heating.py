@@ -13,9 +13,7 @@ from . import controller
 from . import lpd433
 from . import raspbee
 from . import time_utils
-from . import telegram_bot
 from . import temperature_log
-from . import scheduling
 
 """Heating can be turned on via manual request or via a scheduled job."""
 class HeatingRequest(Enum):
@@ -139,9 +137,8 @@ class Heating:
         self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
         self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
         self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
-        #self._temperature_trend_max_num_readings = config['heating']['temperature_trend_max_num_readings'] # Consider only the most recent N readings for trend computation
         self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
-        
+
         logging.getLogger().info('[Heating] Initialized heating singleton.')
 
 
@@ -422,22 +419,25 @@ class Heating:
 
 
     def __compact_temperature_trend_log(self, reference_temperature_log):
-        # Cut off unreliable 1/100th-degree readings
+        """Removes duplicate subsequent readings and returns only those
+        from the most recent 'should-be-heating' period.
+        """
+        # Cut off unreliable 1/100th-degree readings and remove duplicate
         def _round_temp(t):
             return int(t*10)
         rtl = list()
-        prev = None
+        prev_rt = None
+        prev_sh = None
         for log_entry in reference_temperature_log:
             rt = _round_temp(log_entry[0])
-            if prev != rt:
-                prev = rt
+            sh = log_entry[1]
+            if prev_rt != rt or prev_sh != sh:
+                prev_rt = rt
+                prev_sh = sh
                 rtl.append(log_entry)
 
         # Extract only the last "should-be-heating period"
         temperatures = list()
-        # for i in range(len(rtl)-1, \
-            # max(0, len(rtl)-(self._temperature_trend_max_num_readings+1)), \ #TODO removed!!!!!
-                # -1): # Keep at most 10 recent readings
         for i in range(len(rtl)-1, 0, -1):
             t, sh = rtl[i]
             if not sh:

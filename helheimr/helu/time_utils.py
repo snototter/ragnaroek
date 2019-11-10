@@ -3,11 +3,7 @@
 
 import datetime
 from dateutil import tz
-import logging
-import time
 
-#######################################################################
-# Time stuff
 
 def dt_as_local(dt):
     """Convenience wrapper, converting the datetime object dt to local timezone."""
@@ -45,7 +41,8 @@ def format(dt, fmt="%Y-%m-%d %H:%M:%S %Z"):
 
 
 def dt_fromstr(s, fmt="%Y-%m-%d %H:%M:%S %Z"):
-    """Parses a date string, convenience wrapper. Uses the same default formatstring as @see format()."""
+    """Parses a date string, convenience wrapper. Uses the same default 
+    formatstring as @see format()."""
     return datetime.datetime.strptime(s, fmt)
 
 
@@ -134,6 +131,7 @@ def round_nearest(dt, delta):
     df = dt - f
     return c if dc < df else f
 
+
 # def date_str(delimiter=['','','-','',''], ):
 #     """Returns a YYYY*MM*DD*hh*mm*ss string using the given delimiters.
 #     Provide less delimiter to return shorter strings, e.g.
@@ -165,6 +163,7 @@ def round_nearest(dt, delta):
 #         return res_str
 #     res_str += '{:s}{:s}'.format(delimiter[4], sec)
 #     if num_delim > 5:
-#         raise RuntimeError('Too many delimiter, currently we only support formating up until seconds')
+#         raise RuntimeError('Too many delimiter, currently we only support formating up \
+# until seconds')
 #     return res_str
 

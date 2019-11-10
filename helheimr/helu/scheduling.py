@@ -919,11 +919,13 @@ class HelheimrScheduler(Scheduler):
         self._lock = threading.Lock()
         self._condition_var = threading.Condition(self._lock)
 
-        self._run_loop = True # Flag to abort the scheduling/main loop
+        # Flag to abort the scheduling/main loop
+        self._run_loop = True
 
         self._poll_interval = ctrl_cfg['scheduler']['idle_time']
 
-        self._job_list_filename = job_list_filename # Filename to load/store the scheduled jobs
+        # Filename to load/store the scheduled jobs
+        self._job_list_filename = job_list_filename
 
         # The actual scheduling runs in a separate thread
         self._worker_thread = threading.Thread(target=self.__scheduling_loop) 
@@ -957,7 +959,8 @@ class HelheimrScheduler(Scheduler):
 
 
 
-    def schedule_heating_job(self, created_by, target_temperature=None, temperature_hysteresis=0.5, heating_duration=None,
+    def schedule_heating_job(self, created_by, target_temperature=None, 
+            temperature_hysteresis=0.5, heating_duration=None,
             day_interval=1, at_hour=6, at_minute=0, at_second=0):
         ret = False
         msg = ''

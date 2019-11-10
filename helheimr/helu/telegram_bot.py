@@ -40,11 +40,12 @@ or deleting programs) are English.
 import datetime
 import logging
 import random
-import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 import traceback
 import threading
 import time
+
+import telegram
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 
 from . import common
 from . import district_heating
@@ -873,6 +874,7 @@ class HelheimrBot:
 
 
     def __cmd_rm(self, update, context):
+        """Removes a scheduled task."""
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
@@ -901,6 +903,7 @@ class HelheimrBot:
 
 
     def __cmd_configure(self, update, context):
+        """Configures a new heating program."""
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
@@ -960,6 +963,7 @@ class HelheimrBot:
 
 
     def __cmd_weather(self, update, context):
+        """Sends the weather report/forecast."""
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         try:
             report = weather.WeatherForecastOwm.instance().report()
@@ -984,6 +988,7 @@ class HelheimrBot:
 
 
     def __cmd_temp(self, update, context):
+        """Renders the temperature curve."""
         num_entries = None
         render_table = False
         draw_marker = False
@@ -1013,19 +1018,21 @@ class HelheimrBot:
             return_mem=True, xkcd=True, reverse=True, draw_marker=draw_marker,
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
         if img_buf is None:
-            self.__safe_send(update.message.chat_id, ':bangbang: Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
+            self.__safe_send(update.message.chat_id, 
+                ':bangbang: Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
         else:
             self.__safe_photo_send(update.message.chat_id, img_buf, 
-                caption='Yabba-dabba-doo', disable_notification=True)
+                caption='Temperaturverlauf', disable_notification=True)
         
-
     
     def __cmd_list_jobs(self, update, context):
+        """Lists all scheduled tasks."""
         txt = scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True)
         self.__safe_message_reply(update, txt, reply_markup=None)
 
 
     def __cmd_unknown(self, update, context):
+        """Handles any unknown command or text sent by users."""
         if update.message.chat_id in self._authorized_ids:
             self.__safe_send(update.message.chat_id, "Das habe ich nicht verstanden. :thinking_face:")
         else:
@@ -1034,6 +1041,7 @@ class HelheimrBot:
 
     
     def __cmd_stop(self, update, context):
+        """Handles /stop, i.e. shut down the heating service."""
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
@@ -1044,6 +1052,8 @@ class HelheimrBot:
 
 
     def __reboot_helper(self, query):
+        """Helper function to reboot the PC (and gracefully
+        shut down the service from a different thread)."""
         logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(query.from_user.first_name))
         self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin neugestartet.')
 
@@ -1058,6 +1068,7 @@ class HelheimrBot:
 
 
     def __cmd_reboot(self, update, context):
+        """Reboots the PC."""
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
@@ -1070,6 +1081,8 @@ class HelheimrBot:
 
 
     def __poweroff_helper(self, query):
+        """Helper function to power off and shut down the service
+        in a separate thread."""
         logging.getLogger().info('[HelheimrBot] User {} requested system shutdown (power-off).'.format(query.from_user.first_name))
         self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin heruntergefahren.')
 
@@ -1084,6 +1097,7 @@ class HelheimrBot:
 
 
     def __cmd_poweroff(self, update, context):
+        """Powers off the PC."""
         if self._is_modifying_heating:
             self.__safe_send(update.message.chat_id, 
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
@@ -1096,6 +1110,7 @@ class HelheimrBot:
 
     
     def __cmd_service_log(self, update, context):
+        """Return the last N log entries."""
         num_lines = 10
         if len(context.args) > 0:
             try:
@@ -1127,7 +1142,7 @@ class HelheimrBot:
 
 
     def __cmd_update(self, update, context):
-        # Perform git update
+        """Perform git update"""
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         success, txt = common.shell_update_repository()
         if not success:
@@ -1152,7 +1167,7 @@ class HelheimrBot:
 
 
     def __cmd_debug(self, update, context):
-        # All sorts of debug stuff, tests, etc.
+        """Debugging via telegram..."""
         # img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(30), 
         #     return_mem=True, xkcd=True, reverse=True, 
         #     name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
@@ -1169,6 +1184,7 @@ class HelheimrBot:
        
 
     def start(self):
+        """Handle /start - welcome message."""
         # Start polling messages from telegram servers
         self._updater.start_polling(poll_interval=self._poll_interval,
             timeout=self._timeout, bootstrap_retries=self._bootstrap_retries)
@@ -1185,7 +1201,10 @@ class HelheimrBot:
 
 
     def __shutdown_helper(self):
-        # Should be run from a different thread (https://github.com/python-telegram-bot/python-telegram-bot/issues/801)
+        """Helper to shutdown this service - should be run from a 
+        different thread, see
+        https://github.com/python-telegram-bot/python-telegram-bot/issues/801
+        """
         logging.getLogger().info("[HelheimrBot] Stopping telegram updater...")
         self._updater.stop()
         self._updater.is_idle = False
@@ -1194,6 +1213,7 @@ class HelheimrBot:
 
 
     def shutdown(self):
+        """Initiates the shutdown sequence."""
         if not self._updater.running:
             return
 

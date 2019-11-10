@@ -1,12 +1,10 @@
 #!/usr/bin/python
 # coding=utf-8
 
-import datetime
 import logging
 import math
 import traceback
 
-from dateutil import tz
 from pyowm import OWM
 
 from . import common
@@ -33,6 +31,7 @@ def degrees_to_compass(deg, num_directions=8):
 
 
 def weather_code_emoji(code, ref_time=None):
+    """Return emoji for given weather code."""
     if code >= 200 and code < 300:
         # Thunderstorm
         return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:' ':zap:'
@@ -66,11 +65,12 @@ def weather_code_emoji(code, ref_time=None):
     elif code == 804:
         return ':cloud:'
         
-    logging.getLogger().log(logging.ERROR, 'Weather code {} was not translated!'.format(code))
+    logging.getLogger().error('Weather code {} was not translated!'.format(code))
     return 'Wettercode {}'.format(code)
 
 
 def temperature_emoji(t):
+    """Returns emoji for given temperature."""
     if t < 0.0:
         return ':cold_face:'
     elif t < 10.0:
@@ -97,6 +97,7 @@ def get_windchill(temperature, wind_speed):
 
 
 class Forecast:
+    """Represents a weather forecast."""
     def __init__(self, three_hours_forecast):
         weathers = three_hours_forecast.get_forecast().get_weathers()[:9]
         def at_time(w):
@@ -146,6 +147,7 @@ def _get_precipitation(weather_dict):
 
 
 class WeatherReport:
+    """Represents the current weather report (i.e. current weather status)."""
     def __init__(self, weather=None, reference_time=None):
         self._detailed_status = None
         self._weather_code = None
@@ -203,19 +205,17 @@ class WeatherReport:
 
 
     def teaser_message(self, use_markdown=True, use_emoji=True):
-        # msg = '{:s}{:s}, {:s}\u200a°'.format(
-        #         self.detailed_status,
-        #         ' ' + weather_code_emoji(self.weather_code) if use_emoji else '',
-        #         common.format_num('.1f', self.temperature, use_markdown))
         msg = '{:s}\u200a°{:s}'.format(
                 common.format_num('.1f', self.temperature, use_markdown),
                 ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '')
 
         if self.rain is not None:
-            msg += ' {:.1f}\u200amm'.format(self.rain)
+            msg += ' {:s}\u200amm'.format(
+                common.format_num('.1f', self.rain, use_markdown))
 
         if self.snow is not None:
-            msg += ' {:.1f}\u200amm'.format(self.snow)
+            msg += ' {:s}\u200amm Schnee'.format(
+                common.format_num('.1f', self.snow, use_markdown))
 
         if self.wind is not None and self.wind['speed'] is not None:
             msg += ' {:d}\u200akm/h{}'.format(
@@ -368,11 +368,13 @@ class WeatherForecastOwm:
 
     @staticmethod
     def instance():
+        """Returns the singleton, use init_instance() before!"""
         return WeatherForecastOwm.__instance
 
 
     @staticmethod
     def init_instance(config):
+        """Initialize the singleton."""
         if WeatherForecastOwm.__instance is None:
             WeatherForecastOwm(config)
         return WeatherForecastOwm.__instance
@@ -393,7 +395,7 @@ class WeatherForecastOwm:
         
 
     def report(self):
-        # Either query by city ID or lat/lon
+        """Return the current weather report."""
         try:
             obs = self._owm.weather_at_coords(self._latitude, self._longitude)
             w = obs.get_weather()            
@@ -404,6 +406,7 @@ class WeatherForecastOwm:
 
 
     def forecast(self):
+        """Return the current weather forecast."""
         try:
             # Forecast(self._owm.three_hours_forecast(self._city_name)) # city name must be a string: "city,countrycode"!
             return Forecast(self._owm.three_hours_forecast_at_coords(self._latitude, self._longitude))
@@ -413,6 +416,7 @@ class WeatherForecastOwm:
 
 
 def demo(cfg_file='../configs/owm.cfg'):
+    """Exemplary usage."""
     #TODO try without internet connection
     wcfg = common.load_configuration(cfg_file)
     weather_service = WeatherForecastOwm.init_instance(wcfg)
