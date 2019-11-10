@@ -486,8 +486,8 @@ class HelheimrBot:
         msg.append('*Systeminfo:*')
         msg.append('\u2022 PID: `{}`'.format(proc_info.pid))
         msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(proc_info.mem_usage_mb))
-        msg.append('\u2022 CPU Last (`1/5/15`): `{:.1f}`\u200a%, `{:.1f}`\u200a%, `{:.1f}`\u200a%'.format(
-            cpu_info.load_avg_1, cpu_info.load_avg_5, cpu_info.load_avg_15
+        msg.append('\u2022 CPU Last (`1/5/15`): `{:d}`\u200a%, `{:d}`\u200a%, `{:d}`\u200a%'.format(
+            int(cpu_info.load_avg_1), int(cpu_info.load_avg_5), int(cpu_info.load_avg_15)
         ))
         msg.append('\u2022 CPU Taktung (c/min/max): `{:d}` (`{:d}`-`{:d}`)'.format(
             int(cpu_info.cpu_freq_current), int(cpu_info.cpu_freq_min), int(cpu_info.cpu_freq_max)
@@ -986,9 +986,12 @@ class HelheimrBot:
     def __cmd_temp(self, update, context):
         num_entries = None
         render_table = False
+        draw_marker = False
         for arg in context.args:
             if arg.lower() == 't' or arg.lower() == 'tab' or arg.lower() == 'table':
                 render_table = True
+            elif arg.lower() == 'x' or arg.lower() == 'marker':
+                draw_marker = True
             else:
                 if 'd' in arg or 'h' in arg or 'm' in arg:
                     num_entries = arg 
@@ -1007,7 +1010,7 @@ class HelheimrBot:
 
         # Get temperature plot
         img_buf = drawing.plot_temperature_curves(1024, 768, temperature_log.TemperatureLog.instance().recent_readings(num_entries), 
-            return_mem=True, xkcd=True, reverse=True, 
+            return_mem=True, xkcd=True, reverse=True, draw_marker=draw_marker,
             name_mapping=temperature_log.TemperatureLog.instance().name_mapping)
         if img_buf is None:
             self.__safe_send(update.message.chat_id, ':bangbang: Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')

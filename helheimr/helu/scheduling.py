@@ -933,6 +933,8 @@ class HelheimrScheduler(Scheduler):
         job_config = common.load_configuration(self._job_list_filename)
         self.deserialize_jobs(job_config)
 
+        logging.getLogger().info('[HelheimrScheduler] has been initialized.')
+
 
     @property
     def idle_time(self):

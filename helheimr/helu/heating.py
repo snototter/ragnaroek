@@ -21,7 +21,7 @@ from . import scheduling
 class HeatingRequest(Enum):
     MANUAL = 1
     SCHEDULED = 2
-    
+
 
 class Heating:
     __instance = None
@@ -141,6 +141,8 @@ class Heating:
         self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
         #self._temperature_trend_max_num_readings = config['heating']['temperature_trend_max_num_readings'] # Consider only the most recent N readings for trend computation
         self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
+        
+        logging.getLogger().info('[Heating] Initialized heating singleton.')
 
 
     def start_heating(self, request_type, requested_by, target_temperature=None,

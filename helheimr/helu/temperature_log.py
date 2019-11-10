@@ -18,7 +18,7 @@ def parse_duration_string(s):
     def _extract(duration_str, txt, factor):    
         idx = duration_str.find(txt)
         if idx >= 0:
-            return int(duration_str[:idx]) * factor
+            return int(float(duration_str[:idx]) * factor)
         else:
             return None
     lookups = [('min', 1), ('m', 1),
