@@ -9,6 +9,7 @@ from emoji import emojize
 from collections import namedtuple
 import libconf
 #import random
+import logging
 import timeit
 import io
 import re
@@ -98,10 +99,24 @@ def proc_info():
 
 
 def cpu_info():
+    """Returns CPU statistics."""
+    CpuInfo = namedtuple('CpuInfo', ['num_cpu', 'load_avg_1', 'load_avg_5', 'load_avg_15',
+        'cpu_freq_current', 'cpu_freq_min', 'cpu_freq_max', 'cpu_temperature'])
     num_cpu = psutil.cpu_count()
     load_avg = [x / num_cpu * 100 for x in psutil.getloadavg()]
-    psutil.cpu_freq()
-    #FIXME
+    freq = psutil.cpu_freq()
+    temp = None
+    try:
+        # RaspberryPi 3B+ yields only a single entry:
+        temp = psutil.sensors_temperatures()['cpu-thermal'][0].current
+    except:
+        err = traceback.format_exc(limit=3)
+        logging.getLogger().error('[Common] Cannot query RaspberryPi CPU temperature.\n' + err)
+    return CpuInfo(num_cpu=num_cpu, load_avg_1=load_avg[0], load_avg_5=load_avg[1],
+        load_avg_15=load_avg[2], cpu_freq_current=freq.current, cpu_freq_min=freq.min,
+        cpu_freq_max=freq.max, cpu_temperature=temp)
+    
+    
 
 def safe_shell_output(*args):
     """Executes the given shell command and returns the output

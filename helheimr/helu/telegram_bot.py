@@ -481,12 +481,20 @@ class HelheimrBot:
 
         # Add general process info
         proc_info = common.proc_info()
+        cpu_info = common.cpu_info()
         msg.append('')
-        msg.append('*Prozessinfo:*')
+        msg.append('*Systeminfo:*')
         msg.append('\u2022 PID: `{}`'.format(proc_info.pid))
         msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(proc_info.mem_usage_mb))
-
-        #TODO Add system info (cpu/mem/uptime), check:
+        msg.append('\u2022 CPU Last (`1/5/15`): `{:.1f}`\u200a%, `{:.1f}`\u200a%, `{:.1f}`\u200a%'.format(
+            cpu_info.load_avg_1, cpu_info.load_avg_5, cpu_info.load_avg_15
+        ))
+        msg.append('\u2022 CPU Taktung (c/min/max): `{:d}` (`{:d}`-`{:d}`)'.format(
+            int(cpu_info.cpu_freq_current), int(cpu_info.cpu_freq_min), int(cpu_info.cpu_freq_max)
+        ))
+        if cpu_info.cpu_temperature is not None:
+            msg.append('\u2022 CPU Temperatur: `{:.1f}`\u200a°'.format(cpu_info.cpu_temperature))
+        #TODO Add system info (mem/uptime/disk_usage), check:
         # https://pypi.org/project/psutil/
         # https://psutil.readthedocs.io/en/latest/#recipes/
         # https://stackoverflow.com/a/556411 os.times
