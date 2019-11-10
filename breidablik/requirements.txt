@@ -1,6 +1,10 @@
+wheel
 libconf
 requests
 python-dateutil
 pylint
 matplotlib
 Pillow
+RPi.GPIO
+numpy
+spidev

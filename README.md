@@ -52,7 +52,7 @@ Installation instructions on RaspberryPi 3B+:
   * Start deCONZ application and pair devices.
 * Install software packages
   ```bash
-  sudo apt install -y python3-dev python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev
+  sudo apt install -y python3-dev python3-pip python3-venv libatlas-base-dev libjpeg-dev zlib1g-dev
   sudo -H pip3 install rpi-rf
   ```
 * Checkout the source code and set up virtual environment
@@ -81,6 +81,29 @@ Installation instructions on RaspberryPi 3B+:
     ### Check logs:
     journalctl -f -u helheimr-heating.service
   ```
+
+
+# Installation Breidablik
+* Raspbian Buster Lite, [release 2019-09-26](https://downloads.raspberrypi.org/raspbian_lite_latest)
+* Install BCM2835 library
+  ```bash
+  wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.60.tar.gz
+  tar zxvf bcm2835-1.60.tar.gz 
+  cd bcm2835-1.60/
+  ./configure
+  make
+  sudo make check
+  sudo make install
+  ```
+* Install packages
+  ```bash
+  sudo apt install wiringpi
+  sudo apt install python3-dev python3-venv python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev git
+  sudo -H pip3 install wheel
+  ```
+* Test e-ink paper
+  * Shutdown, connect display
+  * Clone waveshare repo: `git clone https://github.com/waveshare/e-Paper waveshare-eink`
 
 # TODOs
 * [ ] REST API for e-ink display
