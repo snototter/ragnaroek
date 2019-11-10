@@ -1,0 +1,6 @@
+libconf
+requests
+python-dateutil
+pylint
+matplotlib
+Pillow
