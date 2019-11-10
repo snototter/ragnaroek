@@ -480,11 +480,11 @@ class HelheimrBot:
         msg.append(scheduling.HelheimrScheduler.instance().list_jobs(use_markdown=True))
 
         # Add general process info
-        pid, mem_used = common.proc_info()
+        proc_info = common.proc_info()
         msg.append('')
         msg.append('*Prozessinfo:*')
-        msg.append('\u2022 PID: `{}`'.format(pid))
-        msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(mem_used))
+        msg.append('\u2022 PID: `{}`'.format(proc_info.pid))
+        msg.append('\u2022 Speicherverbrauch: `{:.1f}`\u200aMB'.format(proc_info.mem_usage_mb))
 
         #TODO Add system info (cpu/mem/uptime), check:
         # https://pypi.org/project/psutil/

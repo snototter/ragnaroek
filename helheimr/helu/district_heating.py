@@ -261,9 +261,6 @@ class DistrictHeating:
 
         # Prepare the button mapping
         self._buttons = dict()
-        # tmp_request_type = DistrictHeatingRequest()
-        # for request_type in [r for r in dir(DistrictHeatingRequest) if not r.startswith('__')]:
-        #     self._buttons[getattr(tmp_request_type, request_type)] = dhcfg['button_{:s}'.format(request_type.lower())] #TODO remove
         for request_type in DistrictHeatingRequest:
             self._buttons[request_type] = dhcfg['button_{:s}'.format(request_type.name.lower())]
 

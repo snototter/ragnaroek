@@ -6,6 +6,7 @@ Basically all the stuff that's too small to make up a separate module.
 """
 
 from emoji import emojize
+from collections import namedtuple
 import libconf
 #import random
 import timeit
@@ -88,12 +89,19 @@ def load_configuration(filename):
 
 def proc_info():
     """Return process id and current memory usage."""
+    ProcInfo = namedtuple('ProcInfo', ['pid', 'mem_usage_mb'])
     pid = os.getpid()
     proc = psutil.Process(pid)
     mem_bytes = proc.memory_info().rss
     mb = mem_bytes/2**20
-    return (pid, mb)
+    return ProcInfo(pid=pid, mem_usage_mb=mb)
 
+
+def cpu_info():
+    num_cpu = psutil.cpu_count()
+    load_avg = [x / num_cpu * 100 for x in psutil.getloadavg()]
+    psutil.cpu_freq()
+    #FIXME
 
 def safe_shell_output(*args):
     """Executes the given shell command and returns the output
