@@ -422,7 +422,6 @@ class Heating:
         """Removes duplicate subsequent readings and returns only those
         from the most recent 'should-be-heating' period.
         """
-        # logging.getLogger().info('TLOG in: {}'.format([t[0] for t in reference_temperature_log])) #TODO remove
         # Extract only the last "should-be-heating period"
         last_heating = list()
         for i in range(len(reference_temperature_log)-1, -1, -1):
@@ -442,8 +441,6 @@ class Heating:
             if prev_rt != rt:
                 prev_rt = rt
                 temperatures.append(t)
-        
-        # logging.getLogger().info('TLOG reduced: {}'.format(temperatures)) # TODO remove
         return temperatures, num_readings
 
 
