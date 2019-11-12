@@ -422,44 +422,43 @@ class Heating:
         """Removes duplicate subsequent readings and returns only those
         from the most recent 'should-be-heating' period.
         """
-        # Cut off unreliable 1/100th-degree readings and remove duplicate
-        logging.getLogger().info('TLOG in: {}'.format([t[0] for t in reference_temperature_log])) #TODO remove
-        def _round_temp(t):
-            return int(t*10)
-        rtl = list()
-        prev_rt = None
-        prev_sh = None
-        for log_entry in reference_temperature_log:
-            rt = _round_temp(log_entry[0])
-            sh = log_entry[1]
-            if prev_rt != rt or prev_sh != sh:
-                prev_rt = rt
-                prev_sh = sh
-                rtl.append(log_entry)
-
+        # logging.getLogger().info('TLOG in: {}'.format([t[0] for t in reference_temperature_log])) #TODO remove
         # Extract only the last "should-be-heating period"
-        temperatures = list()
-        for i in range(len(rtl)-1, 0, -1):
-            t, sh = rtl[i]
+        last_heating = list()
+        for i in range(len(reference_temperature_log)-1, -1, -1):
+            t, sh = reference_temperature_log[i]
             if not sh:
                 break
-            temperatures.append(t)
-        logging.getLogger().info('TLOG reduced: {}'.format(temperatures)) # TODO remove
-        return temperatures
+            last_heating.append(t)
+        num_readings = len(last_heating)
+
+        # Cut off unreliable 1/100th-degree readings and remove duplicate
+        def _round_temp(t):
+            return int(t*10)
+        temperatures = list()
+        prev_rt = None
+        for t in last_heating[::-1]:
+            rt = _round_temp(t)
+            if prev_rt != rt:
+                prev_rt = rt
+                temperatures.append(t)
+        
+        # logging.getLogger().info('TLOG reduced: {}'.format(temperatures)) # TODO remove
+        return temperatures, num_readings
 
 
     def __check_temperature_trend(self, reference_temperature_log):
         # For how long have we collected the log?
         trend_period = len(reference_temperature_log) * self._max_idle_time
         if trend_period >= self._temperature_trend_waiting_time:
-            temperatures = self.__compact_temperature_trend_log(reference_temperature_log)
+            temperatures, num_readings = self.__compact_temperature_trend_log(reference_temperature_log)
 
-            # Adjust period for reporting:
-            trend_period = len(temperatures) * self._max_idle_time
+            # For how long should we be heating?:
+            trend_period = num_readings * self._max_idle_time
 
-            # Linear regression to determine the slope (reverse the buffer to get correct inc/dec trend)
+            # Linear regression to determine the slope
             temperature_slope, determination_coefficient = \
-                temperature_log.compute_temperature_trend(temperatures[:-1])
+                temperature_log.compute_temperature_trend(temperatures)
 
             # Check if there is an actual temperature increase
             if temperature_slope is not None:
@@ -488,5 +487,3 @@ class Heating:
                         broadcasting.MessageBroadcaster.instance().info(
                             '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
                             'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```') # TODO remove once we found suitable threshold/regression parameters?
-#TODO trend_period is wrong due to compressing the readings
-#TODO trend direction is wrong, log!
