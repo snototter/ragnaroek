@@ -423,6 +423,7 @@ class Heating:
         from the most recent 'should-be-heating' period.
         """
         # Cut off unreliable 1/100th-degree readings and remove duplicate
+        logging.getLogger().info('TLOG in: {}'.format([t[0] for t in reference_temperature_log])) #TODO remove
         def _round_temp(t):
             return int(t*10)
         rtl = list()
@@ -443,6 +444,7 @@ class Heating:
             if not sh:
                 break
             temperatures.append(t)
+        logging.getLogger().info('TLOG reduced: {}'.format(temperatures)) # TODO remove
         return temperatures
 
 
