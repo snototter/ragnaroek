@@ -295,6 +295,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     img_pil = np2pil(img_np)
 
     if return_mem:
+        plt.close(fig)
         return pil2memfile(img_pil)
     else:
         img_pil.save('dummy-temperature.jpg')
