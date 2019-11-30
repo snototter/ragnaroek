@@ -376,12 +376,13 @@ def rgb2gray(rgb):
 #   https://stackoverflow.com/questions/8931268/using-colormaps-to-set-color-of-line-in-matplotlib
 
 # if __name__ == '__main__':
-#     import collections
-#     dt = collections.namedtuple('dt', ['hour', 'minute'])
-#     plot_temperature_curves(1024, 768, 
-#         [(dt(0,5),{'K':23.5}), (dt(0,10),{'K':23.5, 'W':22}), (dt(0,15),{'K':25.5, 'W':24}),
-#         (dt(0,20), {'K':None, 'W':23}), (dt(0,25), {'K':22}), (dt(0,30), None), (dt(0,35), {'Foo':25}), 
-#         (dt(0,40), {'Foo':25.2, 'K':22.3})], return_mem=False, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
+# import collections
+# dt = collections.namedtuple('dt', ['hour', 'minute'])
+# p = drawing.plot_temperature_curves(1024, 768, 
+# [(dt(0,5),{'K':23.5}, True), (dt(0,10),{'K':23.5, 'W':22}, True), (dt(0,15),{'K':25.5, 'W':24}, True),
+# (dt(0,20), {'K':None, 'W':23}, False), (dt(0,25), {'K':22}, False), (dt(0,30), None, False), (dt(0,35), {'Foo':25}, False), 
+# (dt(0,40), {'Foo':25.2, 'K':22.3}, False)], 
+# return_mem=True, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
 #     if True:
 #         raise RuntimeError('stop')
 
