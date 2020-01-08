@@ -386,6 +386,7 @@ class Heating:
                 # We're not heating, so clear the temperature log
                 reference_temperature_log = list()
                 # Additionally, we have to ensure that the plug is actually off
+                #TODO remove debug message
                 logging.getLogger().info('[Heating] Ensuring that LPD433 is turned off.')
                 ret = self._lpd433_gateway.turn_off()
 
