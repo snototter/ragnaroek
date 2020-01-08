@@ -358,6 +358,7 @@ class Heating:
                     # self._heating_logger.info('Turning heating ON')
                     ret = self._lpd433_gateway.turn_on()
                 else:
+                    logging.getLogger().info('[Heating] Turning heating power off.')
                     ret = self._lpd433_gateway.turn_off()
 
                 # Error checking
