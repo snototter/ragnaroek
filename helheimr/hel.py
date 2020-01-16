@@ -28,10 +28,6 @@ class Hel(object):
 
 
     def control_heating(self):
-        # Register signal handler to be notified upon system shutdown:
-        signal.signal(signal.SIGTERM, self.__shutdown_signal)
-        signal.signal(signal.SIGHUP, self.__shutdown_signal)
-
         ## Set up logging
         # see examples at:
         #   http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
@@ -57,6 +53,15 @@ class Hel(object):
         logging.getLogger().addHandler(file_handler)
         logging.getLogger().setLevel(logging.INFO)
         self._logger = logging.getLogger()
+
+        # Register signal handler to be notified upon system shutdown:
+        catchable_sigs = set(signal.Signals) - {signal.SIGKILL, signal.SIGSTOP}
+        for sig in catchable_sigs:
+            try:
+                signal.signal(sig, self.__shutdown_signal)
+                logging.getLogger().info('[Hel] Registered handler for signal {} #{}'.format(sig.name, sig.value))
+            except OSError as e:
+                logging.getLogger().error('[Hel] Cannot register handler for signal {} #{}'.format(sig.name, sig.value))
 
         # Load configuration files
         ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
@@ -120,7 +125,7 @@ class Hel(object):
     
 
     def __shutdown_signal(self, sig, frame):
-        logging.getLogger().info('[Hel] Shutdown signal received.')
+        logging.getLogger().info('[Hel] Signal {} received - preparing shutdown.'.format(sig))
         self.__shutdown_gracefully()
 
 

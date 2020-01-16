@@ -81,6 +81,22 @@ Installation instructions on RaspberryPi 3B+:
     ### Check logs:
     journalctl -f -u helheimr-heating.service
   ```
+* Set up a cronjob to check WIFI connection (and reboot upon error), as raspberry 3's seem to "frequently" (about once per month) loose wireless connection.
+  * Create a script, e.g. `sudo vi /usr/local/bin/ensure-wifi.sh` with
+    ```bash
+    #!/bin/bash --
+    ping -c4 192.168.0.1 > /dev/null
+     
+    if [ $? != 0 ] 
+    then
+      sudo /sbin/shutdown -r +1
+    fi
+    ```
+  * Adjust permissions: `sudo chmod 755 /usr/local/bin/ensure-wifi.sh`
+  * Add a cronjob, `crontab -e`, e.g. every 15 minutes:
+    ```
+    */15 * * * * /usr/bin/sudo -H /usr/local/bin/ensure-wifi.sh >> /dev/null 2>&1
+    ```
 
 
 # Installation Breidablik
