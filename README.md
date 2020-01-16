@@ -9,7 +9,12 @@
     * Telegram bot
   * `breidablik` - TBD, e-ink display
 
-# Installation Helheimr
+## Sneak Peek
+The RaspberryPi 3B+ running `helheimr`:
+![RaspberryPi/Helheimr](https://github.com/snototter/ragnaroek/raw/master/helheimr/assets/nastroend.jpg "Helheimr with LPD433 antenna")
+
+
+## Installation Helheimr
 Installation instructions on RaspberryPi 3B+:
 
 * Download Raspbian (tested with Buster lite)
@@ -99,7 +104,7 @@ Installation instructions on RaspberryPi 3B+:
     ```
 
 
-# Installation Breidablik
+## Installation Breidablik
 * Raspbian Buster Lite, [release 2019-09-26](https://downloads.raspberrypi.org/raspbian_lite_latest)
 * Install BCM2835 library
   ```bash
@@ -121,7 +126,7 @@ Installation instructions on RaspberryPi 3B+:
   * Shutdown, connect display
   * Clone waveshare repo: `git clone https://github.com/waveshare/e-Paper waveshare-eink`
 
-# TODOs
+## TODOs
 * [ ] REST API for e-ink display
 * [ ] e-ink display tests
 * [ ] e-ink cover
