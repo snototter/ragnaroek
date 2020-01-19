@@ -16,7 +16,6 @@ from helu import temperature_log
 from helu import weather
 
 
-
 class Hel(object):
     def __init__(self):
         self._is_terminating = False
@@ -26,10 +25,8 @@ class Hel(object):
         self._telegram_bot = None
         self._weather_service = None
 
-
     def control_heating(self):
-        ## Set up logging
-        # see examples at:
+        # Set up logging, see examples at:
         #   http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
 
@@ -38,8 +35,9 @@ class Hel(object):
         stream_formatter = logging.Formatter('%(levelname)s %(message)s')
 
         # Save to disk and rotate logs each sunday
-        file_handler = logging.handlers.TimedRotatingFileHandler('logs/helheimr.log', when="w6",
-                    interval=1, backupCount=8)
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            'logs/helheimr.log', when="w6",
+            interval=1, backupCount=8)
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(disk_formatter)
 
@@ -60,7 +58,7 @@ class Hel(object):
             try:
                 signal.signal(sig, self.__shutdown_signal)
                 logging.getLogger().info('[Hel] Registered handler for signal {} #{}'.format(sig.name, sig.value))
-            except OSError as e:
+            except OSError:
                 logging.getLogger().error('[Hel] Cannot register handler for signal {} #{}'.format(sig.name, sig.value))
 
         # Load configuration files
@@ -68,7 +66,6 @@ class Hel(object):
         telegram_cfg = common.load_configuration('configs/bot.cfg')
         owm_cfg = common.load_configuration('configs/owm.cfg')
         schedule_job_list_path = 'configs/scheduled-jobs.cfg'
-
 
         # Start the heater/heating controller
         try:
@@ -95,12 +92,12 @@ class Hel(object):
         broadcasting.MessageBroadcaster.instance().set_telegram_bot(self._telegram_bot)
 
         # Set up network connectivity tester
-        network_utils.ConnectionTester.init_instance({'telegram': telegram_cfg,
-            'control': ctrl_cfg})
+        network_utils.ConnectionTester.init_instance(
+            {'telegram': telegram_cfg, 'control': ctrl_cfg})
 
         # Then, start the job scheduler
-        self._scheduler = scheduling.HelheimrScheduler.init_instance(ctrl_cfg, 
-            schedule_job_list_path)
+        self._scheduler = scheduling.HelheimrScheduler.init_instance(
+            ctrl_cfg, schedule_job_list_path)
 
         # Set up the temperature log (after the scheduler!)
         temperature_log.TemperatureLog.init_instance(ctrl_cfg)
@@ -111,9 +108,9 @@ class Hel(object):
         # Initialize weather service
         self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
 
-        # Now we can start the telegram bot    
+        # Now we can start the telegram bot
         self._telegram_bot.start()
-        
+
         # Run the event loops forever:
         try:
             self._heating.run_blocking()
@@ -122,12 +119,10 @@ class Hel(object):
             self._logger.info("[Hel] Received keyboard interrupt")
 
         self.__shutdown_gracefully()
-    
 
     def __shutdown_signal(self, sig, frame):
         logging.getLogger().info('[Hel] Signal {} received - preparing shutdown.'.format(sig))
         self.__shutdown_gracefully()
-
 
     def __shutdown_gracefully(self):
         if self._is_terminating:
