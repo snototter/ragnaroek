@@ -7,6 +7,7 @@ import logging
 #######################################################################
 ## Basic controlling stuff
 
+
 class OnOffController:
     """Bang bang controller with hysteresis."""
     def __init__(self):
@@ -14,16 +15,13 @@ class OnOffController:
         self._hysteresis_threshold = None
         self._prev_response = None
 
-    
     def set_desired_value(self, desired_value):
         """Set target value to reach (+/- hysteresis)."""
         self._desired_value = desired_value
 
-
     def set_hysteresis(self, threshold):
         """Change the hysteresis threshold."""
         self._hysteresis_threshold = threshold
-
 
     def update(self, actual_value):
         """Returns True/False indicating whether to turn the heater on or off."""
@@ -42,7 +40,7 @@ class OnOffController:
         elif actual_value > maxv:
             response = False
         else:
-            # Inside upper/lower threshold, keep doing what you did  
+            # Inside upper/lower threshold, keep doing what you did
             if self._prev_response is None:
                 response = False
             else:

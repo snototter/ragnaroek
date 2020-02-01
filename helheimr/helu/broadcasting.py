@@ -4,6 +4,7 @@
 
 import logging
 
+
 #TODO telegram: send error to all authorized chats
 class MessageBroadcaster:
     __instance = None
@@ -20,25 +21,19 @@ class MessageBroadcaster:
         if MessageBroadcaster.__instance is not None:
             raise RuntimeError("MessageBroadcaster is a singleton!")
         MessageBroadcaster.__instance = self
-             
         self._telegram_bot = None
-
 
     def set_telegram_bot(self, bot):
         self._telegram_bot = bot
 
-
     def error(self, message):
         self.__broadcast_message(message, 'error')
-
 
     def warning(self, message):
         self.__broadcast_message(message, 'warning')
 
-
     def info(self, message):
         self.__broadcast_message(message, 'info')
-
 
     def __broadcast_message(self, text, msg_type):
         #TODO broadcast to display!!!
@@ -50,7 +45,7 @@ class MessageBroadcaster:
             telegram_msg = ':bangbang: ' + text
         else:
             telegram_msg = 'Unknown message type ({}): {}'.format(msg_type, text)
-            
+
         if self._telegram_bot is not None:
             self._telegram_bot.broadcast_message(telegram_msg)
         else:

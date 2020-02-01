@@ -11,13 +11,13 @@ import libconf
 #import random
 import logging
 import timeit
-import io
+# import io
 import re
 import sys
 import subprocess
 import os
 import psutil
-import datetime
+# import datetime
 import traceback
 
 
@@ -39,8 +39,8 @@ def tail(filename, lines=10, as_list=True):
         block_end_byte = f.tell()
         lines_to_go = total_lines_wanted
         block_number = -1
-        blocks = [] # blocks of size BLOCK_SIZE, in reverse order starting
-                    # from the end of the file
+        blocks = []  # blocks of size BLOCK_SIZE, in reverse order starting
+                     # from the end of the file
         while lines_to_go > 0 and block_end_byte > 0:
             if (block_end_byte - BLOCK_SIZE > 0):
                 # read the last block we haven't yet read
@@ -48,7 +48,7 @@ def tail(filename, lines=10, as_list=True):
                 blocks.append(f.read(BLOCK_SIZE))
             else:
                 # file too small, start from begining
-                f.seek(0,0)
+                f.seek(0, 0)
                 # only read what was not read
                 blocks.append(f.read(block_end_byte))
             lines_found = blocks[-1].count('\n'.encode('utf-8'))
@@ -72,7 +72,7 @@ def cfg_val_or_none(cfg, key):
     """Look up key in the 'cfg' dictionary. If not found, returns None."""
     return cfg[key] if key in cfg else None
 
-        
+
 def cfg_val_or_default(cfg, key, default):
     """Look up key in the 'cfg' dictionary. If not found, returns the 'default' value."""
     v = cfg_val_or_none(cfg, key)
@@ -115,8 +115,7 @@ def cpu_info():
     return CpuInfo(num_cpu=num_cpu, load_avg_1=load_avg[0], load_avg_5=load_avg[1],
         load_avg_15=load_avg[2], cpu_freq_current=freq.current, cpu_freq_min=freq.min,
         cpu_freq_max=freq.max, cpu_temperature=temp)
-    
-    
+
 
 def safe_shell_output(*args):
     """Executes the given shell command and returns the output
@@ -141,23 +140,29 @@ def safe_shell_output(*args):
 def shell_whoami():
     return safe_shell_output('whoami')
 
+
 def shell_pwd():
     return safe_shell_output('pwd')
 
+
 def shell_uptime():
     return safe_shell_output('uptime', '-p')
+
 
 def shell_service_log(num_lines):
     """Returns the last num_lines log lines of this service's log."""
     return safe_shell_output('journalctl', '-u', 'helheimr-heating.service', '--no-pager', '-n', str(num_lines))
 
+
 def shell_heating_log(num_lines):
     """Returns the last num_lines logged by the heating system wrapper."""
     return safe_shell_output('/bin/bash', '-c', r"journalctl -u helheimr-heating.service --no-pager | grep '\[Heating\]' | tail -n {:d}".format(num_lines))
 
+
 def shell_exec_command(cmd_str):
     """Executes the given command and returns stdout."""
     return safe_shell_output('/bin/bash', '-c', cmd_str)
+
 
 def shell_update_repository():
     # We set the service's working directory accordingly.
@@ -175,6 +180,7 @@ def shell_update_repository():
     # # return success, txt
     return safe_shell_output('git', 'pull', 'origin', 'master')
 
+
 def shell_restart_service():
     #return safe_shell_output('systemctl', 'restart', 'helheimr-heating.service')
     # Must use sudo because the service user is 'pi'.
@@ -182,11 +188,12 @@ def shell_restart_service():
     # user interaction here ;-)
     success, txt = safe_shell_output('sudo', 'systemctl', 'restart', 'helheimr-heating.service')
     # Even if successful, there can be a problem due to scheduling:
-    #   subprocess.CalledProcessError: Command ... died with <Signals.SIGTERM: 15> 
+    #   subprocess.CalledProcessError: Command ... died with <Signals.SIGTERM: 15>
     # or similar, thus:
     if not success and (txt.find('Signals.SIGTERM') >= 0 or txt.find('Signals.SIGHUP') >= 0):
         return True, 'Already terminating the service...'
     return success, txt
+
 
 def shell_shutdown(*args):
     # @see shell_restart_service() for comments on sudo'ing something
@@ -204,10 +211,10 @@ def shell_shutdown(*args):
 #     return default if value is None else value
 
 def format_num(fmt, num, use_markdown=True):
-        s = '{:' + fmt + '}'
-        if use_markdown:
-            s = '`' + s + '`'
-        return s.format(num)
+    s = '{:' + fmt + '}'
+    if use_markdown:
+        s = '`' + s + '`'
+    return s.format(num)
 
 
 class circularlist(object):
@@ -241,10 +248,11 @@ class circularlist(object):
         return len(self._data)
 
 
-
 ################################################################################
 # Timing code, similar to MATLAB's tic/toc
 __tictoc_timers = {}
+
+
 def tic(label='default'):
     """Start a timer."""
     __tictoc_timers[label] = timeit.default_timer()
@@ -258,6 +266,7 @@ def toc(label='default', seconds=False):
             print('[{:s}] Elapsed time: {:.3f} s'.format(label, elapsed))
         else:
             print('[{:s}] Elapsed time: {:.2f} ms'.format(label, 1000.0*elapsed))
+
 
 def ttoc(label='default', seconds=False):
     """Stop timer and return elapsed time."""
@@ -283,6 +292,8 @@ def toc_nsec(label='default', nsec=0.5, seconds=False):
 ################################################################################
 # Log only once every x sec
 __log_timers = {}
+
+
 def log_nsec(string, nsec, label='default'):
     """Display 'string' only once every nsec seconds (floating point number). Use it to avoid spamming your terminal."""
     if label in __log_timers:
@@ -291,7 +302,6 @@ def log_nsec(string, nsec, label='default'):
             return
     print(string)
     __log_timers[label] = timeit.default_timer()
-
 
 
 ################################################################################
@@ -315,15 +325,17 @@ def enum(**enums):
     """Utility to create enum-like classes, use it like: DrivingState = enum(STOPPED=1, FORWARD=2, BACKWARD=4)"""
     return type('Enum', (), enums)
 
+
 def compare(a, b):
     """Replacement for Python 2.x cmp(), https://docs.python.org/3.0/whatsnew/3.0.html#ordering-comparisons"""
     return (a > b) - (a < b)
+
 
 def compare_version_strings(v1, v2):
     """Compares version strings, returns -1/0/+1 if v1 less, equal or greater v2"""
     # https://stackoverflow.com/a/1714190/400948
     def normalize_version_string(v):
-        return [int(x) for x in re.sub(r'(\.0+)*$','', v).split(".")]
+        return [int(x) for x in re.sub(r'(\.0+)*$', '', v).split(".")]
     return compare(normalize_version_string(v1), normalize_version_string(v2))
 
 
@@ -332,6 +344,7 @@ try:
     to_unicode = unicode
 except NameError:
     to_unicode = str
+
 
 def slugify(s):
     """Converts a string to a slug (strip special characters, replace white space, convert to lowercase...) to be used for file names or URLs."""
@@ -383,7 +396,7 @@ def argsort(seq, indices_only=False):
 # OS interaction
 def is_tool(name):
     """Check whether `name` is on PATH and marked as executable."""
-    if sys.version_info >= (3,3):
+    if sys.version_info >= (3, 3):
         # Taken from https://stackoverflow.com/a/34177358
         from shutil import which
         return which(name) is not None
@@ -393,7 +406,7 @@ def is_tool(name):
             if os.path.exists(os.path.join(path, name)):
                 return True
         return False
- 
+
 
 ################################################################################
 # Data validation (e.g. argument parsing)

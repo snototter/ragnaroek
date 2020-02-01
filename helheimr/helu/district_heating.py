@@ -22,7 +22,8 @@ class DistrictHeatingQueryParser(HTMLParser):
     """
     def __init__(self):
         super(DistrictHeatingQueryParser, self).__init__()
-        #TODO Don't forget to register the corresponding _div_mapping!
+        #TODO If you extend the parser, do NOT forget to
+        # register the corresponding _div_mapping!
         self._status = {
             'eco_status': None,        # Button Eco
             'medium_status': None,     # Button Mittel
@@ -33,10 +34,10 @@ class DistrictHeatingQueryParser(HTMLParser):
             'very_high_time': None,
             'transition_status': None, # Button Übergang
 
-            'consumption_state': None,       # Verbrauch '?geschaltet'
-            'consumption_temperature': None, # Verbrauch °C
-            'consumption_power': None,       # Verbrauch kW
-            'teleheating_temperature': None, # Herkunft Fernwärme °C
+            'consumption_state': None,        # Verbrauch '?geschaltet'
+            'consumption_temperature': None,  # Verbrauch °C
+            'consumption_power': None,        # Verbrauch kW
+            'teleheating_temperature': None,  # Herkunft Fernwärme °C
         }
 
         # During parsing, this holds the key into self._status
@@ -72,9 +73,11 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def consumption_state(self):
         return self._status['consumption_state']
+
     @property
     def consumption_temperature(self):
         return self._status['consumption_temperature']
+
     @property
     def consumption_power(self):
         return self._status['consumption_power']
@@ -86,6 +89,7 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def medium_status(self):
         return self._status['medium_status']
+
     @property
     def medium_time(self):
         return self._status['medium_time']
@@ -93,6 +97,7 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def high_status(self):
         return self._status['high_status']
+
     @property
     def high_time(self):
         return self._status['high_time']
@@ -100,6 +105,7 @@ class DistrictHeatingQueryParser(HTMLParser):
     @property
     def very_high_status(self):
         return self._status['very_high_status']
+
     @property
     def very_high_time(self):
         return self._status['very_high_time']
@@ -123,7 +129,7 @@ class DistrictHeatingQueryParser(HTMLParser):
             msg.append('\u2022 Verbrauch ist {}'.format(
                 'eingeschaltet bei {}\u200a°, {}\u200akW'.format(
                     common.format_num('.1f', self.consumption_temperature, use_markdown),
-                    common.format_num('.1f', self.consumption_power, use_markdown)) \
+                    common.format_num('.1f', self.consumption_power, use_markdown))
                 if self.consumption_state else 'ausgeschaltet'))
 
         ### Button stats:
@@ -138,23 +144,22 @@ class DistrictHeatingQueryParser(HTMLParser):
         if self.medium_status is not None:
             msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
                 'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.medium_time))) \
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.medium_time)))
                 if self.medium_status else 'aus'))
 
         if self.high_status is not None:
             msg.append('\u2022 Hoch 60\u200a° ist {}'.format(
                 'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.high_time))) \
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.high_time)))
                 if self.high_status else 'aus'))
 
         if self.very_high_status is not None:
             msg.append('\u2022 Sehr hoch 65\u200a° ist {}'.format(
                 'ein, Restzeit {:s}'.format(
-                    time_utils.format_timedelta(datetime.timedelta(seconds=self.very_high_time))) \
+                    time_utils.format_timedelta(datetime.timedelta(seconds=self.very_high_time)))
                 if self.very_high_status else 'aus'))
 
         return '\n'.join(msg)
-        
 
     def handle_starttag(self, tag, attrs):
         if tag == 'div':
@@ -169,22 +174,18 @@ class DistrictHeatingQueryParser(HTMLParser):
             else:
                 self._store_data_to = None
 
-
     def handle_endtag(self, tag):
         self._store_data_to = None
-
 
     def handle_data(self, data):
         if self._store_data_to is None:
             return
         trimmed = data.strip()
         if self._store_data_to == 'consumption_state':
-            self._status[self._store_data_to] = True if trimmed.lower() == 'ongeschaltet' else False # sic!
-
+            self._status[self._store_data_to] = True if trimmed.lower() == 'ongeschaltet' else False  # sic!
         elif self._store_data_to.endswith('_status'):
             # Need to parse an on/off string
             self._status[self._store_data_to] = True if trimmed.lower() == 'on' else False
-
         elif self._store_data_to.endswith('_time'):
             # Need to parse an "remaining time" string which should contain 'Xm Ys'
             times = common.extract_integers(trimmed)
@@ -197,11 +198,10 @@ class DistrictHeatingQueryParser(HTMLParser):
                     '[DistrictHeatingQueryParser] Invalid remaining time string: "{:s}"'.format(trimmed))
                 broadcasting.MessageBroadcaster.instance().error(
                     'Ungültige Zeichenfolge "{:s}" beim Parsen des Fernwärme-CMI (Restzeitangabe wurde erwartet).'.format(trimmed))
-
         elif self._store_data_to.endswith('_temperature') or \
-            self._store_data_to.endswith('_power'):
+                self._store_data_to.endswith('_power'):
             # Should be a float
-            nums = common.extract_floats(trimmed.replace(',', '.')) # Even the decimal point for floats is inconsistently used on this wonderful gateway website...
+            nums = common.extract_floats(trimmed.replace(',', '.'))  # Even the decimal point for floats is inconsistently used on this wonderful gateway website...
             if len(nums) == 1:
                 self._status[self._store_data_to] = nums[0]
             else:
@@ -209,7 +209,6 @@ class DistrictHeatingQueryParser(HTMLParser):
                     '[DistrictHeatingQueryParser] Invalid data string for a single float: "{:s}"'.format(trimmed))
                 broadcasting.MessageBroadcaster.instance().error(
                     'Ungültige Zeichenfolge "{:s}" beim Parsen des Fernwärme-CMI (Gleitkommazahl wurde nicht gefunden).'.format(trimmed))
-
         else:
             #TODO implement others if needed
             pass
@@ -227,12 +226,10 @@ class DistrictHeatingRequest(Enum):
 class DistrictHeating:
     __instance = None
 
-
     @staticmethod
     def instance():
         """Returns the singleton."""
         return DistrictHeating.__instance
-
 
     @staticmethod
     def init_instance(config):
@@ -244,7 +241,6 @@ class DistrictHeating:
         if DistrictHeating.__instance is None:
             DistrictHeating(config)
         return DistrictHeating.__instance
-
 
     def __init__(self, config):
         """Virtually private constructor, use DistrictHeating.init_instance() instead."""
@@ -274,12 +270,13 @@ class DistrictHeating:
 
         logging.getLogger().info('[DistrictHeating] Initialized district heating wrapper.')
 
-
     def get_buttons(self, as_int=False):
-        """Returns the (sub-set of) buttons to control the district 
+        """
+        Returns the (sub-set of) buttons to control the district
         heating system. Each button is a tuple (label, button type).
         If as_int==True, 'button type' will be integer, otherwise
-        see Enum DistrictHeatingRequest."""
+        see Enum DistrictHeatingRequest.
+        """
         if as_int:
             return [
                 ('55\u200a°', DistrictHeatingRequest.MEDIUM.value),
@@ -292,7 +289,6 @@ class DistrictHeating:
                 ('60\u200a°', DistrictHeatingRequest.HIGH),
                 ('65\u200a°', DistrictHeatingRequest.VERY_HIGH)
             ]
-
 
     def start_heating(self, request_type):
         """request_type is a DistrictHeatingRequest, specifying which physical button press should be simulated."""
@@ -316,13 +312,12 @@ class DistrictHeating:
                 return True, 'Fernwärme wurde eingeschaltet'
             else:
                 return False, 'Fehler beim Kontaktieren des Fernwärme-Gateways, HTTP Status {}. {}'.format(response.status_code, response.content)
-        
 
     def query_heating(self, use_markdown=True):
         response = network_utils.safe_http_get(self._url_query, headers=self._headers, verify=False)
         if response is None:
             return False, 'Netzwerkfehler bei der Fernwärmeabfrage'
-        
+
         if response:
             query_parser = DistrictHeatingQueryParser()
             query_parser.feed(response.text)

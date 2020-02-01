@@ -15,6 +15,7 @@ from . import time_utils
 # skyfield.almanac.phase_angle fraction_illuminated
 # https://pypi.org/project/skyfield-data/ or download the DE430 ephemeris manually?
 
+
 def degrees_to_compass(deg, num_directions=8):
     """:return: Compass direction (str, either 8 or 16) for the given angle (in degrees, 0 is north, 45 is east)."""
     if num_directions == 8:
@@ -24,7 +25,9 @@ def degrees_to_compass(deg, num_directions=8):
         return lookup[(val % 8)]
     elif num_directions == 16:
         val = int((deg/22.5)+0.5)
-        lookup = ["N","NNO","NO","ONO","O","OSO", "SO", "SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"]
+        lookup = [
+            "N", "NNO", "NO", "ONO", "O", "OSO", "SO", "SSO",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
         return lookup[(val % 16)]
     else:
         raise ValueError('You can only convert angle to 8 or 16 compass directions!')
@@ -34,7 +37,7 @@ def weather_code_emoji(code, ref_time=None):
     """Return emoji for given weather code."""
     if code >= 200 and code < 300:
         # Thunderstorm
-        return ':cloud_with_lightning_and_rain:' #':cloud_with_lightning:' ':zap:'
+        return ':cloud_with_lightning_and_rain:'  # Or maybe replace by: :cloud_with_lightning: ':zap:'
     elif code >= 300 and code < 400:
         # Drizzle
         return ':sun_behind_rain_cloud:'
@@ -64,7 +67,7 @@ def weather_code_emoji(code, ref_time=None):
         return ':sun_behind_large_cloud:'
     elif code == 804:
         return ':cloud:'
-        
+
     logging.getLogger().error('Weather code {} was not translated!'.format(code))
     return 'Wettercode {}'.format(code)
 
@@ -95,11 +98,11 @@ def get_windchill(temperature, wind_speed):
     return 13.12 + 0.6215*temperature - 11.37*speed_pow + 0.3965*temperature*speed_pow
 
 
-
 class Forecast:
     """Represents a weather forecast."""
     def __init__(self, three_hours_forecast):
         weathers = three_hours_forecast.get_forecast().get_weathers()[:9]
+
         def at_time(w):
             return time_utils.dt_as_local(w.get_reference_time(timeformat='date'))
         self._reports = [WeatherReport(w, at_time(w)) for w in weathers]
@@ -122,7 +125,6 @@ class Forecast:
         sorted_states = [(s, e) for _, s, e in sorted(zip(states.values(), states.keys(), emojis.values()), reverse=True)]
         self._prevalent_detailed_status = sorted_states[0][0]
         self._prevalent_weather_emoji = sorted_states[0][1]
-    
 
     def format_message(self, use_markdown=True, use_emoji=True):
         lines = list()
@@ -136,6 +138,7 @@ class Forecast:
         for r in self._reports:
             lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
         return '\n'.join(lines)
+
 
 def _get_precipitation(weather_dict):
     if weather_dict:
@@ -165,7 +168,6 @@ class WeatherReport:
         if weather is not None:
             self.from_observation(weather)
 
-
     def from_observation(self, w):
         temp = w.get_temperature(unit='celsius')
         self.temperature = temp['temp']
@@ -178,9 +180,7 @@ class WeatherReport:
         self.weather_code = w.get_weather_code()
 
         self.clouds = w.get_clouds()
-
         self.rain = _get_precipitation(w.get_rain())
-
         self.snow = _get_precipitation(w.get_snow())
 
         wind = w.get_wind(unit='meters_sec')
@@ -195,14 +195,13 @@ class WeatherReport:
                 'direction': None
             }
 
-        self.humidity = w.get_humidity() # int
+        self.humidity = w.get_humidity()  # int
         press = w.get_pressure()
         if press is not None and 'press' in press:
-            self.atmospheric_pressure = press['press'] # dict
-        
+            self.atmospheric_pressure = press['press']  # dict
+
         self.sunrise_time = time_utils.dt_as_local(w.get_sunrise_time(timeformat='date'))
         self.sunset_time = time_utils.dt_as_local(w.get_sunset_time(timeformat='date'))
-
 
     def teaser_message(self, use_markdown=True, use_emoji=True):
         msg = '{:s}\u200a°{:s}'.format(
@@ -223,7 +222,6 @@ class WeatherReport:
                     ' {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else '')
         return msg
 
-
     def format_message(self, use_markdown=True, use_emoji=True):
         lines = list()
         lines.append('{}Wetterbericht:{}'.format(
@@ -241,7 +239,7 @@ class WeatherReport:
                     common.format_num('d', windchill, use_markdown),
                     ' ' + temperature_emoji(windchill) if use_emoji else ''
                 ))
-        lines.append('') # Will be joined with a newline
+        lines.append('')  # Will be joined with a newline
 
         lines.append('Bewölkung: {}\u200a%'.format(common.format_num('d', self.clouds, use_markdown)))
         lines.append('Luftfeuchte: {}\u200a%'.format(common.format_num('d', self.humidity)))
@@ -259,17 +257,16 @@ class WeatherReport:
                     common.format_num('.1f', self.wind['speed']),
                     ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else ''
                 ))
-        lines.append('') # Will be joined with a newline
+        lines.append('')  # Will be joined with a newline
 
         lines.append('Sonnenaufgang: {:s}'.format(self.sunrise_time.strftime('%H:%m')))
         lines.append('Sonnenuntergang: {:s}'.format(self.sunset_time.strftime('%H:%m')))
-
         return '\n'.join(lines)
-
 
     @property
     def detailed_status(self):
         return self._detailed_status
+
     @detailed_status.setter
     def detailed_status(self, value):
         self._detailed_status = value
@@ -277,6 +274,7 @@ class WeatherReport:
     @property
     def weather_code(self):
         return self._weather_code
+
     @weather_code.setter
     def weather_code(self, value):
         self._weather_code = value
@@ -287,6 +285,7 @@ class WeatherReport:
     @property
     def temperature(self):
         return self._temperature_current
+
     @temperature.setter
     def temperature(self, value):
         self._temperature_current = value
@@ -294,6 +293,7 @@ class WeatherReport:
     @property
     def temperature_range(self):
         return self._temperature_range
+
     @temperature_range.setter
     def temperature_range(self, minmax):
         self._temperature_range = minmax
@@ -301,13 +301,15 @@ class WeatherReport:
     @property
     def clouds(self):
         return self._clouds
+
     @clouds.setter
     def clouds(self, value):
         self._clouds = value
-    
+
     @property
     def rain(self):
         return self._rain
+
     @rain.setter
     def rain(self, value):
         self._rain = value
@@ -315,6 +317,7 @@ class WeatherReport:
     @property
     def wind(self):
         return self._wind
+
     @wind.setter
     def wind(self, value):
         self._wind = value
@@ -322,6 +325,7 @@ class WeatherReport:
     @property
     def snow(self):
         return self._snow
+
     @snow.setter
     def snow(self, value):
         self._snow = value
@@ -329,6 +333,7 @@ class WeatherReport:
     @property
     def humidity(self):
         return self._humidity
+
     @humidity.setter
     def humidity(self, value):
         self._humidity = value
@@ -336,6 +341,7 @@ class WeatherReport:
     @property
     def atmospheric_pressure(self):
         return self._atmospheric_pressure
+
     @atmospheric_pressure.setter
     def atmospheric_pressure(self, value):
         self._atmospheric_pressure = value
@@ -343,6 +349,7 @@ class WeatherReport:
     @property
     def sunrise_time(self):
         return self._sunrise_time
+
     @sunrise_time.setter
     def sunrise_time(self, value):
         self._sunrise_time = value
@@ -350,6 +357,7 @@ class WeatherReport:
     @property
     def sunset_time(self):
         return self._sunset_time
+
     @sunset_time.setter
     def sunset_time(self, value):
         self._sunset_time = value
@@ -357,6 +365,7 @@ class WeatherReport:
     @property
     def reference_time(self):
         return self._reference_time
+
     @reference_time.setter
     def reference_time(self, value):
         self._reference_time = value
@@ -365,12 +374,10 @@ class WeatherReport:
 class WeatherForecastOwm:
     __instance = None
 
-
     @staticmethod
     def instance():
         """Returns the singleton, use init_instance() before!"""
         return WeatherForecastOwm.__instance
-
 
     @staticmethod
     def init_instance(config):
@@ -378,7 +385,6 @@ class WeatherForecastOwm:
         if WeatherForecastOwm.__instance is None:
             WeatherForecastOwm(config)
         return WeatherForecastOwm.__instance
-
 
     def __init__(self, config):
         """Virtually private constructor."""
@@ -392,18 +398,16 @@ class WeatherForecastOwm:
         self._city_name = config['openweathermap']['city_name']
         self._latitude = config['openweathermap']['latitude']
         self._longitude = config['openweathermap']['longitude']
-        
 
     def report(self):
         """Return the current weather report."""
         try:
             obs = self._owm.weather_at_coords(self._latitude, self._longitude)
-            w = obs.get_weather()            
+            w = obs.get_weather()           
             return WeatherReport(w)
         except:
             logging.getLogger().error('[WeatherForecastOwm] Error querying OpenWeatherMap current weather:\n' + traceback.format_exc())
             return None
-
 
     def forecast(self):
         """Return the current weather forecast."""
@@ -420,7 +424,8 @@ def demo(cfg_file='../configs/owm.cfg'):
     #TODO try without internet connection
     wcfg = common.load_configuration(cfg_file)
     weather_service = WeatherForecastOwm.init_instance(wcfg)
-    print(weather_service.report().format_message(True, True)) # Note that the query may return None!
+    print(weather_service.report().format_message(True, True))  # Note that the query may return None!
+
 
 if __name__ == '__main__':
     demo()
