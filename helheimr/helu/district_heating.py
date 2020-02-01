@@ -102,7 +102,7 @@ class DistrictHeatingQueryParser(HTMLParser):
         return self._status['very_high_status']
     @property
     def very_high_time(self):
-        return self._status['high_time']
+        return self._status['very_high_time']
 
     @property
     def transition_status(self):
@@ -201,7 +201,7 @@ class DistrictHeatingQueryParser(HTMLParser):
         elif self._store_data_to.endswith('_temperature') or \
             self._store_data_to.endswith('_power'):
             # Should be a float
-            nums = common.extract_floats(trimmed.replace(',', '.')) # Even the decimal point for floats changes on this wonderful gateway website...
+            nums = common.extract_floats(trimmed.replace(',', '.')) # Even the decimal point for floats is inconsistently used on this wonderful gateway website...
             if len(nums) == 1:
                 self._status[self._store_data_to] = nums[0]
             else:
