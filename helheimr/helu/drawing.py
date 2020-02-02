@@ -7,7 +7,6 @@ import matplotlib
 import os
 if os.uname().machine.startswith('arm'):
     matplotlib.use('Agg')
-#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -74,29 +73,32 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # dt_end = time_utils.ceil_dt_hour(dt_end)
     dt_start = _tm(temperature_log[0])
     dt_now = time_utils.dt_now_local()
-    
+
     # Find best fitting tick interval
     # time_span = dt_end - dt_start
     time_span = __naive_time_diff(dt_end, dt_start)
     sec_per_tick = time_span.total_seconds() / desired_num_ticks
-    
+
     def _m(x):
         return x * 60
+
     def _h(x):
         return x * _m(60)
+
     def _d(x):
         return x * _h(24)
+
     tick_units = [_m(5), _m(15), _m(30), _h(1), _h(2), _h(3), _h(6), _h(12), _d(1), _d(7)]
     closest_tick_idx = np.argmin([abs(sec_per_tick - tu) for tu in tick_units])
     closest_tick_unit = tick_units[closest_tick_idx]
-    
+
     # Compute ticks and labels (x-axis represents seconds passed since a reference datetime object)
     num_ticks_ceil = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     dt_tick_start = dt_end - datetime.timedelta(seconds=num_ticks_ceil * closest_tick_unit)
     # ## Version A, ceil
     num_ticks = int(np.ceil(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     offset = 0
-    ## Version B, floor
+    # ## Version B, floor
     # num_ticks = int(np.floor(time_span.total_seconds() / closest_tick_unit).astype(np.int32))
     # offset = closest_tick_unit
 
@@ -109,7 +111,6 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
             tick_lbl = dt_tick.strftime('%H:%M')
         else:
             tick_lbl = dt_tick.strftime('%d.%m. %H:%M')
-        #     tick_lbl = '-' + time_utils.format_timedelta(dt_end - dt_tick, small_space=False)
         tick_values.append(tick_sec)
         tick_labels.append(tick_lbl)
     # # Add end date
@@ -121,14 +122,14 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # else:
     #     tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
 
-    logging.getLogger().info('DRAW ticks start {}, end {}, time_span {}, dt_tick_start {}'.format(dt_start.strftime('%d.%m %H:%M'), dt_end.strftime('%d.%m %H:%M'), time_span, dt_tick_start.strftime('%d.%m %H:%M')))
-    
+    logging.getLogger().info('DRAW ticks start {}, end {}, time_span {}, dt_tick_start {}'.format(
+        dt_start.strftime('%d.%m %H:%M'), dt_end.strftime('%d.%m %H:%M'), time_span, dt_tick_start.strftime('%d.%m %H:%M')))
     return tick_values, tick_labels, dt_tick_start
 
 
 def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
     """Prepares the temperature curves (x ticks are offsets from the given datetime dt_tick_start)."""
-    temperature_curves = {sn:list() for sn in sensor_names}
+    temperature_curves = {sn: list() for sn in sensor_names}
     was_heating = list()
     for reading in temperature_log:
         dt_local, sensors, heating = reading
@@ -148,13 +149,12 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
     return temperature_curves, was_heating
 
 
-
-def plot_temperature_curves(width_px, height_px, temperature_log, 
-    return_mem=True, xkcd=True, reverse=True, name_mapping=None,
-    line_alpha=0.7, grid_alpha=0.3, linewidth=3.5, 
-    min_temperature_span=9, smoothing_window=7,
-    font_size=20, legend_columns=2,
-    draw_marker=False):
+def plot_temperature_curves(width_px, height_px, temperature_log,
+        return_mem=True, xkcd=True, reverse=True, name_mapping=None,
+        line_alpha=0.7, grid_alpha=0.3, linewidth=3.5,
+        min_temperature_span=9, smoothing_window=7,
+        font_size=20, legend_columns=2,
+        draw_marker=False):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
     xkcd: :-)
@@ -165,7 +165,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     tick_time_unit: should the time difference (tick label) be stated as 'minutes' or 'hours'
     min_temperature_span: the y-axis should span at least these many degrees
     """
-    ### Prepare the data
+    # ## Prepare the data
     if reverse:
         temperature_log = temperature_log[::-1]
 
@@ -179,7 +179,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Sort sensor names to ensure consistent colors
     sensor_names = sorted(sensor_names)
     num_sensors = len(sensor_names)
-    
+
     if num_sensors == 0:
         logging.getLogger().warning('plot_temperature_curves() called with empty list!')
         if return_mem:
@@ -196,17 +196,16 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         plot_labels[sn] = sn if name_mapping is None else name_mapping[sn]
         idx += 1
 
-    ### Extract curves
+    # ## Extract curves
     # First, get suitable ticks based on the time span of the provided data
     x_tick_values, x_tick_labels, dt_tick_start = __prepare_ticks(temperature_log, desired_num_ticks=10)
-    
+
     # Then extract the data points
     temperature_curves, was_heating = __prepare_curves(sensor_names, temperature_log, dt_tick_start)
-    
 
-    ### Now we're ready to plot
+    # ## Now we're ready to plot
     # Prepare figure of proper size
-    dpi = 100 # Dummy DPI value to compute figure size in inches
+    dpi = 100  # Dummy DPI value to compute figure size in inches
     fig = plt.figure(figsize=(width_px/dpi, height_px/dpi))
     if xkcd:
         plt.xkcd(scale=1, length=100, randomness=2)
@@ -222,18 +221,18 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         else:
             values = unzipped[1]
         if draw_marker:
-            ax.plot(unzipped[0], values, \
-                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
-                label=plot_labels[sn], 
+            ax.plot(unzipped[0], values,
+                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
+                label=plot_labels[sn],
                 marker='.', markersize=5*linewidth, markeredgewidth=linewidth, zorder=10)
         else:
-            ax.plot(unzipped[0], values, \
-                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+            ax.plot(unzipped[0], values,
+                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
                 label=plot_labels[sn], zorder=10)
 
     # Adjust x-axis
     # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
-    ax.tick_params(axis ='x', rotation=65, direction='in') 
+    ax.tick_params(axis='x', rotation=65, direction='in')
     plt.xticks(x_tick_values, x_tick_labels)
 
     # Adjust y-axis
@@ -241,14 +240,14 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     span = ymax - ymin_initial
     # ... ensure y-axis spans a minimum amount of degrees
     delta = np.ceil(min_temperature_span - span)
-    # ... if there are even more, increase the range slightly so 
+    # ... if there are even more, increase the range slightly so
     # we get a nice top/bottom border
     if delta < 0:
         delta = 2
     ymin = ymin_initial - delta * 0.7
     ymax = ymax + delta * 0.3
     plt.ylim(ymin, ymax)
-    
+
     # Adjust ticks on y-axis
     yminc = np.ceil(ymin)
     # ... we want a sufficient padding between bottom and the lowest temperature grid line
@@ -257,40 +256,40 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # # ... be consistent: only show even temperature ticks
     # if yminc.astype(np.int32) % 2 == 1:
     #     yminc += 1
-    
-    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32))#, 2)
+
+    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32))
     y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
     ax.tick_params(axis='y', direction='in')
     plt.yticks(y_ticks, y_tick_labels)
 
-    # Plot a curve (z-order behind temperature plots but above of grid) 
+    # Plot a curve (z-order behind temperature plots but above of grid)
     # indicating if heating was active
     unzipped = tuple(zip(*was_heating))
     heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
-    ax.plot(unzipped[0], heating_values, \
-            color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth, \
+    ax.plot(unzipped[0], heating_values,
+            color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth,
             label='Heizung', zorder=2)
-    
+
     # Title and legend
     plt.title('Temperaturverlauf [°C]')
     ax.grid(True, linewidth=linewidth-0.5, alpha=grid_alpha)
-    ax.legend(loc='lower center', fancybox=True, 
+    ax.legend(loc='lower center', fancybox=True,
         frameon=False, ncol=legend_columns)
-    # => if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
 
+    # => if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
     # If we need to change the legend ordering:
     # https://stackoverflow.com/questions/22263807/how-is-order-of-items-in-matplotlib-legend-determined
     # handles, labels = plt.gca().get_legend_handles_labels()
     # order = range(len(labels))
-    # ax.legend([handles[idx] for idx in order], [labels[idx] for idx in order], loc='lower center', fancybox=True, 
+    # ax.legend([handles[idx] for idx in order], [labels[idx] for idx in order], loc='lower center', fancybox=True,
     #     frameon=False, ncol=legend_columns)
 
-    ### Ensure that the figure is drawn/populated:
+    # ## Ensure that the figure is drawn/populated:
     # Remove white borders around the plot
-    fig.tight_layout(pad=1.01) # Default is pad=1.08
+    fig.tight_layout(pad=1.01)  # Default is pad=1.08
     fig.canvas.draw()
 
-    ### Export figure (and return or show it)
+    # Export figure (and return or show it)
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)
 
@@ -355,85 +354,6 @@ def plt2img(fig, dpi=180):
 
 def rgb2gray(rgb):
     """Grayscale conversion for np.array inputs"""
-    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
     return gray.astype(rgb.dtype)
-
-
-
-
-##### matplotlib:
-# * Lookup
-#   https://matplotlib.org/api/_as_gen/matplotlib.pyplot.html#module-matplotlib.pyplot
-# * Reduce margins/white borders:
-#   https://stackoverflow.com/questions/4042192/reduce-left-and-right-margins-in-matplotlib-plot
-# * Change font properties:
-#   https://matplotlib.org/3.1.1/gallery/text_labels_and_annotations/text_fontdict.html
-# * Grid 
-#   https://stackoverflow.com/questions/8209568/how-do-i-draw-a-grid-onto-a-plot-in-python
-# * Colormaps
-#   https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html
-#   https://stackoverflow.com/questions/8931268/using-colormaps-to-set-color-of-line-in-matplotlib
-
-# if __name__ == '__main__':
-# import collections
-# dt = collections.namedtuple('dt', ['hour', 'minute'])
-# p = drawing.plot_temperature_curves(1024, 768, 
-# [(dt(0,5),{'K':23.5}, True), (dt(0,10),{'K':23.5, 'W':22}, True), (dt(0,15),{'K':25.5, 'W':24}, True),
-# (dt(0,20), {'K':None, 'W':23}, False), (dt(0,25), {'K':22}, False), (dt(0,30), None, False), (dt(0,35), {'Foo':25}, False), 
-# (dt(0,40), {'Foo':25.2, 'K':22.3}, False)], 
-# return_mem=True, name_mapping={'K':'KiZi', 'W':'Wohnen', 'Foo':'xkcd:-)'}, reverse=False)
-#     if True:
-#         raise RuntimeError('stop')
-
-#     target_fig_size_px = [1024, 768]
-#     dpi = 100
-#     fig = plt.figure(figsize=tuple([t/dpi for t in target_fig_size_px]))
-#     axes = fig.add_subplot(111)
-#     # axes = fig.gca()
-
-#     with plt.xkcd():
-#         x = np.arange(0., 5., 0.2)
-#         axes.plot(x, x, 'r--')
-#         axes.plot(x, x**2, 'bs')
-        
-
-#     #     ax = fig.gca()
-#         axes.set_xticks(np.arange(0, 5, 0.5))
-#         axes.set_yticks(np.arange(0, 20, 2))
-#     # plt.scatter(x, y)
-#         plt.xlim(-1, 4.4)
-#         plt.ylim(0.25, 20)
-#         # axes.grid()
-#         plt.grid()
-#     # plt.show()
-
-#         plt.title('jabadabadoo')
-#         # # Change font, put labels, etc.
-#         # font = {'family': 'xkcd Script', #'serif',
-#         #     'color':  'darkred',
-#         #     'weight': 'normal',
-#         #     'size': 16,
-#         #     }
-#         # plt.title('Title Foo', fontdict=font)
-#         # plt.text(2, 0.65, r'$\cos(2 \pi t) \exp(-t)$', fontdict=font)
-#         # plt.xlabel('time (s)', fontdict=font)
-#         # plt.ylabel('voltage (mV)', fontdict=font)
-
-#     # After all axes have been added, we can remove the white space around the axes:
-#     fig.tight_layout()
-#     # If run headless, we must ensure that the figure canvas is populated:
-#     fig.canvas.draw()
-
-#     ## Export lowres first (hires changes the figure, so there would be no difference)
-#     # img_lowres = plt2img_lowres(fig)
-#     # img_pil = np2pil(img_lowres)
-#     # img_pil.save('dummy-lowres.jpg')
-
-#     img_highres = plt2img(fig, dpi=2*dpi)
-#     img_pil = np2pil(img_highres)
-#     img_pil.save('dummy-hires.jpg')
-
-#     plt.show()
-
-    
