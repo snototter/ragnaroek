@@ -60,7 +60,7 @@ Installation instructions on RaspberryPi 3B+:
   sudo apt install -y python3-dev python3-pip python3-venv libatlas-base-dev libjpeg-dev zlib1g-dev
   sudo -H pip3 install rpi-rf
   ```
-* Checkout the source code and set up virtual environment
+* Checkout the source code and set up virtual environment (if some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh`)
   ```bash
   git clone https://github.com/snototter/ragnaroek.git
   cd ragnaroek/helheimr
@@ -75,7 +75,7 @@ Installation instructions on RaspberryPi 3B+:
   ```
 * Prepare configuration files, place them into `<prj-root>/helheimr/configs/`:
   * `bot.cfg` - everything related to the Telegram bot
-  * `ctrl.cfg` - 
+  * `ctrl.cfg` - heating, scheduling, logging, sensors, etc.
   * `owm.cfg` - OpenWeatherMap configuration
   * `scheduled-jobs.cfg` - (optional) pre-configure periodic heating/non-heating tasks
 * Register and start the service
@@ -130,45 +130,6 @@ Installation instructions on RaspberryPi 3B+:
 * [ ] REST API for e-ink display
 * [ ] e-ink display tests
 * [ ] e-ink cover
-* [ ] code refactoring
-* [ ] pip freeze exact versions
-```
-astroid==2.3.2
-certifi==2019.9.11
-cffi==1.13.1
-chardet==3.0.4
-Click==7.0
-cryptography==2.8
-cycler==0.10.0
-emoji==0.5.4
-future==0.18.1
-geojson==2.5.0
-idna==2.8
-isort==4.3.21
-kiwisolver==1.1.0
-lazy-object-proxy==1.4.3
-libconf==2.0.0
-matplotlib==3.1.1
-mccabe==0.6.1
-numpy==1.17.3
-Pillow==6.2.1
-pkg-resources==0.0.0
-psutil==5.6.3
-pur==5.2.2
-pycparser==2.19
-pylint==2.4.3
-pyowm==2.10.0
-pyparsing==2.4.2
-python-dateutil==2.8.0
-python-telegram-bot==12.2.0
-requests==2.22.0
-rpi-rf==0.9.7
-RPi.GPIO==0.7.0
-scipy==1.3.1
-six==1.12.0
-tornado==6.0.3
-typed-ast==1.4.0
-urllib3==1.25.6
-wrapt==1.11.2
-```
-* [ ] add exemplary config files
+* [ ] pip freeze exact versions (breidablik)
+* [ ] Restart helheimr upon deCONZ connection issues (I should've never started with the zigbee sensors, they're a pain at times...)
+
