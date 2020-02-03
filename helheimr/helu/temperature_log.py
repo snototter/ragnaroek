@@ -8,14 +8,13 @@ import scipy.stats
 
 from . import common
 from . import heating
-from . import raspbee
 from . import time_utils
 from . import scheduling
 
 
 def parse_duration_string(s):
     """Returns the given duration ('1h', '10m') in minutes."""
-    def _extract(duration_str, txt, factor):    
+    def _extract(duration_str, txt, factor):
         idx = duration_str.find(txt)
         if idx >= 0:
             return int(float(duration_str[:idx]) * factor)
@@ -28,7 +27,6 @@ def parse_duration_string(s):
         if v is not None:
             return v
     return None
-    
 
 
 def compute_temperature_trend(readings, time_steps=None):
@@ -59,7 +57,6 @@ class TemperatureLog:
             TemperatureLog(cfg)
         return TemperatureLog.__instance
 
-
     def __init__(self, cfg):
         """Virtually private constructor, use TemperatureLog.init_instance() instead."""
         if TemperatureLog.__instance is not None:
@@ -71,12 +68,12 @@ class TemperatureLog:
         # Set up rotating log file
         self._logger = logging.getLogger(type(self).LOGGER_NAME)
         formatter = logging.Formatter('%(message)s')
-        file_handler = logging.handlers.TimedRotatingFileHandler(temp_cfg['log_file'], 
+        file_handler = logging.handlers.TimedRotatingFileHandler(temp_cfg['log_file'],
                     when=temp_cfg['log_rotation_when'], interval=int(temp_cfg['log_rotation_interval']),
                     backupCount=int(temp_cfg['log_rotation_backup_count']))
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
-        
+
         self._logger.addHandler(file_handler)
         self._logger.setLevel(logging.INFO)
 
@@ -104,16 +101,20 @@ class TemperatureLog:
         self._table_ordering = [_sname2display[sn] for sn in cfg['raspbee']['temperature']['preferred_heating_reference']]
 
         # Register periodic task with scheduler
-        polling_job = scheduling.NonSerializableNonHeatingJob(self._polling_interval_min, 'never_used', polling_job_label).minutes.do(self.log_temperature)
+        polling_job = scheduling.NonSerializableNonHeatingJob(
+            self._polling_interval_min,
+            'never_used', polling_job_label).minutes.do(self.log_temperature)
         scheduling.HelheimrScheduler.instance().enqueue_job(polling_job)
-        
-        logging.getLogger().info('[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(self._buffer_capacity, self._polling_interval_min, buffer_hours))
-        logging.getLogger().info('[TemperatureLog] Scheduled job: "{:s}"'.format(str(polling_job)))
+
+        logging.getLogger().info(
+            '[TemperatureLog] Initialized buffer for {:d} entries, one every {:d} min for {:d} hours.'.format(
+                self._buffer_capacity, self._polling_interval_min, buffer_hours))
+        logging.getLogger().info(
+            '[TemperatureLog] Scheduled job: "{:s}"'.format(
+                str(polling_job)))
         # Load existing log file
         self.load_log(temp_cfg['log_file'])
 
-
- 
     def load_log(self, filename):
         """Fills the internal buffer by parsing an existing log file."""
         lines = common.tail(filename, lines=self._buffer_capacity)
@@ -137,13 +138,11 @@ class TemperatureLog:
             hs = True if tokens[-1] == '1' else False
             self._temperature_readings.append((dt, temps, hs))
         logging.getLogger().info('[TemperatureLog] Loaded {:d} past temperature readings.'.format(len(lines)))
-        
 
     @property
     def name_mapping(self):
         """Returns a dictionary mapping sensor abbreviations to more descriptive display names."""
         return self._sensor_abbreviations2display_names
-
 
     def recent_readings(self, num_entries=None):
         """Returns the latest num_entries sensor readings, i.e. a
@@ -154,7 +153,6 @@ class TemperatureLog:
         be returned."""
         if num_entries is None:
             num_entries = self._num_readings_per_day
-
 
         # Parse a "num_entries" string (e.g. 1d, 3d, 10h)
         if isinstance(num_entries, str):
@@ -180,12 +178,11 @@ class TemperatureLog:
             ls.append(self._temperature_readings[-1-i])
         return ls
 
-
     def format_table(self, num_entries=None):
         """Returns an ASCII table showing the last
         num_entries readings (or the last hour if
         num_entries is None).
-               Wohn   KZ    SZ 
+               Wohn   KZ    SZ
         -----------------------
         23:59  24.1  23.4  24.1
         """
@@ -193,9 +190,10 @@ class TemperatureLog:
         if len(readings) == 0:
             return 'Noch sind keine Temperaturaufzeichnungen verfügbar'
 
-        msg = list()
         # Make the 'table' header:
         # ..:..  Col1   C2   Col3 ....
+        msg = list()
+
         def _header(h):
             if len(h) > 2:
                 return '{:4s}'.format(h[:4])
@@ -217,9 +215,8 @@ class TemperatureLog:
                 dt_local.hour, dt_local.minute, temp_str, '!' if is_heating else ' '))
         return '\n'.join(msg)
 
-
     def log_temperature(self):
-        """Queries the temperature sensors and logs them to file and internal 
+        """Queries the temperature sensors and logs them to file and internal
         buffer. To be used by the scheduled logging job."""
         sensors = heating.Heating.instance().query_temperature()
         dt_local = time_utils.dt_now_local()
@@ -229,8 +226,10 @@ class TemperatureLog:
             self._logger.log(logging.INFO, '{:s};{:d}'.format(time_utils.format(
                 dt_local), is_heating))
         else:
-            self._temperature_readings.append((dt_local, 
-                {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors}, is_heating))
+            self._temperature_readings.append((
+                dt_local,
+                {self._sensor_abbreviations[s.display_name]: s.temperature if s.reachable else None for s in sensors},
+                is_heating))
 
             def _tocsv(s):
                 if s.reachable:

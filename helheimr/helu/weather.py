@@ -53,7 +53,8 @@ def weather_code_emoji(code, ref_time=None):
     elif code >= 700 and code < 800:
         # Atmospheric stuff (fog, mist, volcanic ashes)
         return ':fog:'
-    elif code == 800: # clear, check time-of-day
+    elif code == 800:
+        # Clear, check time-of-day
         if ref_time is None:
             ref_time = time_utils.t_now_local()
         if ref_time.hour >= 19 or ref_time.hour < 5:
@@ -403,7 +404,7 @@ class WeatherForecastOwm:
         """Return the current weather report."""
         try:
             obs = self._owm.weather_at_coords(self._latitude, self._longitude)
-            w = obs.get_weather()           
+            w = obs.get_weather()
             return WeatherReport(w)
         except:
             logging.getLogger().error('[WeatherForecastOwm] Error querying OpenWeatherMap current weather:\n' + traceback.format_exc())
