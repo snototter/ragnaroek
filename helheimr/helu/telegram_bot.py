@@ -223,6 +223,9 @@ class HelheimrBot:
 
         detail_handler = CommandHandler('details', self.__cmd_details, self._user_filter)
         self._dispatcher.add_handler(detail_handler)
+        # For convenience, add abbreviation
+        detail_handler = CommandHandler('d', self.__cmd_details, self._user_filter)
+        self._dispatcher.add_handler(detail_handler)
 
         on_handler = CommandHandler('on', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
