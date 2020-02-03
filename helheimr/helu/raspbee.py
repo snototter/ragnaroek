@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # coding=utf-8
 """Wrapper to access the RaspBee gateway.
+**Note:** as of 10/2019 we don't use the ZigBee plugs anymore,
+because the Osram plugs disconnect too frequently.
 
 Initially, this was meant to control the power switch - but zigbee
 is very(!) sensitive to nearby WIFIs. So it became pretty much
@@ -19,7 +21,7 @@ import logging
 from . import common
 from . import network_utils
 
-## Note: as of 10/2019 we don't use the ZigBee plugs anymore as the Osram plugs disconnect frequently.
+
 class PlugState:
     """State of a 'smart' ZigBee plug."""
     def __init__(self, display_name, deconz_plug):
@@ -27,9 +29,12 @@ class PlugState:
         self.name = deconz_plug['name']                     # Name/label within the deconz/phoscon gateway
         self.reachable = deconz_plug['state']['reachable']  # Flag indicating the plug's connection status
         self.on = deconz_plug['state']['on']                # Currently on or off?
-    
+
     def __str__(self):
-        return "{:s} ist {:s}erreichbar und {:s}".format(self.display_name, '' if self.reachable else '*nicht* ', 'ein' if self.on else 'aus')
+        return "{:s} ist {:s}erreichbar und {:s}".format(
+            self.display_name,
+            '' if self.reachable else '*nicht* ',
+            'ein' if self.on else 'aus')
 
     def format_message(self, use_markdown=True, detailed_information=False):
         txt = '{}{}{} ist '.format(
@@ -62,38 +67,36 @@ class TemperatureState:
         self.temperature = None
         self.battery_level = deconz_sensor['config']['battery']
         self.reachable = deconz_sensor['config']['reachable']
-        
-        state = deconz_sensor['state']
-        if deconz_sensor['type'] == 'ZHATemperature': #'temperature' in state:
-            self.temperature = state['temperature'] / 100.0
-        elif deconz_sensor['type'] == 'ZHAHumidity': #'humidity' in state:
-            self.humidity = state['humidity'] / 100.0
-        elif deconz_sensor['type'] == 'ZHAPressure': #'pressure' in state:
-            self.pressure = state['pressure']
 
+        state = deconz_sensor['state']
+        if deconz_sensor['type'] == 'ZHATemperature':
+            self.temperature = state['temperature'] / 100.0
+        elif deconz_sensor['type'] == 'ZHAHumidity':
+            self.humidity = state['humidity'] / 100.0
+        elif deconz_sensor['type'] == 'ZHAPressure':
+            self.pressure = state['pressure']
 
     def __str__(self):
         return '{:s}: {:.1f}°C bei {:.1f}% Luftfeuchte und {:d}hPa Luftdruck, Batteriestatus: {:d}%'.format(
-            self.display_name, 
-            -999 if self.temperature is None else self.temperature, 
-            -999 if self.humidity is None else self.humidity, 
-            -9999 if self.pressure is None else self.pressure, 
+            self.display_name,
+            -999 if self.temperature is None else self.temperature,
+            -999 if self.humidity is None else self.humidity,
+            -9999 if self.pressure is None else self.pressure,
             -9999 if self.battery_level is None else self.battery_level)
-
 
     def merge(self, other):
         """deconz reports three separate sensors for the same physical device, so we need
         to merge these states into one again..."""
         if self.name != other.name:
             raise RuntimeError('Cannot merge different temperature sensors!')
-        
+
         if self.humidity is None:
             self.humidity = other.humidity
         if self.pressure is None:
             self.pressure = other.pressure
         if self.temperature is None:
             self.temperature = other.temperature
-        
+
         if self.battery_level is None:
             self.battery_level = other.battery_level
         elif other.battery_level is not None:
@@ -104,7 +107,6 @@ class TemperatureState:
         elif other.reachable is not None:
             self.reachable = self.reachable and other.reachable
         return self
-
 
     def format_message(self, use_markdown=True, detailed_information=False):
         # hair space: U+200A, thin space: U+2009
@@ -119,14 +121,12 @@ class TemperatureState:
         if detailed_information or (self.battery_level is not None and self.battery_level < 20):
             txt += ', {}\u200a% Akku{:s}'.format(
                 '?' if self.battery_level is None else common.format_num('d', int(self.battery_level),
-                use_markdown),
+                    use_markdown),
                 ' :warning:' if use_markdown and (self.battery_level is not None and self.battery_level < 20) else '')
 
         if not self.reachable:
             txt += ' {}nicht erreichbar!{}'.format(':bangbang: *' if use_markdown else '', '*' if use_markdown else '')
-
         return txt
-
 
     @staticmethod
     def merge_sensors(sensor_list):
@@ -134,7 +134,7 @@ class TemperatureState:
         to merge these states into one again..."""
         if len(sensor_list) == 0:
             return list()
-        sorted_sensors = sorted(sensor_list, key=lambda s:s.name)
+        sorted_sensors = sorted(sensor_list, key=lambda s: s.name)
         merged = [sorted_sensors[0]]
         for i in range(1, len(sorted_sensors)):
             if sorted_sensors[i].name != merged[-1].name:
@@ -144,7 +144,6 @@ class TemperatureState:
         return merged
 
 
-
 def get_api_url(cfg):
     gateway = cfg['raspbee']['deconz']['gateway']
     tcp_port = cfg['raspbee']['deconz']['port']
@@ -152,18 +151,17 @@ def get_api_url(cfg):
     return 'http://' + gateway + ':' + str(tcp_port) + '/api/' + token
 
 
-""" Communication with the zigbee/raspbee (deconz REST API) gateway """
 class RaspBeeWrapper:
+    """ Communication with the zigbee/raspbee (deconz REST API) gateway """
     def __init__(self, cfg):
         self._api_url = get_api_url(cfg)
-        
+
         # Map deconz plug name to human-readable display name
         if 'heating' in cfg['raspbee']:
             self._heating_plug_display_name_mapping = {
-                cfg['raspbee']['heating']['plug_names'][k] : cfg['raspbee']['heating']['display_names'][k] \
+                cfg['raspbee']['heating']['plug_names'][k]: cfg['raspbee']['heating']['display_names'][k]
                     for k in cfg['raspbee']['heating']['plug_names']
             }
-
             # Map deconz plug name to deconz ID
             self._heating_plug_raspbee_name_mapping = self.__map_deconz_heating_plugs(cfg)
             self._heating_disabled = False
@@ -171,10 +169,10 @@ class RaspBeeWrapper:
             logging.getLogger().warning('[RaspbeeWrapper] No ZigBee heating plugs configured!')
             self._heating_disabled = True
 
-        ######## Temperature sensors
+        # ####### Temperature sensors
         # Map deconz sensor name to human-readable display name
         self._temperature_sensor_display_name_mapping = {
-            cfg['raspbee']['temperature']['sensor_names'][k]: cfg['raspbee']['temperature']['display_names'][k] \
+            cfg['raspbee']['temperature']['sensor_names'][k]: cfg['raspbee']['temperature']['display_names'][k]
                 for k in cfg['raspbee']['temperature']['display_names']
         }
 
@@ -183,13 +181,12 @@ class RaspBeeWrapper:
 
         # Load ordering of temperature sensors to query for heating-reference-temperature (heating
         # will be stopped, once this sensor reports the configured temperature)
-        self._heating_preferred_reference_temperature_sensor_order = cfg['raspbee']['temperature']['preferred_heating_reference']
-
+        self._heating_preferred_reference_temperature_sensor_order = \
+            cfg['raspbee']['temperature']['preferred_heating_reference']
 
     @property
     def api_url(self):
         return self._api_url
-
 
     def __lookup_heating_display_name(self, raspbee_id):
         for lbl, rid in self._heating_plug_raspbee_name_mapping.items():
@@ -197,14 +194,11 @@ class RaspBeeWrapper:
                 return self._heating_plug_display_name_mapping[lbl]
         return 'ID {}'.format(raspbee_id)
 
-    
     def __lookup_temperature_display_name(self, raspbee_id):
         for lbl, rids in self._temperature_sensor_raspbee_name_mapping.items():
             if raspbee_id in rids:
                 return self._temperature_sensor_display_name_mapping[lbl]
         return 'ID {}'.format(raspbee_id)
-
-
 
     def __map_deconz_heating_plugs(self, cfg):
         # Our 'smart' plugs are linked to the zigbee gateway as "lights"
@@ -220,11 +214,11 @@ class RaspBeeWrapper:
 
         for raspbee_id, light in lights.items():
             if light['name'] in plug_names:
-                logger.info('[RaspBeeWrapper] Mapping plug {:s} ({:s}) to RaspBee ID {}'.format(light['name'],
+                logger.info(
+                    '[RaspBeeWrapper] Mapping plug {:s} ({:s}) to RaspBee ID {}'.format(light['name'],
                     self._heating_plug_display_name_mapping[light['name']], raspbee_id))
                 mapping[light['name']] = raspbee_id
         return mapping
-
 
     def __map_deconz_temperature_sensors(self, cfg):
         # Each of our sensors takes up 3 separate raspbee IDs (temperature, humidity, pressure)
@@ -235,13 +229,16 @@ class RaspBeeWrapper:
         sensors = json.loads(r.content)
         logger = logging.getLogger()
 
-        sensor_names = [cfg['raspbee']['temperature']['sensor_names'][k] for k in cfg['raspbee']['temperature']['sensor_names']]
+        sensor_names = [
+            cfg['raspbee']['temperature']['sensor_names'][k]
+            for k in cfg['raspbee']['temperature']['sensor_names']]
         mapping = dict()
 
         for raspbee_id, sensor in sensors.items():
             s = sensor['name']
             if s in sensor_names:
-                logger.info('[RaspBeeWrapper] Mapping sensor {:s} ({:s}) to RaspBee ID {}'.format(s,
+                logger.info(
+                    '[RaspBeeWrapper] Mapping sensor {:s} ({:s}) to RaspBee ID {}'.format(s,
                     self._temperature_sensor_display_name_mapping[s], raspbee_id))
                 if s in mapping:
                     mapping[s].append(raspbee_id)
@@ -249,11 +246,9 @@ class RaspBeeWrapper:
                     mapping[s] = [raspbee_id]
         return mapping
 
-
     @property
     def known_power_plug_ids(self):
         return list(self._heating_plug_raspbee_name_mapping.values())
-
 
     @property
     def known_temperature_sensor_ids(self):
@@ -261,7 +256,6 @@ class RaspBeeWrapper:
         for _, ids in self._temperature_sensor_raspbee_name_mapping.items():
             known_ids.extend(ids)
         return known_ids
-
 
     def query_deconz_details(self):
         r = network_utils.http_get_request(self.api_url)
@@ -274,8 +268,7 @@ class RaspBeeWrapper:
         msg.append('\u2022 deCONZ API Version: {}'.format(common.format_num('s', state['config']['apiversion'])))
         msg.append('\u2022 deCONZ SW Version: {}'.format(common.format_num('s', state['config']['swversion'])))
         msg.append('\u2022 ZigBee Kanal: {}'.format(common.format_num('d', state['config']['zigbeechannel'])))
-
-        ## Note: LPD433 replaced the ZigBee plugs, so we don't need to query those:
+        # # Note: LPD433 replaced the ZigBee plugs, so we don't need to query those:
         # # Iterate over reported lights (this group contains our power plugs)
         # is_heating = None
         # for raspbee_id in state['lights']:
@@ -288,7 +281,6 @@ class RaspBeeWrapper:
         # else:
         #     msg.insert(1, '\u2022 :bangbang: Steckdosen sind nicht erreichbar!')
 
-
         # sensors = list()
         # for raspbee_id in state['sensors']:
         #     if raspbee_id in self.known_temperature_sensor_ids:
@@ -300,14 +292,13 @@ class RaspBeeWrapper:
         #     msg.append('\n*Thermometer:*')
         #     for sensor in sensors:
         #         msg.append('  \u2022 ' + sensor.format_message(use_markdown=True, detailed_information=True))
-
         return '\n'.join(msg)
-
 
     def query_heating(self):
         """:return: flag (True if currently heating), list of PlugState"""
         if self._heating_disabled:
-            logging.getLogger().error('[RaspBeeWrapper] ZigBee plugs have been replaced by LPD433, so you should not call query_heating()!')
+            logging.getLogger().error(
+                '[RaspBeeWrapper] ZigBee plugs have been replaced by LPD433, so you should not call query_heating()!')
             return None, list()
 
         status = list()
@@ -319,12 +310,11 @@ class RaspBeeWrapper:
         for plug_lbl, plug_id in self._heating_plug_raspbee_name_mapping.items():
             r = network_utils.http_get_request(self.api_url + '/lights/' + plug_id)
             if r is None:
-                return None, status # Abort query
+                return None, status  # Abort query
             state = PlugState(self._heating_plug_display_name_mapping[plug_lbl], json.loads(r.content))
             status.append(state)
             is_heating = is_heating or state.on
         return is_heating, status
-
 
     def query_temperature(self):
         status = list()
@@ -338,7 +328,7 @@ class RaspBeeWrapper:
             for sensor_id in sensor_ids:
                 r = network_utils.http_get_request(self.api_url + '/sensors/' + sensor_id)
                 if r is None:
-                    return None # Abort query
+                    return None  # Abort query
                 state = TemperatureState(self._temperature_sensor_display_name_mapping[sensor_lbl], json.loads(r.content))
                 if merged_state is None:
                     merged_state = state
@@ -347,10 +337,9 @@ class RaspBeeWrapper:
             status.append(merged_state)
         return status
 
-
     def query_temperature_for_heating(self):
         """To adjust the heating, we need a reference temperature reading.
-        However, sensors may be unreachable. Thus, we can configure a 
+        However, sensors may be unreachable. Thus, we can configure a
         "preferred reference temperature sensor order" which we iterate
         to obtain a valid reading. If no sensor is available, return None.
         """
@@ -364,9 +353,9 @@ class RaspBeeWrapper:
         logging.getLogger().error('[RaspBeeWrapper] No preferred sensor is reachable!')
         return None
 
-
     def __switch_light(self, light_id, turn_on):
-        r = network_utils.http_put_request(self.api_url + '/lights/' + light_id + '/state', 
+        r = network_utils.http_put_request(
+            self.api_url + '/lights/' + light_id + '/state',
             '{:s}'.format('{"on":true}' if turn_on else '{"on":false}'))
         if r is None:
             return False, 'Exception während {:s}schalten von {:s}. Log überprüfen!'.format(
@@ -377,9 +366,9 @@ class RaspBeeWrapper:
             return False, 'Fehler (HTTP {:d}) beim {:s}schalten von {:s}.'.format(
                 r.status_code, 'Ein' if turn_on else 'Aus', self.__lookup_heating_display_name(light_id))
         else:
-            return True, '{:s} wurde {:s}geschaltet.'.format(self.__lookup_heating_display_name(light_id), 
+            return True, '{:s} wurde {:s}geschaltet.'.format(
+                self.__lookup_heating_display_name(light_id),
                 'ein' if turn_on else 'aus')
-            
 
     def turn_on(self):
         if self._heating_disabled:
@@ -399,7 +388,6 @@ class RaspBeeWrapper:
             success = success and s
             msg.append(m)
         return success, '\n'.join(msg)
-
 
     def turn_off(self):
         if self._heating_disabled:

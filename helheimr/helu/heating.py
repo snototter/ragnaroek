@@ -15,8 +15,9 @@ from . import raspbee
 from . import time_utils
 from . import temperature_log
 
-"""Heating can be turned on via manual request or via a scheduled job."""
+
 class HeatingRequest(Enum):
+    """Heating can be turned on via manual request or via a scheduled job."""
     MANUAL = 1
     SCHEDULED = 2
 
@@ -33,12 +34,10 @@ class Heating:
 
     LOGGER_NAME = 'heating.log'
 
-
     @staticmethod
     def instance():
         """Returns the singleton."""
         return Heating.__instance
-
 
     @staticmethod
     def init_instance(config):
@@ -51,21 +50,20 @@ class Heating:
             Heating(config)
         return Heating.__instance
 
-
     @staticmethod
     def sanity_check(request_type, target_temperature, temperature_hysteresis, duration):
         if target_temperature is not None and \
-            (target_temperature < Heating.MIN_TEMPERATURE or target_temperature > Heating.MAX_TEMPERATURE):
+                (target_temperature < Heating.MIN_TEMPERATURE or target_temperature > Heating.MAX_TEMPERATURE):
             return False, "Temperatur muss zwischen {} und {} liegen, nicht {}.".format(
-                common.format_num('.1f', Heating.MIN_TEMPERATURE), 
+                common.format_num('.1f', Heating.MIN_TEMPERATURE),
                 common.format_num('.1f', Heating.MAX_TEMPERATURE),
                 common.format_num('.1f', target_temperature))
 
         if temperature_hysteresis is not None and \
-            (temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS):
+                (temperature_hysteresis < Heating.MIN_HYSTERESIS or temperature_hysteresis > Heating.MAX_HYSTERESIS):
             return False, "Hysterese muss zwischen {} und {} liegen, nicht {}.".format(
-                common.format_num('.1f', Heating.MIN_HYSTERESIS), 
-                common.format_num('.1f', Heating.MAX_HYSTERESIS), 
+                common.format_num('.1f', Heating.MIN_HYSTERESIS),
+                common.format_num('.1f', Heating.MAX_HYSTERESIS),
                 common.format_num('.1f', temperature_hysteresis))
 
         if request_type == HeatingRequest.SCHEDULED and duration is None:
@@ -83,7 +81,6 @@ class Heating:
                 int(Heating.MIN_HEATING_DURATION.total_seconds()/60))
 
         return True, ''
-
 
     def __init__(self, config):
         """Virtually private constructor, use Heating.init_instance() instead."""
@@ -110,7 +107,7 @@ class Heating:
         # # Set up a separate log file to log whenever we're heating
         # self._heating_logger = logging.getLogger(type(self).LOGGER_NAME)
         # formatter = logging.Formatter('* %(message)s')
-        # file_handler = logging.handlers.TimedRotatingFileHandler(config['heating']['log_file'], 
+        # file_handler = logging.handlers.TimedRotatingFileHandler(config['heating']['log_file'],
         #             when=config['heating']['log_rotation_when'], interval=int(config['heating']['log_rotation_interval']),
         #             backupCount=int(config['heating']['log_rotation_backup_count']))
         # file_handler.setLevel(logging.INFO)
@@ -121,41 +118,41 @@ class Heating:
         # Members related to the heating loop thread
         self._latest_request_by = None            # Name of user who requested the most recent heating job
         self._num_consecutive_errors_before_broadcast = \
-            config['heating']['num_consecutive_errors_before_broadcast'] # Num of retrys before broadcasting a heating error
+            config['heating']['num_consecutive_errors_before_broadcast']  # Num of retrys before broadcasting a heating error
         self._max_idle_time = \
-            config['heating']['idle_time']        # Max. time to wait between __heating_loop() iterations
-        self._is_terminating = False              # During shutdown, we want to prevent start_heating() calls
-        self._start_heating = False               # Used to notify the __heating_loop() that there was a start_heating() request
-        self._run_heating_loop = True             # Flag to keep the heating thread alive
-        self._reach_temperature_only_once = False # In case you want to reach a specific temperature only once (stop heating after reaching it)
-        self._lock = threading.Lock()             # Thread will wait on the condition variable (so we can notify
-        self._condition_var = threading.Condition(self._lock) # it on shutdown or other changes
+            config['heating']['idle_time']         # Max. time to wait between __heating_loop() iterations
+        self._is_terminating = False               # During shutdown, we want to prevent start_heating() calls
+        self._start_heating = False                # Used to notify the __heating_loop() that there was a start_heating() request
+        self._run_heating_loop = True              # Flag to keep the heating thread alive
+        self._reach_temperature_only_once = False  # In case you want to reach a specific temperature only once (stop heating after reaching it)
+        self._lock = threading.Lock()                          # Thread will wait on the condition variable (so we can notify
+        self._condition_var = threading.Condition(self._lock)  # it on shutdown or other changes
         self._heating_loop_thread = threading.Thread(target=self.__heating_loop)
         self._heating_loop_thread.start()
 
         # Members related to temperature sensor check
-        self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time'] # Time to wait before checking the temperature trend while heating
-        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']       # Temperature inc/dec will be recognised if |delta_temp| >= threshold
-        self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']       # Time to wait before broadcasting subsequent trend warnings
+        self._temperature_trend_waiting_time = config['heating']['temperature_trend_waiting_time']  # Time to wait before checking the temperature trend while heating
+        self._temperature_trend_threshold = config['heating']['temperature_trend_threshold']        # Temperature inc/dec will be recognised if |delta_temp| >= threshold
+        self._temperature_trend_mute_time = config['heating']['temperature_trend_mute_time']        # Time to wait before broadcasting subsequent trend warnings
         self._last_trend_warning_issue_time = None  # Time of the last broadcasted temperature trend warning
 
         logging.getLogger().info('[Heating] Initialized heating singleton.')
 
-
-    def start_heating(self, request_type, requested_by, target_temperature=None,
+    def start_heating(
+            self, request_type, requested_by, target_temperature=None,
             temperature_hysteresis=0.5, duration=None, reach_temperature_only_once=False):
         """
         :param request_type: HeatingRequest (manual takes precedence over scheduled)
         :param requested_by: user name
         :param target_temperature: None or temperature to heat to
         :param target_hysteresis: hysteresis threshold
-        :param duration: None or 
+        :param duration: None or datetime.duration
         """
         # Sanity checks:
         if self._is_terminating:
             return False, 'System wird gerade heruntergefahren.'
 
-        sane, txt = type(self).sanity_check(request_type, target_temperature, 
+        sane, txt = type(self).sanity_check(request_type, target_temperature,
             temperature_hysteresis, duration)
         if not sane:
             return False, txt
@@ -165,7 +162,9 @@ class Heating:
                 logging.getLogger().info("[Heating] Ignoring periodic heating request, because system is paused.")
                 return False, 'Heizungsprogramme sind pausiert'
             else:
-                logging.getLogger().info("[Heating] Manual request by '{:s}' overrides the current 'paused' state.".format(requested_by))
+                logging.getLogger().info(
+                    "[Heating] Manual request by '{:s}' overrides the current 'paused' state.".format(
+                        requested_by))
                 self._is_paused = False
 
         # Acquire the lock, store this heat request.
@@ -186,7 +185,6 @@ class Heating:
         self._condition_var.release()
         return True, ''
 
-
     def stop_heating(self, requested_by):
         """Stops the heater (if currently active). Will be invoked by the user manually."""
         self._reach_temperature_only_once = False
@@ -197,7 +195,6 @@ class Heating:
         self._condition_var.notify()
         self._condition_var.release()
 
-    
     def toggle_pause(self, requested_by):
         """Toggle pause (heating will be stopped if currently active)."""
         self._is_paused = not self._is_paused
@@ -205,30 +202,25 @@ class Heating:
             self.stop_heating(requested_by)
         return self._is_paused
 
-
     @property
     def is_paused(self):
         return self._is_paused
-
 
     def query_deconz_status(self):
         """:return: Verbose multi-line string."""
         return self._zigbee_gateway.query_deconz_details()
 
-
     def query_heating_state(self):
         """:return: is_heating(bool), list(lpd433.LpdDeviceState)"""
         return self._lpd433_gateway.query_heating()
-
 
     def query_temperature(self):
         """:return: list(raspbee.TemperatureState)"""
         return self._zigbee_gateway.query_temperature()
 
-
     def query_temperature_for_heating(self):
         """To adjust the heating, we need a reference temperature reading.
-        However, sensors may be unreachable. Thus, we can configure a 
+        However, sensors may be unreachable. Thus, we can configure a
         "preferred reference temperature sensor order" which we iterate
         to obtain a valid reading. If no sensor is available, return None.
 
@@ -236,17 +228,14 @@ class Heating:
         """
         return self._zigbee_gateway.query_temperature_for_heating()
 
-
     def __stop_heating(self):
         """You must hold the lock before calling this method!"""
         self._is_manual_request = False
         self._is_heating = False
         self._lpd433_gateway.turn_off()
 
-
     def run_blocking(self):
         self._heating_loop_thread.join()
-
 
     def shutdown(self):
         """Shut down gracefully."""
@@ -264,15 +253,14 @@ class Heating:
         # Wait for thread
         self._heating_loop_thread.join()
 
-
     def __heating_loop(self):
-        end_time = None        # If heating duration is set, this holds the end time
-        use_controller = False # If temperature +/- hysteresis is set, we use the on/off controller
+        end_time = None         # If heating duration is set, this holds the end time
+        use_controller = False  # If temperature +/- hysteresis is set, we use the on/off controller
         should_heat = False
         current_temperature = None
         consecutive_errors = 0
         reference_temperature_log = list()
-        
+
         self._condition_var.acquire()
         while self._run_heating_loop:
             # Check if there was an incoming manual/periodic heating request while we slept:
@@ -288,7 +276,7 @@ class Heating:
                     self._controller.set_hysteresis(self._temperature_hysteresis)
                     use_controller = True
                     msg = "Starting BangBang to reach {:.1f} +/- {:.1f}° {}as requested by '{:s}'".format(
-                        self._target_temperature, self._temperature_hysteresis, 
+                        self._target_temperature, self._temperature_hysteresis,
                         ' once (stop afterwards) ' if self._reach_temperature_only_once else '',
                         self._latest_request_by)
                     logging.getLogger().info('[Heating] ' + msg)
@@ -309,8 +297,6 @@ class Heating:
                     end_time = time_utils.dt_offset(self._heating_duration)
                     msg = "This heating request will end at {}".format(time_utils.format(end_time))
                     logging.getLogger().info("[Heating] " + msg)
-                    # self._heating_logger.info(msg)
-
 
             if self._is_heating:
                 # Log temperature to see if room temperature actually increases
@@ -327,13 +313,14 @@ class Heating:
                     else:
                         should_heat = self._controller.update(current_temperature)
                         if self._reach_temperature_only_once and not should_heat:
-                            # If we want to heat the room up only once to reach a specific 
+                            # If we want to heat the room up only once to reach a specific
                             # temperature, we keep heating until the bang bang tells us to
                             # turn the heater off - this means, we reached temperature+hysteresis
                             # and now we can stop this heating job.
                             should_heat = False
                             self._is_heating = False
-                            self._reach_temperature_only_once = False # Prevent future tasks (e.g. periodic onces from heating up only once)
+                            # Prevent future tasks (e.g. periodic onces from heating up only once):
+                            self._reach_temperature_only_once = False
                             msg = "Heat up once: Stop heating as we reached {:.1f}° (target was {:.1f}°).".format(
                                     current_temperature,
                                     self._target_temperature
@@ -389,11 +376,10 @@ class Heating:
                 logging.getLogger().info('[Heating] Ensuring that LPD433 is turned off.')
                 ret = self._lpd433_gateway.turn_off()
 
-
-            ## Note: LPD433 plugs don't transmit anything, so we cannot check if they
-            ## are reachable/on/off/etc.
-            ## The following check was needed for ZigBee plugs (because they often
-            ## disconnected).
+            # # Note: LPD433 plugs don't transmit anything, so we cannot check if they
+            # # are reachable/on/off/etc.
+            # # The following check was needed for ZigBee plugs (because they often
+            # # disconnected).
             # # Check if all plugs are reachable:
             # is_heating, plug_states = self._heating_system.query_heating()
             # if len(plug_states) == 0 or any([not plug.reachable for plug in plug_states]):
@@ -405,7 +391,7 @@ class Heating:
                 self._broadcaster.error("Heizung reagiert nicht, bitte kontrollieren!")
                 # Mute error broadcast for the next few retrys
                 consecutive_errors = 0
-            
+
             # Compute idle time (in case this is a timed heating request)
             now = time_utils.dt_now()
             idle_time = self._max_idle_time
@@ -420,7 +406,6 @@ class Heating:
         self._condition_var.release()
         logging.getLogger().info('[Heating] Heating system has been shut down.')
         # self._heating_logger.info('Shutting down')
-
 
     def __compact_temperature_trend_log(self, reference_temperature_log):
         """Removes duplicate subsequent readings and returns only those
@@ -447,7 +432,6 @@ class Heating:
                 temperatures.append(t)
         return temperatures, num_readings
 
-
     def __check_temperature_trend(self, reference_temperature_log):
         # For how long have we collected the log?
         trend_period = len(reference_temperature_log) * self._max_idle_time
@@ -463,7 +447,7 @@ class Heating:
 
             # Check if there is an actual temperature increase
             if temperature_slope is not None:
-                # The slope defines the average change between two readings/heating 
+                # The slope defines the average change between two readings/heating
                 # loop iterations. Thus, accumulate it over the most recent
                 # "should-be-heating" period, so we actually see if there is an
                 # increase.
@@ -474,7 +458,7 @@ class Heating:
                         temperature_slope, len(temperatures), temperature_inc, determination_coefficient, trend_period))
                     # ... and warn the users (but avoid spamming them)
                     if self._last_trend_warning_issue_time is None or \
-                        (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
+                            (time_utils.dt_now() - self._last_trend_warning_issue_time).seconds >= self._temperature_trend_mute_time:
                         self._last_trend_warning_issue_time = time_utils.dt_now()
                         msg = 'Temperatur steigt zu wenig an, {:s}{:s}\u200a° ({:d} x {:s}\u200a°) innerhalb von {}'.format(
                                 '' if temperature_inc < 0 else '+',
@@ -485,6 +469,7 @@ class Heating:
                             )
                         broadcasting.MessageBroadcaster.instance().error(msg)
                         # Also send the list of temperatures:
+                        # TODO remove once we found suitable threshold/regression parameters?
                         broadcasting.MessageBroadcaster.instance().info(
-                            '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0], 
-                            'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```') # TODO remove once we found suitable threshold/regression parameters?
+                            '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0],
+                            'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```')

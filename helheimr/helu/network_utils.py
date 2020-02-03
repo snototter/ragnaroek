@@ -7,17 +7,16 @@ import logging
 import requests
 import subprocess
 import traceback
-import logging
-
 
 from . import heating
 from . import raspbee
 from . import telegram_bot
 
+
 def safe_http_get(url, headers=None, params=None, timeout=2.0, verify=True):
     """
-    Performs a GET request at the given url (string) with the given headers and parameters 
-    and returns the response if one was received within timeout (float) seconds. Otherwise, 
+    Performs a GET request at the given url (string) with the given headers and parameters
+    and returns the response if one was received within timeout (float) seconds. Otherwise,
     returns None.
     """
     try:
@@ -77,21 +76,20 @@ def check_url(url, timeout=2):
 
 def check_internet_connection(timeout=2):
     """Pings common DNS server to check, if we are online."""
-    hosts = ['1.0.0.1', # Cloudflare DNS (usually fastest ping for me)
-        '1.1.1.1', # Also Cloudfare,
-        '8.8.8.8', # Google DNS
-        '8.8.8.4' # Google again
-        ]
+    hosts = [
+        '1.0.0.1',  # Cloudflare DNS (usually fastest ping for me)
+        '1.1.1.1',  # Also Cloudfare
+        '8.8.8.8',  # Google DNS
+        '8.8.8.4']  # Google again
     for host in hosts:
         if ping(host, timeout):
             return True
     return False
 
 
-
 class ConnectionTester:
     __instance = None
-    API_NAME_DECONZ = 'deCONZ API' # Used as dict key and for display/reporting status
+    API_NAME_DECONZ = 'deCONZ API'  # Used as dict key and for display/reporting status
 
     @staticmethod
     def instance():
@@ -102,8 +100,7 @@ class ConnectionTester:
     def init_instance(ctrl_cfg):
         if ConnectionTester.__instance is None:
             ConnectionTester(ctrl_cfg)
-        return ConnectionTester.__instance        
-
+        return ConnectionTester.__instance
 
     def __init__(self, cfg):
         """Virtually private constructor, use TemperatureLog.init_instance() instead."""
@@ -121,11 +118,9 @@ class ConnectionTester:
             'deCONZ API': raspbee.get_api_url(cfg['control'])
         }
 
-
     def __load_known_hosts(self, libconf_attr_dict):
         """Load hosts from configuration file - use parameter name as dictionary key."""
-        return {k:libconf_attr_dict[k] for k in libconf_attr_dict}
-
+        return {k: libconf_attr_dict[k] for k in libconf_attr_dict}
 
     def list_known_connection_states(self, use_markdown=True):
         """Returns a multi-line string listing all known connections and their availability (ping, http get, etc.)"""
@@ -154,10 +149,9 @@ class ConnectionTester:
                 msg.append('\u2022 {} ist {}'.format(name, 'online' if reachable else 'offline :bangbang:'))
             all_online = all_online and reachable
 
-        msg.append('') # Empty line to separate text content
+        msg.append('')  # Empty line to separate text content
         if deconz_api_available:
             msg.append(heating.Heating.instance().query_deconz_status())
         else:
             msg.append('*Heizung:*\n\u2022 deCONZ API ist offline :bangbang:')
         return all_online, '\n'.join(msg)
-        
