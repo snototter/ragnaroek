@@ -9,18 +9,19 @@ aus - :snowflake: Heizung ausschalten
 config - :clock8: Heizungsprogramm einrichten
 details - Detaillierte Systeminformation
 ein - :high_brightness: Heizung einschalten
+einmal - :high_brightness: Einmalig aufheizen
 fernwaerme - Fernwärmestatus
 h - :high_brightness: Heizung umschalten
-help - Liste verfügbarer Befehle
-progs - :wrench: Programme/Aufgaben auflisten
-on - :high_brightness: Heizung einschalten
 heizen - :high_brightness: Heizung einschalten
-einmal - :high_brightness: Einmalig aufheizen
+help - Liste verfügbarer Befehle
+log - :wrench: Servicelog anzeigen
+on - :high_brightness: Heizung einschalten
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
+progs - :wrench: Programme/Aufgaben auflisten
 reboot - :wrench: PC neustarten
+restart - :wrench: Service neustarten
 rm - Heizungsprogramm löschen
-log - :wrench: Servicelog anzeigen
 shutdown - :wrench: PC herunterfahren
 status - Statusabfrage
 stop - :wrench: Heizungsservice beenden
@@ -35,7 +36,6 @@ Frequently used commands are in German (turning stuff on/off,
 querying data, ...). System commands (shutting off, configuring
 or deleting programs) are English.
 """
-#TODO add service /restart (confirmation, etc.)
 
 import datetime
 import logging
@@ -146,6 +146,8 @@ class HelheimrBot:
     CALLBACK_SYSTEM_CANCEL = 'sys0'
     CALLBACK_SYSTEM_POWEROFF = 'sys1'
     CALLBACK_SYSTEM_REBOOT = 'sys2'
+    CALLBACK_SERVICE_CANCEL = 'svc0'
+    CALLBACK_SERVICE_RESTART = 'svc1'
 
     # Markdown: uses bold, italics and monospace (to prevent interpreting numbers as phone numbers...)
     USE_MARKDOWN = True
@@ -297,6 +299,9 @@ class HelheimrBot:
 
         poweroff_handler = CommandHandler('shutdown', self.__cmd_poweroff, self._user_filter)
         self._dispatcher.add_handler(poweroff_handler)
+
+        restart_handler = CommandHandler('restart', self.__cmd_restart, self._user_filter)
+        self._dispatcher.add_handler(restart_handler)
 
         # Callback handler to provide inline keyboard (user must confirm/cancel on/off/etc. commands)
         self._dispatcher.add_handler(CallbackQueryHandler(self.__callback_handler))
@@ -857,8 +862,8 @@ class HelheimrBot:
             self._is_modifying_heating = False
 
         elif response == type(self).CALLBACK_SYSTEM_CANCEL:
-            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
             self._is_modifying_heating = False
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
 
         elif response == type(self).CALLBACK_SYSTEM_POWEROFF:
             self._is_modifying_heating = False
@@ -867,6 +872,22 @@ class HelheimrBot:
         elif response == type(self).CALLBACK_SYSTEM_REBOOT:
             self._is_modifying_heating = False
             self.__reboot_helper(query)
+
+        elif response == type(self).CALLBACK_SERVICE_CANCEL:
+            self._is_modifying_heating = False
+            self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
+
+        elif response == type(self).CALLBACK_SERVICE_RESTART:
+            self.__safe_message_reply(update, 'Service wird jetzt neugestartet...',
+                reply_markup=None)
+            # Restart after a short delay
+            time.sleep(1.5)
+            # Prevent sending the shutdown message
+            self._is_restarting = True
+            success, txt = common.shell_restart_service()
+            if not success:
+                logging.getLogger().error('[HelheimrBot] Could not restart service: ' + txt)
+                self.__safe_message_reply(update, 'Fehler beim Service-Neustart: ' + txt, reply_markup=None)
 
     def __rm_helper_keyboard_type_select(self):
         keyboard = [
@@ -1128,6 +1149,19 @@ class HelheimrBot:
                  telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SYSTEM_CANCEL)]]
         self._is_modifying_heating = self.__safe_message_reply(
             update, 'Raspberry wirklich herunterfahren?',
+            reply_markup=telegram.InlineKeyboardMarkup(keyboard))
+
+    def __cmd_restart(self, update, context):
+        """Restarts the heating service."""
+        if self._is_modifying_heating:
+            self.__safe_send(update.message.chat_id,
+                'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
+            return
+        self._is_modifying_heating = True
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_SERVICE_RESTART),
+                 telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SERVICE_CANCEL)]]
+        self._is_modifying_heating = self.__safe_message_reply(
+            update, 'Raspberry wirklich neustarten?',
             reply_markup=telegram.InlineKeyboardMarkup(keyboard))
 
     def __cmd_service_log(self, update, context):
