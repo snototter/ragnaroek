@@ -1,6 +1,6 @@
-# About
+# Ragnar&oslash;k
 * This repository is a collection of home automation related source and scripts.
-* Why name it ragnarök?<br/>Because once I'm fully dependent on an automated home, I'll be doomed.
+* Why name it ragnar&oslash;k?<br/>Because once I'm fully dependent on an automated home, I'll be doomed.
 * What's in here?
   * `helheimr` - A python3 systemd service to control our heating system. Highlights:
     * Task scheduling, temperature-aware controlling, etc.
