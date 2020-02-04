@@ -396,7 +396,7 @@ class HelheimrBot:
     def __cmd_help(self, update, context):
         txt = """*Liste verfügbarer Befehle:*
 /status - Statusabfrage.
-/details - Detaillierte Systeminformation.
+/details oder /d - Detaillierte Systeminformation.
 /progs - Liste aller Programme & Aufgaben.
 
 /ein oder /heizen oder /on
@@ -446,6 +446,8 @@ class HelheimrBot:
 
 /update - Repository aktualisieren
     und Service neustarten.
+
+/restart - Heizungsservice neustarten.
 
 /hilfe oder /help - Diese Hilfe."""
         self.__safe_send(update.message.chat_id, txt)
