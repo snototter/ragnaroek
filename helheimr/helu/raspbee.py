@@ -17,6 +17,7 @@ state of the plug.
 
 import json
 import logging
+import time
 
 from . import common
 from . import network_utils
@@ -221,14 +222,28 @@ class RaspBeeWrapper:
         return mapping
 
     def __map_deconz_temperature_sensors(self, cfg):
-        # Each of our sensors takes up 3 separate raspbee IDs (temperature, humidity, pressure)
-        r = network_utils.http_get_request(self.api_url + '/sensors')
-        if r is None:
-            return dict()
+        # Upon system reboot, deCONZ may take a while to come up. Thus,
+        # we retry the sensor query for up to 3 minutes.
+        logger = logging.getLogger()
+        num_retries = 0
+        max_num_retries = 6
+        r = None
+        while r is None:
+            r = network_utils.http_get_request(self.api_url + '/sensors')
+            if r is None:
+                if num_retries >= max_num_retries:
+                    logger.error('[RaspBeeWrapper] Could not query ZigBee sensors, stop retrying.')
+                    return dict()
+                else:
+                    logger.warning('[RaspBeeWrapper] Could not query ZigBee gateway, retrying.')
+                    time.sleep(30)
+            else:
+                break
+            num_retries += 1
 
         sensors = json.loads(r.content)
-        logger = logging.getLogger()
 
+        # Each of our sensors takes up 3 separate raspbee IDs (temperature, humidity, pressure)
         sensor_names = [
             cfg['raspbee']['temperature']['sensor_names'][k]
             for k in cfg['raspbee']['temperature']['sensor_names']]
