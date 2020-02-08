@@ -516,6 +516,10 @@ class HelheimrBot:
             int(cpu_info.cpu_freq_current), int(cpu_info.cpu_freq_min), int(cpu_info.cpu_freq_max)))
         if cpu_info.cpu_temperature is not None:
             msg.append('\u2022 CPU Temperatur: `{:.1f}`\u200a°'.format(cpu_info.cpu_temperature))
+        # Append (pretty) uptime
+        s, txt = common.shell_exec_command('uptime -p')
+        if s:
+            msg.append('\u2022 {:s}'.format(txt.capitalize()))
         #TODO Add system info (mem/uptime/disk_usage), check:
         # https://pypi.org/project/psutil/
         # https://psutil.readthedocs.io/en/latest/#recipes/
