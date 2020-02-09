@@ -583,8 +583,10 @@ class HelheimrBot:
                         temperature = val
                     else:
                         hysteresis = val
-                elif a[-1] == 'h':
+                elif a[-1] == 'h' or (len(a) > 3 and a[-3:] == 'min'):
                     h = float(a[:-1].replace(',', '.'))
+                    if a[-3:] == 'min':
+                        h *= 60.0
                     hours = int(h)
                     minutes = int((h - hours) * 60)
                     duration = datetime.timedelta(hours=hours, minutes=minutes)
