@@ -471,7 +471,7 @@ class HelheimrBot:
             if res is None:
                 txt += '\nDauerheizen ist eingestellt!'
             else:
-                td = datetime.timedelta(res)
+                td = datetime.timedelta(seconds=res)
                 txt += '\nRestzeit: {}'.format(time_utils.format_timedelta(td, small_space=True))
 
         paused = self._heating.is_paused
