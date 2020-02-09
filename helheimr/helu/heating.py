@@ -97,12 +97,13 @@ class Heating:
         self._broadcaster = broadcasting.MessageBroadcaster.instance()
 
         # Parameters defining what we have to do when heating:
-        self._target_temperature = None     # User wants a specific temperature...
-        self._temperature_hysteresis = 0.5  # +/- some hysteresis threshold
-        self._heating_duration = None       # Stop heating after this duration
-        self._is_manual_request = False     # Flag to indicate whether we have an active manual request
-        self._is_heating = False            # Used to notify the __heating_loop() that there was a stop_heating() request
-        self._is_paused = False             # While paused, scheduled heating tasks will be ignored
+        self._target_temperature = None      # User wants a specific temperature...
+        self._temperature_hysteresis = 0.5   # +/- some hysteresis threshold
+        self._heating_duration = None        # Stop heating after this duration
+        self._is_manual_request = False      # Flag to indicate whether we have an active manual request
+        self._is_heating = False             # Used to notify the __heating_loop() that there was a stop_heating() request
+        self._is_paused = False              # While paused, scheduled heating tasks will be ignored
+        self._residual_heating_time = None  # Used for status reports (None or remaining seconds)
 
         # # Set up a separate log file to log whenever we're heating
         # self._heating_logger = logging.getLogger(type(self).LOGGER_NAME)
@@ -205,6 +206,10 @@ class Heating:
     @property
     def is_paused(self):
         return self._is_paused
+
+    @property
+    def residual_heating_time(self):
+        return self._residual_heating_time
 
     def query_deconz_status(self):
         """:return: Verbose multi-line string."""
@@ -338,6 +343,9 @@ class Heating:
                     msg = "Heating request by '{:s}' has timed out, turning off the heater.".format(self._latest_request_by)
                     logging.getLogger().info("[Heating] " + msg)
                     # self._heating_logger.info(msg)
+                if end_time is not None:
+                    delta_t = end_time - time_utils.dt_now()
+                    self._residual_heating_time = delta_t.seconds
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
@@ -372,6 +380,8 @@ class Heating:
             else:
                 # We're not heating, so clear the temperature log
                 reference_temperature_log = list()
+                # ... similarly, clear the remaining time
+                self._residual_heating_time = None
                 # Additionally, we have to ensure that the plug is actually off
                 logging.getLogger().info('[Heating] Ensuring that LPD433 is turned off.')
                 ret = self._lpd433_gateway.turn_off()

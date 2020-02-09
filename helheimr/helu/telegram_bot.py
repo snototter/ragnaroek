@@ -466,6 +466,14 @@ class HelheimrBot:
             use_emoji=type(self).USE_EMOJI,
             include_state_details=detailed_report)
 
+        if is_heating:
+            res = self._heating.residual_heating_time
+            if res is None:
+                txt += '\nDauerheizen ist eingestellt!'
+            else:
+                td = datetime.timedelta(res)
+                txt += '\nRestzeit: {}'.format(time_utils.format_timedelta(td, small_space=True))
+
         paused = self._heating.is_paused
         if paused:
             txt += '\n\nHeizungsprogramme sind aktuell pausiert!'
