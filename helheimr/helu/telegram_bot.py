@@ -1243,7 +1243,7 @@ class HelheimrBot:
             _, txt1 = common.shell_pwd()
             _, txt2 = common.shell_whoami()
             _, txt3 = common.shell_uptime()
-            self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}'.format(txt2, txt1, txt3))
+            self.__safe_send(update.message.chat_id, 'User "{}"\npwd: "{}"\nuptime: {}\nChat ID: {}'.format(txt2, txt1, txt3, update.message.chat_id))
 
     def start(self):
         """Handle /start - welcome message."""
