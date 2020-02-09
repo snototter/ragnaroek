@@ -1176,7 +1176,7 @@ class HelheimrBot:
         keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_SERVICE_RESTART),
                  telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SERVICE_CANCEL)]]
         self._is_modifying_heating = self.__safe_message_reply(
-            update, 'Raspberry wirklich neustarten?',
+            update, 'Heizungsservice wirklich neustarten?',
             reply_markup=telegram.InlineKeyboardMarkup(keyboard))
 
     def __cmd_service_log(self, update, context):
