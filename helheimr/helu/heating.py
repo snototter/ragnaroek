@@ -103,7 +103,7 @@ class Heating:
         self._is_manual_request = False      # Flag to indicate whether we have an active manual request
         self._is_heating = False             # Used to notify the __heating_loop() that there was a stop_heating() request
         self._is_paused = False              # While paused, scheduled heating tasks will be ignored
-        self._residual_heating_time = None  # Used for status reports (None or remaining seconds)
+        self._heating_end_time = None        # If a heating request is timed, this will hold the end time
 
         # # Set up a separate log file to log whenever we're heating
         # self._heating_logger = logging.getLogger(type(self).LOGGER_NAME)
@@ -209,7 +209,10 @@ class Heating:
 
     @property
     def residual_heating_time(self):
-        return self._residual_heating_time
+        """Returns None or datetime.timedelta"""
+        if self._heating_end_time is None:
+            return None
+        return self._heating_end_time - time_utils.dt_now()
 
     def query_deconz_status(self):
         """:return: Verbose multi-line string."""
@@ -259,7 +262,7 @@ class Heating:
         self._heating_loop_thread.join()
 
     def __heating_loop(self):
-        end_time = None         # If heating duration is set, this holds the end time
+        self._heating_end_time = None
         use_controller = False  # If temperature +/- hysteresis is set, we use the on/off controller
         should_heat = False
         current_temperature = None
@@ -293,14 +296,14 @@ class Heating:
                     # self._heating_logger.info(msg)
 
                 if self._heating_duration is None:
-                    end_time = None
+                    self._heating_end_time = None
                     if not self._reach_temperature_only_once:
                         msg = "This heating request can only be stopped manually!"
                         logging.getLogger().info("[Heating] " + msg)
                         # self._heating_logger.info(msg)
                 else:
-                    end_time = time_utils.dt_offset(self._heating_duration)
-                    msg = "This heating request will end at {}".format(time_utils.format(end_time))
+                    self._heating_end_time = time_utils.dt_offset(self._heating_duration)
+                    msg = "This heating request will end at {}".format(time_utils.format(self._heating_end_time))
                     logging.getLogger().info("[Heating] " + msg)
 
             if self._is_heating:
@@ -336,16 +339,13 @@ class Heating:
                     should_heat = True
 
                 # Is heating duration over?
-                if end_time is not None and time_utils.dt_now() >= end_time:
+                if self._heating_end_time is not None and time_utils.dt_now() >= self._heating_end_time:
                     self._is_heating = False
-                    end_time = None
+                    self._heating_end_time = None
                     should_heat = False
                     msg = "Heating request by '{:s}' has timed out, turning off the heater.".format(self._latest_request_by)
                     logging.getLogger().info("[Heating] " + msg)
                     # self._heating_logger.info(msg)
-                if end_time is not None:
-                    delta_t = end_time - time_utils.dt_now()
-                    self._residual_heating_time = delta_t.seconds
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
@@ -380,8 +380,8 @@ class Heating:
             else:
                 # We're not heating, so clear the temperature log
                 reference_temperature_log = list()
-                # ... similarly, clear the remaining time
-                self._residual_heating_time = None
+                # ... similarly, clear the end time
+                self._heating_end_time = None
                 # Additionally, we have to ensure that the plug is actually off
                 logging.getLogger().info('[Heating] Ensuring that LPD433 is turned off.')
                 ret = self._lpd433_gateway.turn_off()
@@ -405,8 +405,8 @@ class Heating:
             # Compute idle time (in case this is a timed heating request)
             now = time_utils.dt_now()
             idle_time = self._max_idle_time
-            if end_time is not None and end_time > now:
-                diff = end_time - now
+            if self._heating_end_time is not None and self._heating_end_time > now:
+                diff = self._heating_end_time - now
                 idle_time = min(self._max_idle_time, diff.total_seconds())
 
             # Send thread to sleep
