@@ -10,8 +10,12 @@
   * `breidablik` - TBD, e-ink display
 
 ## Sneak Peek
-The RaspberryPi 3B+ running `helheimr`:
-![RaspberryPi/Helheimr](https://github.com/snototter/ragnaroek/raw/master/helheimr/assets/nastroend.jpg "Helheimr with LPD433 antenna")
+* The RaspberryPi 3B+ running `helheimr`:
+
+  ![RaspberryPi/Helheimr](helheimr/assets/nastroend.jpg "Helheimr with LPD433 antenna")
+* Telegram bot to control `helheimr`:
+
+  ![Telegram Bot](helheimr/assets/example-bot.png "Telegram Bot")
 
 
 ## Installation Helheimr
