@@ -130,6 +130,20 @@ Installation instructions on RaspberryPi 3B+:
 * Test e-ink paper
   * Shutdown, connect display
   * Clone waveshare repo: `git clone https://github.com/waveshare/e-Paper waveshare-eink`
+* TODO
+```
+Pi pip packages
+numpy==1.17.3
+Pillow==6.2.1
+pkg-resources==0.0.0
+RPi.GPIO==0.7.0
+spidev==3.4
+
+Python EPD is incredibly slow (12-14 sec refresh), C is okay-ish (4 sec)
+Have to try binding the C EPD implementation.
+
+
+```
 
 ## TODOs
 * [ ] REST API for e-ink display

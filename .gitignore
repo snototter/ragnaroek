@@ -1,4 +1,5 @@
 **/.venv*
+**/todo*
 **/.authorized-ids
 **.api-token*
 **.cfg
