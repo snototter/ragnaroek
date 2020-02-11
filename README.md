@@ -12,10 +12,10 @@
 ## Sneak Peek
 * Telegram bot to control `helheimr`:
 
-  ![Telegram Bot](helheimr/assets/example-bot.png "Telegram Bot")
+  ![Telegram Bot](assets/example-bot.png "Telegram Bot")
 * The RaspberryPi 3B+ running `helheimr`:
 
-  ![RaspberryPi/Helheimr](helheimr/assets/nastroend.jpg "Helheimr with LPD433 antenna")
+  ![RaspberryPi/Helheimr](assets/nastroend.jpg "Helheimr with LPD433 antenna")
 * The RaspberryPi running bilskirnir, TODO
 
 
@@ -73,7 +73,7 @@ Installation instructions on RaspberryPi 3B+:
 
   # Install xkcd font (added some missing glyphs to the original xkcd-Script font)
   mkdir -p ~/.fonts
-  cp assets/xkcd-Regular.otf ~/.fonts/
+  cp ../assets/xkcd-Regular.otf ~/.fonts/
   fc-cache -f -v
   # Check if it's listed
   fc-list
