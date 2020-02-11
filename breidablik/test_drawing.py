@@ -5,9 +5,9 @@ from vito import imutils
 from vito import imvis
 
 def load_font(font_size):
-    fonts = ['xkcdext-Regular', 'xkcd-Regular']
+    fonts = ['EPDFont', 'xkcdext-Regular', 'xkcd-Regular']
     for fs in fonts:
-        for ext in ['.otf', '.ttf']:
+        for ext in ['.ttc', '.otf', '.ttf']:
             try:
                 font = ImageFont.truetype(os.path.join('..', 'assets', fs + ext), size=font_size, encoding="unic", index=0, layout_engine=ImageFont.LAYOUT_RAQM)
                 return font
@@ -24,7 +24,7 @@ def cvt_bw(img_pil):
     # gray = imutils.rgb2gray(img_np)
     # imvis.imshow(gray, 'gray np')
     # print(gray.dtype)
-    mask_np = np.max(img_np, axis=2) > 128
+    mask_np = np.max(img_np, axis=2) > 210
     # imvis.imshow(masked)
     # import iminspect
     # iminspect.show(masked)
@@ -35,22 +35,25 @@ def cvt_bw(img_pil):
 
 
 def draw_xkcd_text():
-    scale_factor = 2
+    scale_factor = 1
     # Images look way nicer if text is drawn on 3-channel image
-    width, height = 300, 400
-    font_size = 36
+    width, height = 400, 300
+    font_size = 42
     img = Image.new('RGB', (scale_factor * width, scale_factor * height), 'white') # 1: clear the frame
     draw = ImageDraw.Draw(img)
 
     font = load_font(scale_factor * font_size)
     draw.text((scale_factor * 10, scale_factor * 30), "Hello", font=font, fill=(0, 0, 0))
     draw.text((scale_factor * 10, scale_factor * 100), "Hello @\u03c0 3.14", font=font, fill=(0, 0, 0))
-    draw.rectangle((200, 80, 360, 280), fill=0)
+    draw.rectangle((scale_factor * 200, scale_factor * 80, scale_factor * 360, scale_factor * 280), fill=0)
 
     # Default text rendering with PIL is ugly to say the least...
     # https://stackoverflow.com/questions/5414639/python-imaging-library-text-rendering
     img.show()
-    img = img.resize((width, height), Image.BICUBIC)# Image.ANTIALIAS)
+    if scale_factor == 1:
+        print('NOT SCALING')
+    else:
+        img = img.resize((width, height), Image.ANTIALIAS) #Image.LINEAR) #Image.BICUBIC)# Image.ANTIALIAS)
     # img.show()
     cvt_bw(img)
 
