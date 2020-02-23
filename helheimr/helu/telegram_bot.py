@@ -893,16 +893,8 @@ class HelheimrBot:
             self.__safe_edit_callback_query(query, 'Ok, dann ein andermal.')
 
         elif response == type(self).CALLBACK_SERVICE_RESTART:
-            self.__safe_message_reply(update, 'Service wird jetzt neugestartet...',
-                reply_markup=None)
-            # Restart after a short delay
-            time.sleep(1.5)
-            # Prevent sending the shutdown message
-            self._is_restarting = True
-            success, txt = common.shell_restart_service()
-            if not success:
-                logging.getLogger().error('[HelheimrBot] Could not restart service: ' + txt)
-                self.__safe_message_reply(update, 'Fehler beim Service-Neustart: ' + txt, reply_markup=None)
+            self._is_modifying_heating = False
+            self.__svc_restart_helper(query)
 
     def __rm_helper_keyboard_type_select(self):
         keyboard = [
@@ -1108,6 +1100,18 @@ class HelheimrBot:
         thread.daemon = True
         thread.start()
 
+    def __svc_restart_helper(self, query):
+        logging.getLogger().info('[HelheimrBot] User {} requested service restart.'.format(query.from_user.first_name))
+        self.__safe_edit_callback_query(query, 'Service wird jetzt neugestartet.')
+        # Restart after a short delay
+        time.sleep(1.5)
+        # Prevent sending the shutdown message
+        self._is_restarting = True
+        success, txt = common.shell_restart_service()
+        if not success:
+            logging.getLogger().error('[HelheimrBot] Could not restart service: ' + txt)
+            self.__safe_edit_callback_query(query, 'Fehler beim Service-Neustart: ' + txt)
+
     def __reboot_helper(self, query):
         """Helper function to reboot the PC (and gracefully
         shut down the service from a different thread)."""
@@ -1117,7 +1121,7 @@ class HelheimrBot:
         success, txt = common.shell_shutdown('-r', '+1')
         if not success:
             logging.getLogger().error('[HelheimrBot] Error rebooting the pi. ' + txt)
-            self.__safe_edit_callback_query(query, 'Fehler beim Neustarten. ' + txt)
+            self.__safe_edit_callback_query(query, 'Fehler beim PC-Neustart: ' + txt)
         else:
             thread = threading.Thread(target=self.shutdown)
             thread.daemon = True
