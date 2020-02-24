@@ -125,18 +125,12 @@ Installation instructions on RaspberryPi 3B+:
   ```
 * Install packages
   ```bash
-  sudo apt install wiringpi
-  sudo apt install python3-dev python3-venv python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev git
-  sudo -H pip3 install wheel
+  sudo apt install wiringpi libopenjp2-7 libtiff5
+  sudo apt install python3-dev python3-venv python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev git python3-numpy
+  sudo -H pip3 install wheel RPi.GPIO spidev Pillow
   ```
-* Enable serial interface:
-  ```
-  sudo raspi-config
-  # Interfacing Options => Serial
-  # * Login shell over serial => No
-  # * Enable serial port hardware => Yes
-  ```
-* Connect e-ink display:
+* Enable SPI interface via `sudo raspi-config` => Interfacing Options => SPI => Enable. Then, reboot.
+* Connect e-ink display (see https://www.waveshare.com/wiki/4.2inch_e-Paper_Module, Pi pin numbers correspond to the enumerated board pins; BCM numbers correspond to the GPIO number):
 
   |Display|BCM2835|Pi 3b+|
   |:-----:|:-----:|:----:|
@@ -149,9 +143,18 @@ Installation instructions on RaspberryPi 3B+:
   |RST    |17     |   11 |
   |BUSY   |24     |   18 |
 
-* Test e-ink paper
-  * Shutdown, connect display TODO needed?
-  * Clone waveshare repo: `git clone https://github.com/waveshare/e-Paper waveshare-eink`
+* Test e-ink paper (TODO replace this by a submodule of ragnaroek - the current waveshare 4.2in demo is broken - feb/2020)
+  ```bash
+  git clone https://github.com/waveshare/e-Paper waveshare-eink
+  cd waveshare-eink/cd RaspberryPi\&JetsonNano/c
+  nano examples/main.c
+  # Enable corresponding demo line, e.g. EPD_4in2_test();
+  make
+  ./epd
+
+  cd ../python
+  
+  ```
 * TODO
 ```
 Pi pip packages
