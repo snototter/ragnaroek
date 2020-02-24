@@ -22,10 +22,10 @@
 ## Installation Helheimr
 Installation instructions on RaspberryPi 3B+:
 
-* Download Raspbian (tested with Buster lite)
-  * Enable ssh (create empty `ssh` file)
-  * (Optional) For convenience, add public key to `/home/pi/.ssh`, see https://www.raspberrypi.org/documentation/remote-access/ssh/passwordless.md
-  * Configure wifi via wpa_supplicant.conf (country code=.., update_config=1)
+* Download Raspbian (tested with [Buster lite](https://downloads.raspberrypi.org/raspbian_lite_latest), releases `2019-09-26` and `2020-02-13`)
+  * Enable ssh (create empty `/boot/ssh` file)
+  * (Optional) For convenience, add public key to `/home/pi/.ssh`, see https://www.raspberrypi.org/documentation/remote-access/ssh/passwordless.md, i.e. `cat ~/.ssh/id_rsa.pub | ssh <USERNAME>@<IP-ADDRESS> 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys'`
+  * Configure wifi via `/boot/wpa_supplicant.conf` (set country_code=.., update_config=1, etc.), see https://raspberrypi.stackexchange.com/a/57023
 * Set up RaspBee (deCONZ, Phoscon) following their [setup guide](https://phoscon.de/en/raspbee/install#raspbian)
   * For convenience (and fear of trusting external websites):
     ```bash
@@ -110,12 +110,14 @@ Installation instructions on RaspberryPi 3B+:
 
 
 ## Installation Breidablik
-* Raspbian Buster Lite, [release 2019-09-26](https://downloads.raspberrypi.org/raspbian_lite_latest)
-* Install BCM2835 library
+Installation instructions on RaspberryPi 3B+:
+
+* Download Raspbian (tested with Buster lite) - enable ssh, wifi, set up authorized keys, etc. (see Helheimr instructions above)
+* Install the `BCM2835` library which provides access to GPIO and other IO functions:
   ```bash
-  wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.60.tar.gz
-  tar zxvf bcm2835-1.60.tar.gz 
-  cd bcm2835-1.60/
+  wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.62.tar.gz
+  tar zxvf bcm2835-1.62.tar.gz 
+  cd bcm2835-1.62/
   ./configure
   make
   sudo make check
@@ -127,8 +129,28 @@ Installation instructions on RaspberryPi 3B+:
   sudo apt install python3-dev python3-venv python3-pip libatlas-base-dev libjpeg-dev zlib1g-dev git
   sudo -H pip3 install wheel
   ```
+* Enable serial interface:
+  ```
+  sudo raspi-config
+  # Interfacing Options => Serial
+  # * Login shell over serial => No
+  # * Enable serial port hardware => Yes
+  ```
+* Connect e-ink display:
+
+  |Display|BCM2835|Pi 3b+|
+  |:-----:|:-----:|:----:|
+  |VCC    |3.3V   |  3.3V|
+  |GND    |GND    |  GND |
+  |DIN    |MOSI   |   19 |
+  |CLK    |SCLK   |   23 |
+  |CS     |CE0    |   24 |
+  |DC     |25     |   22 |
+  |RST    |17     |   11 |
+  |BUSY   |24     |   18 |
+
 * Test e-ink paper
-  * Shutdown, connect display
+  * Shutdown, connect display TODO needed?
   * Clone waveshare repo: `git clone https://github.com/waveshare/e-Paper waveshare-eink`
 * TODO
 ```
