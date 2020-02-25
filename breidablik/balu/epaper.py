@@ -25,6 +25,9 @@ except RuntimeError:
 
         def display(self, img):
             return None
+
+        def sleep(self):
+            pass
     
 # from . import broadcasting
 
@@ -53,4 +56,6 @@ class EPaperDisplay(object):
     def show_test_image(self):
         from PIL import Image
         img = Image.open('test.bmp')
-        self._epd.display(self._epd.getbuffer(img))
+        # self._epd.display(self._epd.getbuffer(img))
+        self._epd.display_4Gray(self._epd.getbuffer_4Gray(img))
+        self._epd.sleep()
