@@ -87,11 +87,11 @@ Installation instructions on RaspberryPi 3B+:
   * `scheduled-jobs.cfg` - (optional) pre-configure periodic heating/non-heating tasks
 * Register and start the service:
   ```bash
-    cd <prj-root>/helheimr/services
-    ./install-service.sh
+  cd <prj-root>/helheimr/services
+  ./install-service.sh
 
-    ### Check logs:
-    journalctl -f -u helheimr-heating.service
+  ### Check logs:
+  journalctl -f -u helheimr-heating.service
   ```
 * Set up a cronjob to check WIFI connection (and reboot upon error), as RaspBerry Pi 3 seems to "frequently" (about once per month) loose wireless connection.
   * Create a script, e.g. `sudo vi /usr/local/bin/ensure-wifi.sh` with
@@ -170,11 +170,11 @@ Installation instructions on RaspberryPi 3B+:
     ```
 * Register and start the service
   ```bash
-    cd <prj-root>/helheimr/services
-    ./install-service.sh
+  cd <prj-root>/breidablik/services
+  ./install-service.sh
 
-    ### Check logs:
-    journalctl -f -u helheimr-heating.service
+  ### Check logs:
+  journalctl -f -u breidablik-display.service
   ```
 
 ```
