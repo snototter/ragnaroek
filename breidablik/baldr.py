@@ -70,10 +70,15 @@ class Baldr(object):
                 logging.getLogger().error('[Baldr] Cannot register handler for signal {} #{}'.format(sig.name, sig.value))
 
         # Load configuration files
-        ctrl_cfg = common.load_configuration('configs/display.cfg')
+        display_cfg = common.load_configuration('configs/display.cfg')
         # telegram_cfg = common.load_configuration('configs/bot.cfg')
         owm_cfg = common.load_configuration('configs/owm.cfg')
         # schedule_job_list_path = 'configs/scheduled-jobs.cfg'
+
+        # Start the display wrapper
+        self._epaper = epaper.EPaperDisplay(display_cfg)
+        #TODO
+        self._epaper.show_test_image()
 
         # # Then, start the job scheduler
         # self._scheduler = scheduling.HelheimrScheduler.init_instance(

@@ -5,12 +5,36 @@
 import logging
 import traceback
 
+try:
+    from .waveshare.epd4in2 import EPD
+    _use_display = True
+except RuntimeError:
+    _use_display = False
+    class EPD(object):
+        def __init__(self):
+            logging.getLogger().warning("[EPD] You're using the dummy EPD implementation, because waveshare couldn't be loaded!")
+        
+        def init(self):
+            pass
+
+        def Clear(self):
+            pass
+
+        def getbuffer(self, img):
+            return None
+
+        def display(self, img):
+            return None
+    
 # from . import broadcasting
 
 class EPaperDisplay(object):
     def __init__(self, cfg):
-        #TODO
-        logging.getLogger().info('[EPaperDisplay] Initialized')
+        print(cfg['display']['refresh_time']) #TODO
+        self._epd = EPD()
+        self._epd.init()
+        self._epd.Clear()
+        logging.getLogger().info('[EPaperDisplay] Initialized display wrapper')
         # # GPIO pin number to send the radio data.
         # self._tx_gpio_pin = cfg['lpd433']['gpio_pin_tx']
 
@@ -25,3 +49,8 @@ class EPaperDisplay(object):
         # self.turn_off()
         # for h in self._heating_plugs:
         #     logging.getLogger().info('[LPD433] Initialized plug: {}'.format(h))
+
+    def show_test_image(self):
+        from PIL import Image
+        img = Image.open('test.bmp')
+        self._epd.display(epd.getbuffer(img))
