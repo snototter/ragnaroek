@@ -25,7 +25,7 @@ from helu import weather
 
 
 
-class Hel(object):
+class Baldr(object):
     def __init__(self):
         self._is_terminating = False
         self._logger = None
@@ -33,7 +33,7 @@ class Hel(object):
         # self._scheduler = None
         # self._weather_service = None
 
-    def control_heating(self):
+    def run_control_loop(self):
         # Set up logging, see examples at:
         #   http://www.blog.pythonlibrary.org/2014/02/11/python-how-to-create-rotating-logs/
         # and the cookbook at https://docs.python.org/3/howto/logging-cookbook.html
@@ -70,7 +70,7 @@ class Hel(object):
                 logging.getLogger().error('[Baldr] Cannot register handler for signal {} #{}'.format(sig.name, sig.value))
 
         # Load configuration files
-        ctrl_cfg = common.load_configuration('configs/ctrl.cfg')
+        ctrl_cfg = common.load_configuration('configs/display.cfg')
         # telegram_cfg = common.load_configuration('configs/bot.cfg')
         owm_cfg = common.load_configuration('configs/owm.cfg')
         # schedule_job_list_path = 'configs/scheduled-jobs.cfg'
@@ -82,8 +82,8 @@ class Hel(object):
         # Start the webserver for our e-ink display
         #TODO flask + flask-json
 
-        # # Initialize weather service
-        # self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
+        # Initialize weather service
+        self._weather_service = weather.WeatherForecastOwm.init_instance(owm_cfg)
 
         # # Run the event loops forever:
         # try:
@@ -91,12 +91,15 @@ class Hel(object):
         #     # self._telegram_bot.idle()
         # except KeyboardInterrupt:
         #     self._logger.info("[Hel] Received keyboard interrupt")
-
+        wr = self._weather_service.report()
+        print(wr.format_message(False, False))
+        fc = self._weather_service.forecast()
+        print(fc.format_message(False, False))
 
         self.__shutdown_gracefully()
 
     def __shutdown_signal(self, sig, frame):
-        logging.getLogger().info('[Hel] Signal {} received - preparing shutdown.'.format(sig))
+        logging.getLogger().info('[Baldr] Signal {} received - preparing shutdown.'.format(sig))
         self.__shutdown_gracefully()
 
     def __shutdown_gracefully(self):
@@ -104,13 +107,12 @@ class Hel(object):
             return
         self._is_terminating = True
         # Gracefully shut down
-        self._logger.info("[Hel] Shutting down...")
-        self._telegram_bot.shutdown()
-        self._scheduler.shutdown()
-        self._heating.shutdown()
-        self._logger.info("[Hel] All sub-systems are on hold, good bye!")
+        self._logger.info("[Baldr] Shutting down...")
+        # self._scheduler.shutdown()
+        # self._heating.shutdown()
+        self._logger.info("[Baldr] All sub-systems are on hold, good bye!")
 
 
 if __name__ == '__main__':
-    hel = Hel()
-    hel.control_heating()
+    hel = Baldr()
+    hel.run_control_loop()

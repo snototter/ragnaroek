@@ -243,19 +243,19 @@ class WeatherReport:
         lines.append('')  # Will be joined with a newline
 
         lines.append('Bewölkung: {}\u200a%'.format(common.format_num('d', self.clouds, use_markdown)))
-        lines.append('Luftfeuchte: {}\u200a%'.format(common.format_num('d', self.humidity)))
+        lines.append('Luftfeuchte: {}\u200a%'.format(common.format_num('d', self.humidity, use_markdown)))
         if self.atmospheric_pressure is not None:
-            lines.append('Luftdruck: {}\u200ahPa'.format(common.format_num('d', self.atmospheric_pressure)))
+            lines.append('Luftdruck: {}\u200ahPa'.format(common.format_num('d', self.atmospheric_pressure, use_markdown)))
 
         if self.rain is not None:
-            lines.append('Niederschlag: {}\u200amm'.format(common.format_num('.1f', self.rain)))
+            lines.append('Niederschlag: {}\u200amm'.format(common.format_num('.1f', self.rain, use_markdown)))
 
         if self.snow is not None:
-            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.snow)))
+            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.snow, use_markdown)))
 
         if self.wind is not None and self.wind['speed'] is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
-                    common.format_num('.1f', self.wind['speed']),
+                    common.format_num('.1f', self.wind['speed'], use_markdown),
                     ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else ''
                 ))
         lines.append('')  # Will be joined with a newline
