@@ -857,6 +857,7 @@ def test_sensors():
             #     broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar!')
 
 
+#TODO add offline mode (don't test network connectivity during night/whenever wifi is off)
 def test_network_connectivity():
     # Check all known hosts, only broadcast message if at least one seems to be down.
     all_online, msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
