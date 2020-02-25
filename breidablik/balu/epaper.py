@@ -53,4 +53,4 @@ class EPaperDisplay(object):
     def show_test_image(self):
         from PIL import Image
         img = Image.open('test.bmp')
-        self._epd.display(epd.getbuffer(img))
+        self._epd.display(self._epd.getbuffer(img))
