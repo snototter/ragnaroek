@@ -1,7 +1,7 @@
 #!/bin/bash -
 
 # Disable & stop home automation services, clean up installed files
-echo "Stopping service helheimr-telegram-bot.service"
+echo "Stopping service helheimr-heating.service"
 sudo systemctl disable helheimr-heating.service
 sudo systemctl stop helheimr-heating.service
 

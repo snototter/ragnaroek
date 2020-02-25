@@ -65,25 +65,27 @@ Installation instructions on RaspberryPi 3B+:
   sudo apt install -y python3-dev python3-pip python3-venv libatlas-base-dev libjpeg-dev zlib1g-dev
   sudo -H pip3 install rpi-rf
   ```
-* Checkout the source code and set up virtual environment (if some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh`)<br/>
-  ```bash
-  git clone https://github.com/snototter/ragnaroek.git
-  cd ragnaroek/helheimr
-  ./prepare_environment_py3.sh
+* Checkout the source code and set up the virtual environment.
+  * If some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh`
+  * Bash script to set up the code base:
+    ```bash
+    git clone https://github.com/snototter/ragnaroek.git
+    cd ragnaroek/helheimr
+    ./prepare_environment_py3.sh
 
-  # Install xkcd font (added some missing glyphs to the original xkcd-Script font)
-  mkdir -p ~/.fonts
-  cp ../assets/xkcd-Regular.otf ~/.fonts/
-  fc-cache -f -v
-  # Check if it's listed
-  fc-list
-  ```
+    # Install xkcd font (added some missing glyphs to the original xkcd-Script font)
+    mkdir -p ~/.fonts
+    cp ../assets/xkcd-Regular.otf ~/.fonts/
+    fc-cache -f -v
+    # Check if it's listed
+    fc-list
+    ```
 * Prepare configuration files, place them into `<prj-root>/helheimr/configs/`:
   * `bot.cfg` - everything related to the Telegram bot
   * `ctrl.cfg` - heating, scheduling, logging, sensors, etc.
   * `owm.cfg` - OpenWeatherMap configuration
   * `scheduled-jobs.cfg` - (optional) pre-configure periodic heating/non-heating tasks
-* Register and start the service
+* Register and start the service:
   ```bash
     cd <prj-root>/helheimr/services
     ./install-service.sh
@@ -91,7 +93,7 @@ Installation instructions on RaspberryPi 3B+:
     ### Check logs:
     journalctl -f -u helheimr-heating.service
   ```
-* Set up a cronjob to check WIFI connection (and reboot upon error), as raspberry 3's seem to "frequently" (about once per month) loose wireless connection.
+* Set up a cronjob to check WIFI connection (and reboot upon error), as RaspBerry Pi 3 seems to "frequently" (about once per month) loose wireless connection.
   * Create a script, e.g. `sudo vi /usr/local/bin/ensure-wifi.sh` with
     ```bash
     #!/bin/bash --
@@ -158,13 +160,22 @@ Installation instructions on RaspberryPi 3B+:
   # due to missing cast/incorrect division operator)
   python3 examples/epd_4in2_test.py
   ```
-* Set up service repository
+* Checkout the source code and set up the virtual environment.
+  * If some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh` TODO freeze package once deployed!
+  * Bash script to set up the code base:
+    ```bash
+    git clone https://github.com/snototter/ragnaroek.git
+    cd ragnaroek/breidablik
+    ./prepare_environment_py3.sh
+    ```
+* Register and start the service
   ```bash
-  git clone https://github.com/snototter/ragnaroek.git
-  cd ragnaroek/breidablik
-  ./prepare_environment_py3.sh
-  ```
+    cd <prj-root>/helheimr/services
+    ./install-service.sh
 
+    ### Check logs:
+    journalctl -f -u helheimr-heating.service
+  ```
 
 ```
 Pi pip packages
