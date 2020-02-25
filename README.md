@@ -65,7 +65,7 @@ Installation instructions on RaspberryPi 3B+:
   sudo apt install -y python3-dev python3-pip python3-venv libatlas-base-dev libjpeg-dev zlib1g-dev
   sudo -H pip3 install rpi-rf
   ```
-* Checkout the source code and set up virtual environment (if some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh`)
+* Checkout the source code and set up virtual environment (if some time in the future the newer packages would break the application, use the provided `frozen-requirements.txt` instead of `requirements.txt`, see `prepare_environment_py3.sh`)<br/>
   ```bash
   git clone https://github.com/snototter/ragnaroek.git
   cd ragnaroek/helheimr
@@ -143,19 +143,29 @@ Installation instructions on RaspberryPi 3B+:
   |RST    |17     |   11 |
   |BUSY   |24     |   18 |
 
-* Test e-ink paper (TODO replace this by a submodule of ragnaroek - the current waveshare 4.2in demo is broken - feb/2020)
+* (Optional) Test e-ink paper
   ```bash
   git clone https://github.com/waveshare/e-Paper waveshare-eink
   cd waveshare-eink/cd RaspberryPi\&JetsonNano/c
   nano examples/main.c
-  # Enable corresponding demo line, e.g. EPD_4in2_test();
+  # Check that the correct test is enabled in main(), e.g. EPD_4in2_test();
   make
   ./epd
-
-  cd ../python
   
+  # Python
+  cd ../python
+  # Fix the grayscale demo (as of February 2020, waveshare's epd4in2 is broken
+  # due to missing cast/incorrect division operator)
+  python3 examples/epd_4in2_test.py
   ```
-* TODO
+* Set up service repository
+  ```bash
+  git clone https://github.com/snototter/ragnaroek.git
+  cd ragnaroek/breidablik
+  ./prepare_environment_py3.sh
+  ```
+
+
 ```
 Pi pip packages
 numpy==1.17.3

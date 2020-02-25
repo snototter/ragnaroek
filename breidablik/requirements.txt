@@ -9,3 +9,6 @@ RPi.GPIO
 numpy
 spidev
 vito
+emoji
+psutil
+pyowm

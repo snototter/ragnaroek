@@ -3,6 +3,7 @@
 """The main controlling script."""
 
 import logging
+import logging.handlers
 import os
 import signal
 import sys
@@ -15,11 +16,12 @@ import sys
 # from helu import scheduling
 # from helu import telegram_bot
 # from helu import temperature_log
-# from helu import weather
+
 from balu import epaper
 
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'helheimr'))
 from helu import common
+from helu import weather
 
 
 
