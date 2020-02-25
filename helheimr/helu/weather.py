@@ -251,7 +251,7 @@ class WeatherReport:
             lines.append('Niederschlag: {}\u200amm'.format(common.format_num('.1f', self.rain)))
 
         if self.snow is not None:
-            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.rain)))
+            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.snow)))
 
         if self.wind is not None and self.wind['speed'] is not None:
             lines.append('Wind: {}\u200akm/h{}'.format(
