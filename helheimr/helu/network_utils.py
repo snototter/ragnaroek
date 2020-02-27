@@ -12,6 +12,10 @@ from . import heating
 from . import raspbee
 from . import telegram_bot
 
+# TODO 
+# * Replace network check (ping) by more efficient socket approach https://stackoverflow.com/a/33117579
+# * exception handling in hel (e.g. all initializations upon (re)start)
+# * reconnect telegram: journalctl --since "2 hours ago" -u helheimr-heating.service | grep telegram.error.NetworkError
 
 def safe_http_get(url, headers=None, params=None, timeout=2.0, verify=True):
     """
