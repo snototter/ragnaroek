@@ -231,7 +231,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
             ax.plot(unzipped[0], values,
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
                 label=plot_labels[sn], zorder=10)
-
+    #TODO skip adjustments if all curves were empty
     # Adjust x-axis
     # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
     ax.tick_params(axis='x', rotation=65, direction='in')
