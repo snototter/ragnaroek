@@ -216,6 +216,8 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     # Plot the curves
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
+        if len(unzipped) < 2:
+            logging.getLogger().warning("Empty temperature curve for sensor '{:s}'.".format(sn))
         if smoothing_window > 2:
             values = smooth(unzipped[1], smoothing_window)
         else:
