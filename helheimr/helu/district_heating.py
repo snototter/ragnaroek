@@ -60,7 +60,6 @@ class DistrictHeatingQueryParser(HTMLParser):
             'pos41': 'consumption_power',
         }
         self._interesting_divs = self._div_mapping.keys()
-        #TODO add system status? (solar panel state, speicher, verbrauch, etc)
 
     @property
     def status_dict(self):
@@ -125,7 +124,7 @@ class DistrictHeatingQueryParser(HTMLParser):
 
         if self.consumption_state is not None:
             #TODO Rename all of these "system informations" to something more explanatory
-            # First we need to know, what the symbols on the CMI gateway actually mean
+            # To do this, we first need to know, what the symbols on the CMI gateway actually mean
             msg.append('\u2022 Verbrauch ist {}'.format(
                 'eingeschaltet bei {}\u200a°, {}\u200akW'.format(
                     common.format_num('.1f', self.consumption_temperature, use_markdown),

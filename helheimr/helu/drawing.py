@@ -214,10 +214,12 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     ax = fig.gca()
 
     # Plot the curves
+    num_skipped = 0
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
         if len(unzipped) < 2:
             logging.getLogger().warning("Empty temperature curve for sensor '{:s}'.".format(sn))
+            num_skipped += 1
             continue
         if smoothing_window > 2:
             values = smooth(unzipped[1], smoothing_window)
@@ -232,52 +234,53 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
             ax.plot(unzipped[0], values,
                 color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
                 label=plot_labels[sn], zorder=10)
-    #TODO skip adjustments if all curves were empty
-    # Adjust x-axis
-    # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
-    ax.tick_params(axis='x', rotation=65, direction='in')
-    plt.xticks(x_tick_values, x_tick_labels)
+    # Skip adjustments if all curves were empty
+    if num_skipped < len(sensor_names):
+        # Adjust x-axis
+        # See https://www.geeksforgeeks.org/python-matplotlib-pyplot-ticks/
+        ax.tick_params(axis='x', rotation=65, direction='in')
+        plt.xticks(x_tick_values, x_tick_labels)
 
-    # Adjust y-axis
-    ymin_initial, ymax = plt.ylim()
-    span = ymax - ymin_initial
-    # ... ensure y-axis spans a minimum amount of degrees
-    delta = np.ceil(min_temperature_span - span)
-    # ... if there are even more, increase the range slightly so
-    # we get a nice top/bottom border
-    if delta < 0:
-        delta = 2
-    ymin = ymin_initial - delta * 0.7
-    ymax = ymax + delta * 0.3
-    plt.ylim(ymin, ymax)
+        # Adjust y-axis
+        ymin_initial, ymax = plt.ylim()
+        span = ymax - ymin_initial
+        # ... ensure y-axis spans a minimum amount of degrees
+        delta = np.ceil(min_temperature_span - span)
+        # ... if there are even more, increase the range slightly so
+        # we get a nice top/bottom border
+        if delta < 0:
+            delta = 2
+        ymin = ymin_initial - delta * 0.7
+        ymax = ymax + delta * 0.3
+        plt.ylim(ymin, ymax)
 
-    # Adjust ticks on y-axis
-    yminc = np.ceil(ymin)
-    # ... we want a sufficient padding between bottom and the lowest temperature grid line
-    if yminc - ymin < 0.8:
-        yminc += 1
-    # # ... be consistent: only show even temperature ticks
-    # if yminc.astype(np.int32) % 2 == 1:
-    #     yminc += 1
+        # Adjust ticks on y-axis
+        yminc = np.ceil(ymin)
+        # ... we want a sufficient padding between bottom and the lowest temperature grid line
+        if yminc - ymin < 0.8:
+            yminc += 1
+        # # ... be consistent: only show even temperature ticks
+        # if yminc.astype(np.int32) % 2 == 1:
+        #     yminc += 1
 
-    y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32))
-    y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
-    ax.tick_params(axis='y', direction='in')
-    plt.yticks(y_ticks, y_tick_labels)
+        y_ticks = range(yminc.astype(np.int32), ymax.astype(np.int32))
+        y_tick_labels = ['{:d}°'.format(t) for t in y_ticks]
+        ax.tick_params(axis='y', direction='in')
+        plt.yticks(y_ticks, y_tick_labels)
 
-    # Plot a curve (z-order behind temperature plots but above of grid)
-    # indicating if heating was active
-    unzipped = tuple(zip(*was_heating))
-    heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
-    ax.plot(unzipped[0], heating_values,
-            color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth,
-            label='Heizung', zorder=2)
+        # Plot a curve (z-order behind temperature plots but above of grid)
+        # indicating if heating was active
+        unzipped = tuple(zip(*was_heating))
+        heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
+        ax.plot(unzipped[0], heating_values,
+                color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth,
+                label='Heizung', zorder=2)
 
-    # Title and legend
-    plt.title('Temperaturverlauf [°C]')
-    ax.grid(True, linewidth=linewidth-0.5, alpha=grid_alpha)
-    ax.legend(loc='lower center', fancybox=True,
-        frameon=False, ncol=legend_columns)
+        # Title and legend
+        plt.title('Temperaturverlauf [°C]')
+        ax.grid(True, linewidth=linewidth-0.5, alpha=grid_alpha)
+        ax.legend(loc='lower center', fancybox=True,
+            frameon=False, ncol=legend_columns)
 
     # => if frameon=True, set framealpha=0.3 See https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html
     # If we need to change the legend ordering:
@@ -292,7 +295,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     fig.tight_layout(pad=1.01)  # Default is pad=1.08
     fig.canvas.draw()
 
-    # Export figure (and return or show it)
+    # Export figure (and return it - unless we're debugging, then save and show)
     img_np = plt2img(fig, dpi=dpi)
     img_pil = np2pil(img_np)
 
