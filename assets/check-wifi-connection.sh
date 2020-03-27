@@ -10,6 +10,6 @@ if [[ "$currenttime" > "${wake_time}" ]] && [[ "$currenttime" < "${sleep_time}" 
    
   if [[ $? != 0 ]]; then
     echo "Cannot reach ip ${known_ip}, rebooting!" | systemd-cat -t helheimr -p warning
-    sudo /sbin/shutdown -r now
+    sudo /sbin/shutdown -r +1
   fi
 fi
