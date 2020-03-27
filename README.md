@@ -94,7 +94,7 @@ Installation instructions on RaspberryPi 3B+:
   journalctl -f -u helheimr-heating.service
   ```
 * Set up a cronjob to check WIFI connection (and reboot upon error), as RaspBerry Pi 3 seems to "frequently" (about once per month) loose wireless connection.
-  * Create a script, e.g. `sudo vi /usr/local/bin/ensure-wifi.sh` with
+  * Create a script, e.g. `sudo vi /usr/local/bin/check-gateway-connection.sh` with
     ```bash
     #!/bin/bash --
     wake_time="06:30"
@@ -107,14 +107,21 @@ Installation instructions on RaspberryPi 3B+:
       ping -c4 ${known_ip} > /dev/null
        
       if [[ $? != 0 ]]; then
+        echo "Cannot reach ip ${known_ip}, rebooting!" | systemd-cat -t helheimr -p warning
         sudo /sbin/shutdown -r now
       fi
     fi
     ```
-  * Adjust permissions: `sudo chmod 755 /usr/local/bin/ensure-wifi.sh`
+  * Adjust permissions: `sudo chmod 755 /usr/local/bin/check-gateway-connection.sh`
   * Add a cronjob, `crontab -e`, e.g. every 15 minutes:
     ```
-    */15 * * * * /usr/bin/sudo -H /usr/local/bin/ensure-wifi.sh >> /dev/null 2>&1
+    # Check that we're connected to the gateway
+    */15 * * * * /usr/bin/sudo -H /usr/local/bin/check-gateway-connection.sh >> /dev/null 2>&1
+    ```
+  * Additionally, on Pi 3B+ we may run into [WIFI bounces](https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=234058&start=50). To prevent this, add a cronjob to scan the WIFI every 2 minutes:
+    ```
+    # Explicitly trigger wpa_cli SCAN commands to prevent WIFI bounces
+    */2 * * * * /usr/bin/sudo -H /sbin/wpa_cli -i wlan0 scan
     ```
 
 

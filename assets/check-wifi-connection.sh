@@ -9,6 +9,7 @@ if [[ "$currenttime" > "${wake_time}" ]] && [[ "$currenttime" < "${sleep_time}" 
   ping -c4 ${known_ip} > /dev/null
    
   if [[ $? != 0 ]]; then
+    echo "Cannot reach ip ${known_ip}, rebooting!" | systemd-cat -t helheimr -p warning
     sudo /sbin/shutdown -r now
   fi
 fi
