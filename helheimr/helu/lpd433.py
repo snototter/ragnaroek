@@ -103,7 +103,7 @@ class LpdDevice(object):
 
     def __send_code(self, code):
         try:
-            logging.getLogger().info("[LPD433] Sending '{} ({:s})' to '{}'".format(code,
+            logging.getLogger().debug("[LPD433] Sending '{} ({:s})' to '{}'".format(code,
                 'on' if code == self._code_on else 'off',
                 self._display_name))
             rfdevice = RFDevice(self._gpio_pin)

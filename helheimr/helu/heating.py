@@ -383,7 +383,7 @@ class Heating:
                 # ... similarly, clear the end time
                 self._heating_end_time = None
                 # Additionally, we have to ensure that the plug is actually off
-                logging.getLogger().info('[Heating] Ensuring that LPD433 is turned off.')
+                logging.getLogger().debug('[Heating] Ensuring that LPD433 is turned off.')
                 ret = self._lpd433_gateway.turn_off()
 
             # # Note: LPD433 plugs don't transmit anything, so we cannot check if they
