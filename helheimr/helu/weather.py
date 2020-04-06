@@ -139,7 +139,7 @@ class Forecast:
         for i in range(len(self._reports)):
             r = self._reports[i]
             if mark_day_break and i > 0 and r.reference_time.hour < self._reports[i-1].reference_time.hour:
-                lines.append('----- Morgen -----')
+                lines.append('\u00b7\u00b7\u00b7\u00b7\u00b7 Morgen \u00b7\u00b7\u00b7\u00b7\u00b7')
             lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
         return '\n'.join(lines)
 
