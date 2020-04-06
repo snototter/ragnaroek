@@ -127,7 +127,7 @@ class Forecast:
         self._prevalent_detailed_status = sorted_states[0][0]
         self._prevalent_weather_emoji = sorted_states[0][1]
 
-    def format_message(self, use_markdown=True, use_emoji=True):
+    def format_message(self, use_markdown=True, use_emoji=True, mark_day_break=True):
         lines = list()
         lines.append('{}Vorhersage:{}'.format(
             '*' if use_markdown else '', '*' if use_markdown else ''))
@@ -136,7 +136,10 @@ class Forecast:
             ' ' + self._prevalent_weather_emoji if use_emoji else '',
             common.format_num('d', self._min_temp, use_markdown=use_markdown),
             common.format_num('d', self._max_temp, use_markdown=use_markdown)))
-        for r in self._reports:
+        for i in range(len(self._reports)):
+            r = self._reports[i]
+            if mark_day_break and i > 0 and r.reference_time.hour < self._reports[i-1].reference_time.hour:
+                lines.append('----- Morgen -----')
             lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
         return '\n'.join(lines)
 
