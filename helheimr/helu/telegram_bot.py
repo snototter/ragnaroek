@@ -1025,7 +1025,7 @@ class HelheimrBot:
                     msg.append(report.format_message(use_markdown=type(self).USE_MARKDOWN, use_emoji=type(self).USE_EMOJI))
                 if forecast is not None:
                     msg.append('')
-                    msg.append(forecast.format_message(use_markdown=type(self).USE_MARKDOWN, use_emoji=type(self).USE_EMOJI), mark_day_break=True)
+                    msg.append(forecast.format_message(use_markdown=type(self).USE_MARKDOWN, use_emoji=type(self).USE_EMOJI, mark_day_break=True))
                 txt = '\n'.join(msg)
                 self.__safe_send(update.message.chat_id, txt)
         except:
