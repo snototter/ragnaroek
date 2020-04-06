@@ -1117,7 +1117,7 @@ class HelheimrBot:
     def __svc_restart_helper(self, query):
         """Restart service via command line."""
         logging.getLogger().info('[HelheimrBot] User {} requested service restart.'.format(query.from_user.first_name))
-        self.__safe_edit_callback_query(query, 'Service wird jetzt neugestartet.')
+        self.__safe_edit_callback_query(query, 'Service wird jetzt neu gestartet.')
         # Restart after a short delay
         time.sleep(1.5)
         # Prevent sending the shutdown message
@@ -1131,7 +1131,7 @@ class HelheimrBot:
         """Helper function to reboot the PC (and gracefully
         shut down the service from a different thread)."""
         logging.getLogger().info('[HelheimrBot] User {} requested system reboot.'.format(query.from_user.first_name))
-        self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin neugestartet.')
+        self.__safe_edit_callback_query(query, 'Raspberry wird in 1\u200amin neu gestartet.')
 
         success, txt = common.shell_shutdown('-r', '+1')
         if not success:
@@ -1239,7 +1239,7 @@ class HelheimrBot:
         else:
             # Restart service
             logging.getLogger().info('[HelheimrBot] Restarting service now...')
-            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n```\n{:s}\n```\nService wird jetzt neugestartet...'.format(txt),
+            self.__safe_message_reply(update, 'Repo wurde aktualisiert:\n\n```\n{:s}\n```\nService wird jetzt neu gestartet.'.format(txt),
                 reply_markup=None)
 
             # ... after a short delay
