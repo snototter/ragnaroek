@@ -148,6 +148,7 @@ class HelheimrBot:
     CALLBACK_SYSTEM_REBOOT = 'sys2'
     CALLBACK_SERVICE_CANCEL = 'svc0'
     CALLBACK_SERVICE_RESTART = 'svc1'
+    CALLBACK_SERVICE_SHUTDOWN = 'svc2'
 
     # Markdown: uses bold, italics and monospace (to prevent interpreting numbers as phone numbers...)
     USE_MARKDOWN = True
@@ -895,6 +896,10 @@ class HelheimrBot:
         elif response == type(self).CALLBACK_SERVICE_RESTART:
             self._is_modifying_heating = False
             self.__svc_restart_helper(query)
+        
+        elif response == type(self).CALLBACK_SERVICE_SHUTDOWN:
+            self._is_modifying_heating = False
+            self.__svc_shutdown_helper(query)
 
     def __rm_helper_keyboard_type_select(self):
         keyboard = [
@@ -1096,11 +1101,21 @@ class HelheimrBot:
             self.__safe_send(update.message.chat_id,
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\nBitte versuche es in ein paar Sekunden nochmal.')
             return
+        self._is_modifying_heating = True
+        keyboard = [[telegram.InlineKeyboardButton("Ja, sicher!", callback_data=type(self).CALLBACK_SERVICE_SHUTDOWN),
+                 telegram.InlineKeyboardButton("Abbrechen", callback_data=type(self).CALLBACK_SERVICE_CANCEL)]]
+        self._is_modifying_heating = self.__safe_message_reply(
+            update, 'Heizungsservice wirklich beenden?',
+            reply_markup=telegram.InlineKeyboardMarkup(keyboard))
+
+    def __svc_shutdown_helper(self, query):
+        """Initiate the service shutdown sequence (Pi will continue running)."""
         thread = threading.Thread(target=self.shutdown)
         thread.daemon = True
         thread.start()
 
     def __svc_restart_helper(self, query):
+        """Restart service via command line."""
         logging.getLogger().info('[HelheimrBot] User {} requested service restart.'.format(query.from_user.first_name))
         self.__safe_edit_callback_query(query, 'Service wird jetzt neugestartet.')
         # Restart after a short delay
