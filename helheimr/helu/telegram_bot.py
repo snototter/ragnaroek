@@ -533,7 +533,7 @@ class HelheimrBot:
         # https://psutil.readthedocs.io/en/latest/#recipes/
         # https://stackoverflow.com/a/556411 os.times
         txt = '\n'.join(msg)
-        # Append disk info (returns the "du" table)
+        # Append disk info (returns the "df" table)
         s, df = common.disk_info()
         if s:
             txt = txt + '```\n' + df + '\n```'
