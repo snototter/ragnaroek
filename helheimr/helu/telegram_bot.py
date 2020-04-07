@@ -528,11 +528,15 @@ class HelheimrBot:
         s, txt = common.shell_exec_command('uptime -p')
         if s:
             msg.append('\u2022 {:s}'.format(txt.capitalize()))
-        #TODO Add system info (mem/uptime/disk_usage), check:
+        #TODO Add system info (mem/uptime), check:
         # https://pypi.org/project/psutil/
         # https://psutil.readthedocs.io/en/latest/#recipes/
         # https://stackoverflow.com/a/556411 os.times
         txt = '\n'.join(msg)
+        # Append disk info (returns the "du" table)
+        s, df = common.disk_info()
+        if s:
+            txt = txt + '```\n' + df + '\n```'
         self.__safe_send(update.message.chat_id, txt)
 
     def __cmd_toggle_heating(self, update, context):
