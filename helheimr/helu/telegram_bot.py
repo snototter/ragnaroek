@@ -536,7 +536,7 @@ class HelheimrBot:
         # Append disk info (returns the "df" table)
         s, df = common.disk_info()
         if s:
-            txt = txt + '```\n' + df + '\n```'
+            txt = txt + '\n\u2022 Speicherplatz:\n```\n' + df + '\n```'
         self.__safe_send(update.message.chat_id, txt)
 
     def __cmd_toggle_heating(self, update, context):

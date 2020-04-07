@@ -207,8 +207,9 @@ def disk_info():
     """Returns disk statistics."""
     #https://stackoverflow.com/questions/28809148/how-to-select-a-particular-column-in-linux-df-command
     # Exclude (dev)tmpfs, rearrange columns, sort by mount point name (could also sort by size/available,...)
-    #return safe_shell_output('/bin/bash', '-c', r"""df --output=pcent,target,source,avail,fstype -h | awk 'NR<2{print $0;next}{print $0| "sort -r"}'""")
-    return safe_shell_output('/bin/bash', '-c', r"""df -x tmpfs -x devtmpfs --output=target,avail,pcent,source,fstype -h | awk 'NR<2{print $0;next}{print $0| "sort"}'""")
+    # return safe_shell_output('/bin/bash', '-c', r"""df --output=pcent,target,source,avail,fstype -h | awk 'NR<2{print $0;next}{print $0| "sort -r"}'""")
+    # return safe_shell_output('/bin/bash', '-c', r"""df -x tmpfs -x devtmpfs --output=target,avail,pcent,source,fstype -h | awk 'NR<2{print $0;next}{print $0| "sort"}'""")
+    return safe_shell_output('/bin/bash', '-c', r"""df -x tmpfs -x devtmpfs --output=target,avail,pcent -h | awk 'NR<2{print $0;next}{print $0| "sort"}'""")
 
 
 #######################################################################
