@@ -35,6 +35,11 @@ class MessageBroadcaster:
     def info(self, message):
         self.__broadcast_message(message, 'info')
 
+    # Aliases
+    failure = error
+    warn = warning
+    information = info
+
     def __broadcast_message(self, text, msg_type):
         #TODO broadcast to display!!!
         if msg_type == 'info':
@@ -49,4 +54,5 @@ class MessageBroadcaster:
         if self._telegram_bot is not None:
             self._telegram_bot.broadcast_message(telegram_msg)
         else:
-            logging.getLogger().error('[MessageBroadcaster] Telegram bot is not available to broadcast:\n\n' + telegram_msg + '\n')
+            logging.getLogger().error('[MessageBroadcaster] Telegram bot is not available to broadcast:\n\n'
+                                      + telegram_msg + '\n')

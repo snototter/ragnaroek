@@ -489,7 +489,7 @@ class Job(object):
 
         :return: The return value returned by the `job_func`
         """
-        logger.info('Running job %s', self)
+        logger.info('Running job %s', self)  # TODO switch to debug
         ret = self.job_func()
         self.last_run = time_utils.dt_now()
         self._schedule_next_run()
@@ -859,10 +859,23 @@ def test_sensors():
 
 #TODO add offline mode (don't test network connectivity during night/whenever wifi is off)
 def test_network_connectivity():
-    # Check all known hosts, only broadcast message if at least one seems to be down.
+    """Check if all known hosts are reachable, only broadcast message if at least one seems to be down."""
     all_online, msg = network_utils.ConnectionTester.instance().list_known_connection_states(use_markdown=True)
     if not all_online:
-        broadcasting.MessageBroadcaster.instance().info('*Netzwerktest:* mindestens ein Host ist nicht erreichbar.\n\n' + msg)
+        broadcasting.MessageBroadcaster.instance().warning('*Netzwerktest:* mindestens ein Host ist nicht erreichbar.\n\n' + msg)
+
+
+def disconnect_wifi():
+    #TODO
+    # WIFI might be down (svc reboot during night)
+    # store to config file?
+    broadcasting.MessageBroadcaster.instance().warning('Expecting WIFI to shut down')
+
+
+def reconnect_wifi():
+    #TODO
+    # WIFI might still be down
+    broadcasting.MessageBroadcaster.instance().warning('Expecting WIFI to be up again')
 
 
 def is_helheimr_job(job):

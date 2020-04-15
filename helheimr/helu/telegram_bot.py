@@ -57,19 +57,16 @@ from . import temperature_log
 from . import time_utils
 from . import weather
 
-#TODOs:
-# * reminder alle config minuten, falls heizung laeuft (zB 12h)
+# Nice-to-have:
+# * Send a reminder every X minutes while heating is on (e.g. 6hrs)
 # * The python bot api wrapper supports pattern matching, so
 #   we might want to clean up the callback handler a bit:
 #   https://stackoverflow.com/questions/51125356/proper-way-to-build-menus-with-python-telegram-bot
-
 # List of telegram emojis:
 # https://github.com/carpedm20/emoji/blob/master/emoji/unicode_codes.py
 # https://k3a.me/telegram-emoji-list-codes-descriptions/
-
 # Unicodes:
-# black circle, medium black circle, bullet: \u23fa \u25cf \u2022
-# small space \u200a
+# black circle \u23fa, medium black circle \u25cf, bullet \u2022, small space \u200a
 
 
 def _rand_flower():
@@ -78,9 +75,6 @@ def _rand_flower():
 
 
 def format_details_plug_states(plug_states, use_markdown=True, detailed_information=True):
-    # # (deprecated) raspbee.PlugState:
-    # return '\n\u2022 ' + '\n\u2022 '.join([plug.format_message(use_markdown=use_markdown, detailed_information=detailed_information) for plug in plug_states])
-    # # (replaced by) lpd433.DeviceState:
     return '\n\u2022 ' + '\n\u2022 '.join([plug.to_status_line() for plug in plug_states])
 
 
@@ -131,16 +125,16 @@ class HelheimrBot:
     # Identifiers used in message callbacks
     # Do not use colons here, as we use this to distinguish callback
     # types (the following) and callback parameters!
-    CALLBACK_TURN_ON_OFF_CANCEL = '0'
-    CALLBACK_TURN_ON_CONFIRM = '1'
-    CALLBACK_TURN_OFF_CONFIRM = '2'
-    CALLBACK_TURN_ON_ONCE_CONFIRM = '3'
-    CALLBACK_CONFIG_CANCEL = '4'
-    CALLBACK_CONFIG_CONFIRM = '5'
-    CALLBACK_CONFIG_REMOVE_TYPE_SELECT = '6'
-    CALLBACK_CONFIG_REMOVE_JOB_SELECT = '7'
-    CALLBACK_PAUSE_CONFIRM_TOGGLE = '8'
-    CALLBACK_PAUSE_CANCEL = '9'
+    CALLBACK_TURN_ON_OFF_CANCEL = 'fh0'
+    CALLBACK_TURN_ON_CONFIRM = 'fh1'
+    CALLBACK_TURN_OFF_CONFIRM = 'fh2'
+    CALLBACK_TURN_ON_ONCE_CONFIRM = 'fh3'
+    CALLBACK_CONFIG_CANCEL = 'cfg0'
+    CALLBACK_CONFIG_CONFIRM = 'cfg1'
+    CALLBACK_CONFIG_REMOVE_TYPE_SELECT = 'cfg2'
+    CALLBACK_CONFIG_REMOVE_JOB_SELECT = 'cfg3'
+    CALLBACK_PAUSE_CONFIRM_TOGGLE = 'p0'
+    CALLBACK_PAUSE_CANCEL = 'p1'
     CALLBACK_DISTRICTHEATING_TURN_ON_CANCEL = 'dh0'
     CALLBACK_DISTRICTHEATING_TURN_ON_CONFIRM = 'dh1'
     CALLBACK_SYSTEM_CANCEL = 'sys0'
@@ -153,10 +147,10 @@ class HelheimrBot:
     # Markdown: uses bold, italics and monospace (to prevent interpreting numbers as phone numbers...)
     USE_MARKDOWN = True
 
-    # Self-explanatory?
+    # Include emojis in messages
     USE_EMOJI = True
 
-    # Prevent errors when sending large temperature logs
+    # Prevent errors when sending large messages (e.g. logs)
     MESSAGE_MAX_LENGTH = 4096
 
     def __init__(self, bot_cfg):
@@ -209,8 +203,12 @@ class HelheimrBot:
         self._config_hysteresis = None
         self._config_duration = None
 
-        #######################################################################
         # Register command handlers
+        self._register_handlers()
+        #TODO register error handler!
+
+    def _register_handlers(self):
+        """Registers all implemented command handlers."""
         self._user_filter = Filters.user(user_id=self._authorized_ids)
 
         start_handler = CommandHandler('start', self.__cmd_start, self._user_filter)
