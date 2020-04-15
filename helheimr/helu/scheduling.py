@@ -869,6 +869,7 @@ def disconnect_wifi():
     #TODO
     # WIFI might be down (svc reboot during night)
     # store to config file?
+    # network_connectivity test must be disabled during offline hours
     broadcasting.MessageBroadcaster.instance().warning('Expecting WIFI to shut down')
 
 
