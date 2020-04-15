@@ -268,6 +268,7 @@ class Heating:
         current_temperature = None
         consecutive_errors = 0
         reference_temperature_log = list()
+        last_log_state = False  # We want to log "turning heating power on/off" only once
 
         self._condition_var.acquire()
         while self._run_heating_loop:
@@ -349,11 +350,16 @@ class Heating:
 
                 # Tell the zigbee gateway to turn the heater on/off:
                 if should_heat:
-                    logging.getLogger().info('[Heating] Turning heating power on.')
-                    # self._heating_logger.info('Turning heating ON')
+                    # Ensure that we only log the heating switch once per heating cycle:
+                    if not last_log_state:
+                        logging.getLogger().info('[Heating] Turning heating power on.')
+                        last_log_state = True
                     ret = self._lpd433_gateway.turn_on()
                 else:
-                    logging.getLogger().info('[Heating] Turning heating power off.')
+                    # Ensure that we only log the heating switch once per heating cycle:
+                    if last_log_state:
+                        logging.getLogger().info('[Heating] Turning heating power off.')
+                        last_log_state = False
                     ret = self._lpd433_gateway.turn_off()
 
                 # Error checking
