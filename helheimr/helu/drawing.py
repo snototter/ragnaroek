@@ -19,11 +19,28 @@ from . import time_utils
 from dateutil import tz
 
 
-def curve_color(idx, colormap=plt.cm.viridis, distinct_colors=10):
+def curve_color(idx):
     """Return a unique color for the given idx (if idx < distinct_colors)."""
-    lookup = np.linspace(0., 1., distinct_colors)
-    c = colormap(lookup[idx % distinct_colors])
-    return c[:3]
+    colors = [
+        (0, .8, .8), # cyan
+        (1, 0, 1), # violet
+        (0, .8, 0), # green
+        (0, 0, .8), # blue
+        (1, .5, 0), # orange
+        (1, 0, 0),  # red
+    ]
+    return colors[idx % len(colors)]
+    # if colormap in [plt.cm.Pastel1, plt.cm.Pastel2, plt.cm.Paired,\
+    #         plt.cm.Accent, plt.cm.Dark2, plt.cm.Set1, plt.cm.Set2,\
+    #         plt.cm.Set3, plt.cm.tab10, plt.cm.tab20, plt.cm.tab20b, plt.cm.tab20c]:
+    #     # For 'qualitative' colormaps, we do a simple lookup
+    #     c = colormap(idx % len(colormap.colors))
+    # else:
+    #     # For all other colormaps, we uniformly sample N distinct_colors
+    #     # across the colormap spectrum
+    #     lookup = np.linspace(0., 1., distinct_colors % len(colormap.colors))
+    #     c = colormap(lookup[idx % distinct_colors])
+    # return c[:3]
 
 
 def smooth(values, win_size):
@@ -146,6 +163,7 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
             if sensors[sn] is None:
                 continue
             temperature_curves[sn].append((dt_tick_offset, sensors[sn]))
+    #TODO implement line simplification (RDP), e.g. plot only 100 points per curve
     return temperature_curves, was_heating
 
 
@@ -192,7 +210,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     colors = dict()
     plot_labels = dict()
     for sn in sensor_names:
-        colors[sn] = curve_color(idx, colormap=plt.cm.winter, distinct_colors=num_sensors)
+        colors[sn] = curve_color(idx)
         plot_labels[sn] = sn if name_mapping is None else name_mapping[sn]
         idx += 1
 
@@ -273,7 +291,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         unzipped = tuple(zip(*was_heating))
         heating_values = [ymax-1 if wh else ymin_initial-1 for wh in unzipped[1]]
         ax.plot(unzipped[0], heating_values,
-                color=(1, 0, 0), alpha=line_alpha, linestyle='-', linewidth=linewidth,
+                color=(.2, .2, .2), alpha=line_alpha, linestyle='--', linewidth=linewidth,
                 label='Heizung', zorder=2)
 
         # Title and legend
