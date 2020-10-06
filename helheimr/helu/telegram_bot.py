@@ -1040,6 +1040,7 @@ class HelheimrBot:
 
     def __cmd_temp(self, update, context):
         """Renders the temperature curve."""
+        self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
         num_entries = None
         render_table = False
         draw_marker = False
@@ -1282,6 +1283,13 @@ class HelheimrBot:
         """Send given message to all authorized chat IDs."""
         for chat_id in self._broadcast_ids:
             self.__safe_send(chat_id, common.emo(txt))
+    
+    def broadcast_image(self, caption, img_buffer):
+        """Send given image (ByteI/O) to all authorized chat IDs."""
+        for chat_id in self._broadcast_ids:
+            self.__safe_photo_send(
+                chat_id, img_buffer,
+                caption=caption, disable_notification=True)
 
     def __shutdown_helper(self):
         """Helper to shutdown this service - should be run from a

@@ -24,6 +24,7 @@ from . import time_utils
 from . import heating
 from . import temperature_log
 from . import telegram_bot
+from . import drawing
 
 logger = logging.getLogger('schedule')
 
@@ -882,6 +883,19 @@ def reconnect_wifi():
     broadcasting.MessageBroadcaster.instance().warning('Expecting WIFI to be up again')
 
 
+def telegram_temperature_plot():
+    img_buf = drawing.plot_temperature_curves(
+        1024, 768, temperature_log.TemperatureLog.instance().recent_readings('72h'),
+        return_mem=True, xkcd=True, reverse=True, draw_marker=False,
+        name_mapping=temperature_log.TemperatureLog.instance().name_mapping,
+        simplify_curves=True)
+    if img_buf is None:
+        broadcasting.MessageBroadcaster.instance().error(
+            'Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
+    else:
+        broadcasting.MessageBroadcaster.instance().push_image(img, 'Temperaturverlauf')
+
+
 def is_helheimr_job(job):
     return isinstance(job, PeriodicHeatingJob) or isinstance(job, NonHeatingJob)
 
@@ -1129,30 +1143,47 @@ class HelheimrScheduler(Scheduler):
 
         msg_lines = list()
         if len(heating_jobs) == 0:
-            msg_lines.append('*Keine Heizungsprogramme registriert*')
+            msg_lines.append('{:s}Keine Heizungsprogramme registriert{:s}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
         else:
             heating_jobs = sorted(heating_jobs, key=lambda j: j.at_time)
-            msg_lines.append('*Registrierte Heizungsprogramme:*')
+            msg_lines.append('{:s}Registrierte Heizungsprogramme:{:s}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
 
             for j in heating_jobs:
-                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+                msg_lines.append('{:s} '.format(
+                    '\u2022' if use_markdown else '*') + j.to_msg_str(use_markdown))
 
         msg_lines.append('')
         if len(non_heating_jobs) == 0:
-            msg_lines.append('*Keine anderen Aufgaben registriert*')
+            msg_lines.append('{:s}Keine anderen Aufgaben registriert{:s}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
         else:
             non_heating_jobs = sorted(non_heating_jobs, key=lambda j: j.next_run)
-            msg_lines.append('*Weitere periodische Aufgaben:*')
+            msg_lines.append('{:s}Weitere periodische Aufgaben:{:s}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
 
             for j in non_heating_jobs:
-                msg_lines.append('\u2022 ' + j.to_msg_str(use_markdown))
+                msg_lines.append('{:s} '.format(
+                    '\u2022' if use_markdown else '*') + j.to_msg_str(use_markdown))
 
         if len(generic_jobs) > 0:
             logging.getLogger().warning(
                 '[HelheimrScheduler] There are generic jobs in my task list, this should not happen:\n'
                 + '\n'.join(map(str, [j for j in generic_jobs])))
             msg_lines.append('')
-            msg_lines.append('*Unbekannte Aufgaben:*')
+            msg_lines.append('{:s}Unbekannte Aufgaben:{:s}'.format(
+                '*' if use_markdown else '',
+                '*' if use_markdown else ''
+            ))
             for j in generic_jobs:
                 msg_lines.append(str(j))
 

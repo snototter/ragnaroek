@@ -34,6 +34,10 @@ class MessageBroadcaster:
 
     def info(self, message):
         self.__broadcast_message(message, 'info')
+    
+    def push_image(self, img_buffer, caption):
+        if self._telegram_bot is not None:
+            self._telegram_bot.broadcast_image(caption, img_buffer)
 
     # Aliases
     failure = error
