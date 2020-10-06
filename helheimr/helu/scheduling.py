@@ -893,7 +893,7 @@ def telegram_temperature_plot():
         broadcasting.MessageBroadcaster.instance().error(
             'Fehler beim Erstellen der Temperaturverlaufsgrafik, bitte Log überprüfen.')
     else:
-        broadcasting.MessageBroadcaster.instance().push_image(img, 'Temperaturverlauf')
+        broadcasting.MessageBroadcaster.instance().push_image(img_buf, 'Temperaturverlauf')
 
 
 def is_helheimr_job(job):
