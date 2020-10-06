@@ -656,17 +656,20 @@ class PeriodicHeatingJob(Job):
                 at_time_str,
                 end_time_str,
                 '`' if use_markdown else '',
-                '' if self.target_temperature is None else ', {}\u200a\u00b1\u200a{}\u200a°'.format(
+                '' if self.target_temperature is None else ', {:s}{:s}{:s}{:s}°'.format(
                         common.format_num('.1f', self.target_temperature, use_markdown),
-                        common.format_num('.1f', self.temperature_hysteresis, use_markdown)
+                        '\u200a\u00b1\u200a' if use_markdown else '+/-',
+                        common.format_num('.1f', self.temperature_hysteresis, use_markdown),
+                        '\u200a' if use_markdown else ''
                     ))
 
     def teaser(self, use_markdown=False):
         at_time_str = time_utils.format_time(self.at_time)
         duration_str = time_utils.format_timedelta(self.heating_duration)
         return '{:s}, {:s}: {:s}'.format(at_time_str, duration_str,
-            'ein' if self.target_temperature is None else '{}\u200a°'.format(
-                    common.format_num('.1f', self.target_temperature, use_markdown)))
+            'ein' if self.target_temperature is None else '{:s}{:s}°'.format(
+                    common.format_num('.1f', self.target_temperature, use_markdown),
+                    '\u200a' if use_markdown else ''))
 
     @staticmethod
     def from_libconf(cfg):
@@ -749,7 +752,7 @@ class NonHeatingJob(Job):
             return 'jede Minute' if self.interval == 1 else 'alle {:d} Minuten'.format(self.interval)
         elif self.unit == 'seconds':
             return 'jede Sekunde' if self.interval == 1 else 'alle {:d} Sekunden'.format(self.interval)
-        raise RuntimeError('Unit unknown: {}'.format(self.unit))
+        raise RuntimeError('Unit unknown: {:s}'.format(self.unit))
 
     def teaser(self, use_markdown=True):
         return self.job_description + ', ' + self.__interval_unit_str()
@@ -791,7 +794,7 @@ class NonHeatingJob(Job):
             job = job.days
         else:
             raise ScheduleValueError(
-                "Invalid unit '{}' or unit/interval combination with interval '{}'".format(
+                "Invalid unit '{:s}' or unit/interval combination with interval '{:d}'".format(
                     unit, interval))
 
         at = common.cfg_val_or_none(cfg, 'at')
@@ -849,9 +852,9 @@ def test_sensors():
             elif not_reachable > 0:
                 names = [s.display_name for s in sensors if not s.reachable]
                 if not_reachable == 1:
-                    msg = 'Temperatursensor im {} ist nicht erreichbar!'.format(names[0])
+                    msg = 'Temperatursensor im {:s} ist nicht erreichbar!'.format(names[0])
                 else:
-                    msg = 'Temperatursensoren sind nicht erreichbar: {}!'.format(', '.join(names))
+                    msg = 'Temperatursensoren sind nicht erreichbar: {:s}!'.format(', '.join(names))
                 broadcasting.MessageBroadcaster.instance().warning(msg)
             # else: # Only enable this verbose message for debugging purposes.
             #     broadcasting.MessageBroadcaster.instance().info('Alle Temperatursensoren sind erreichbar!')
