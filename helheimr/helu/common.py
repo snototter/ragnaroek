@@ -37,7 +37,7 @@ def tail(filename, lines=10, as_list=True):
         BLOCK_SIZE = 1024
         f.seek(0, 2)
         block_end_byte = f.tell()
-        lines_to_go = total_lines_wanted
+        lines_to_go = total_lines_wanted + 1  # Read one more so we're sure to include a "full first" line
         block_number = -1
         blocks = []  # blocks of size BLOCK_SIZE, in reverse order starting
                      # from the end of the file
