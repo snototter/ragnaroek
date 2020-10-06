@@ -21,7 +21,7 @@ abbreviations2displaynames = {v:k for k,v in abbreviations.items()}
 temp_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temperature.log')
 
 def load_temperature_log(filename):
-    lines = common.tail(filename, lines=300)
+    lines = common.tail(filename, lines=500)
     if lines is None:
         return list()
     

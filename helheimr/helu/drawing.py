@@ -172,7 +172,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         line_alpha=0.7, grid_alpha=0.3, linewidth=3.5,
         min_temperature_span=9, smoothing_window=7,
         font_size=20, legend_columns=2,
-        draw_marker=False):
+        draw_marker=False, alternate_line_styles=False):
     """
     return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
     xkcd: :-)
@@ -232,6 +232,14 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
 
     # Plot the curves
     num_skipped = 0
+    def _line_style(lsidx):
+        if alternate_line_styles:
+            # Alternate line styles
+            line_styles = ['-', '-.', '--']
+            return line_styles[lsidx % len(line_styles)]
+        else:
+            return '-'
+    line_style_idx = 0
     for sn in sensor_names:
         unzipped = tuple(zip(*temperature_curves[sn]))
         if len(unzipped) < 2:
@@ -244,13 +252,14 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
             values = unzipped[1]
         if draw_marker:
             ax.plot(unzipped[0], values,
-                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
+                color=colors[sn], alpha=line_alpha, linestyle=_line_style(line_style_idx), linewidth=linewidth,
                 label=plot_labels[sn],
                 marker='.', markersize=5*linewidth, markeredgewidth=linewidth, zorder=10)
         else:
             ax.plot(unzipped[0], values,
-                color=colors[sn], alpha=line_alpha, linestyle='-', linewidth=linewidth,
+                color=colors[sn], alpha=line_alpha, linestyle=_line_style(line_style_idx), linewidth=linewidth,
                 label=plot_labels[sn], zorder=10)
+        line_style_idx += 1
     # Skip adjustments if all curves were empty
     if num_skipped < len(sensor_names):
         # Adjust x-axis
