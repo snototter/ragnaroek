@@ -24,10 +24,10 @@
 #   plt.show()
 
 
+import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.append('.')
-import matplotlib.pyplot as plt
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from helu import common, drawing, time_utils
 
@@ -41,7 +41,7 @@ abbreviations = {
 abbreviations2displaynames = {v:k for k,v in abbreviations.items()}
 
 def load_demo_temperature_log():
-    lines = common.tail(os.path.join('demo-data', 'temperature.log'), lines=300)
+    lines = common.tail(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temperature.log'), lines=300)
     if lines is None:
         return list()
     
