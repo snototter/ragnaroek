@@ -17,6 +17,7 @@ import io
 
 from . import time_utils
 from dateutil import tz
+from rdp import rdp
 
 
 def curve_color(idx):
@@ -144,7 +145,7 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     return tick_values, tick_labels, dt_tick_start
 
 
-def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
+def __prepare_curves(sensor_names, temperature_log, dt_tick_start, simplify):
     """Prepares the temperature curves (x ticks are offsets from the given datetime dt_tick_start)."""
     temperature_curves = {sn: list() for sn in sensor_names}
     was_heating = list()
@@ -163,24 +164,57 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start):
             if sensors[sn] is None:
                 continue
             temperature_curves[sn].append((dt_tick_offset, sensors[sn]))
-    #TODO implement line simplification (RDP), e.g. plot only 100 points per curve
+    if simplify:
+        for sn in temperature_curves:
+            t = temperature_curves[sn]
+            simplified = rdp(t, epsilon=0.01)
+            # TODO remove log output
+            print('Drawing: Simplified {} from {} to {} readings.'.format(sn, len(t), len(simplified)))
+            temperature_curves[sn] = simplified
     return temperature_curves, was_heating
 
 
 def plot_temperature_curves(width_px, height_px, temperature_log,
         return_mem=True, xkcd=True, reverse=True, name_mapping=None,
-        line_alpha=0.7, grid_alpha=0.3, linewidth=3.5,
+        line_alpha=0.9, grid_alpha=0.3, linewidth=3.5,
         min_temperature_span=9, smoothing_window=7,
-        font_size=20, legend_columns=2,
-        draw_marker=False, alternate_line_styles=False):
+        font_size=20, legend_columns=3,
+        draw_marker=False, alternate_line_styles=False,
+        simplify_curves=True):
     """
-    return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
-    xkcd: :-)
-    reverse: reverse the temperature readings (if temperature_log[0] is the most recent reading)
-    name_mapping: provide a dictionary if you want to rename the curves
+    Plots the temperature readings (@see temperature_log.py).
 
-    tick_time_unit: should the time difference (tick label) be stated as 'minutes' or 'hours'
-    min_temperature_span: the y-axis should span at least these many degrees
+    width_px, height_px: resolution of plot
+
+    temperature_log: the sensor readings to be plotted
+    
+    return_mem: return_mem: save plot into a BytesIO buffer and return it, otherwise shows the plot (blocking, for debug)
+    
+    xkcd: :-) beautification of the plot
+    
+    reverse: reverse the temperature readings (if temperature_log[0] is the most recent reading)
+    
+    name_mapping: name_mapping: provide a dictionary if you want to rename the curves
+
+    line_alpha: Alpha value for curves
+
+    grid_alpha: Alpha value for the plot grid
+
+    linewidth: Line width in pixels
+
+    min_temperature_span: min_temperature_span: the y-axis should span at least these many degrees
+    
+    smoothing_window: number of readings to use for running average
+
+    font_size: in pixels
+
+    legend_columns: number of columns in legend
+
+    draw_marker: in addition to the curves, also plot markers for every reading
+
+    alternate_line_styles: if True, line styles will be alternated
+
+    simplify_curves: Use Ramer-Douglas-Peucker to simplify the temperature plots
     """
     # ## Prepare the data
     if reverse:
@@ -218,7 +252,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     x_tick_values, x_tick_labels, dt_tick_start = __prepare_ticks(temperature_log, desired_num_ticks=10)
 
     # Then extract the data points
-    temperature_curves, was_heating = __prepare_curves(sensor_names, temperature_log, dt_tick_start)
+    temperature_curves, was_heating = __prepare_curves(sensor_names, temperature_log, dt_tick_start, simplify_curves)
 
     # ## Now we're ready to plot
     # Prepare figure of proper size

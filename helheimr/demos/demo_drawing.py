@@ -47,7 +47,8 @@ log = load_temperature_log(temp_log)
 drawing.plot_temperature_curves(1024, 768, log,
         return_mem=False, xkcd=True, reverse=False,
         name_mapping=abbreviations2displaynames,
-        line_alpha=0.7, grid_alpha=0.3, linewidth=3.5,
+        line_alpha=0.9, grid_alpha=0.3, linewidth=3.5,
         min_temperature_span=9, smoothing_window=7,
-        font_size=20, legend_columns=2,
-        draw_marker=False)
+        font_size=20, legend_columns=3,
+        draw_marker=False, alternate_line_styles=False,
+        simplify_curves=True)

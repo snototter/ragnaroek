@@ -10,3 +10,4 @@ rpi-rf
 scipy
 matplotlib
 Pillow
+rdp
