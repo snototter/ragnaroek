@@ -180,7 +180,7 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
         min_temperature_span=9, smoothing_window=7,
         font_size=20, legend_columns=3,
         draw_marker=False, alternate_line_styles=False,
-        simplify_curves=True):
+        simplify_curves=False):
     """
     Plots the temperature readings (@see temperature_log.py).
 

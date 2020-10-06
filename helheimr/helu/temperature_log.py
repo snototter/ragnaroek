@@ -77,7 +77,7 @@ class TemperatureLog:
         self._logger.addHandler(file_handler)
         self._logger.setLevel(logging.INFO)
 
-        # Compute size of circular buffer to store readings of the past 24 hours
+        # Compute size of circular buffer to store readings of the past 'buffer_hours' hours
         self._polling_interval_min = temp_cfg['update_interval_minutes']
         polling_job_label = temp_cfg['job_label']
         buffer_hours = 72
