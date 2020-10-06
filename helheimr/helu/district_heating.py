@@ -113,47 +113,59 @@ class DistrictHeatingQueryParser(HTMLParser):
     def transition_status(self):
         return self._status['transition_status']
 
-    def format_message(self, use_markdown=True):
+    def to_telegram_message(self, use_markdown=True):
         msg = list()
-
         ### General district heating stats:
         msg.append('{}Fernwärmestatus:{}'.format('*' if use_markdown else '', '*' if use_markdown else ''))
         if self.teleheating_temperature is not None:
-            msg.append('\u2022 Fernwärme Eingang {}\u200a°'.format(
-                common.format_num('.1f', self.teleheating_temperature, use_markdown)))
+            msg.append('{} Fernwärme Eingang {}{}°'.format(
+                '\u2022' if use_markdown else '*',
+                common.format_num('.1f', self.teleheating_temperature, use_markdown),
+                '\u200a' if use_markdown else ''))
 
         if self.consumption_state is not None:
             #TODO Rename all of these "system informations" to something more explanatory
             # To do this, we first need to know, what the symbols on the CMI gateway actually mean
-            msg.append('\u2022 Verbrauch ist {}'.format(
-                'eingeschaltet bei {}\u200a°, {}\u200akW'.format(
+            msg.append('{} Verbrauch ist {}'.format(
+                '\u2022' if use_markdown else '*',
+                'eingeschaltet bei {}{}°, {}{}kW'.format(
                     common.format_num('.1f', self.consumption_temperature, use_markdown),
-                    common.format_num('.1f', self.consumption_power, use_markdown))
+                    '\u200a' if use_markdown else '',
+                    common.format_num('.1f', self.consumption_power, use_markdown),
+                    '\u200a' if use_markdown else '')
                 if self.consumption_state else 'ausgeschaltet'))
 
         ### Button stats:
         if self.eco_status is not None:
-            msg.append('\u2022 Eco ist {}'.format(
+            msg.append('{} Eco ist {}'.format(
+                '\u2022' if use_markdown else '*',
                 'ein' if self.eco_status else 'aus'))
 
         if self.transition_status is not None:
-            msg.append('\u2022 Übergang ist {}'.format(
+            msg.append('{} Übergang ist {}'.format(
+                '\u2022' if use_markdown else '*',
                 'ein' if self.transition_status else 'aus'))
 
         if self.medium_status is not None:
-            msg.append('\u2022 Mittel 55\u200a° ist {}'.format(
+            msg.append('{} Mittel 55{}° ist {}'.format(
+                '\u2022' if use_markdown else '*',
+                '\u200a' if use_markdown else '',
                 'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.medium_time)))
                 if self.medium_status else 'aus'))
 
         if self.high_status is not None:
-            msg.append('\u2022 Hoch 60\u200a° ist {}'.format(
+            msg.append('{} Hoch 60{}° ist {}'.format(
+                '\u2022' if use_markdown else '*',
+                '\u200a' if use_markdown else '',
                 'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.high_time)))
                 if self.high_status else 'aus'))
 
         if self.very_high_status is not None:
-            msg.append('\u2022 Sehr hoch 65\u200a° ist {}'.format(
+            msg.append('{} Sehr hoch 65{}° ist {}'.format(
+                '\u2022' if use_markdown else '*',
+                '\u200a' if use_markdown else '',
                 'ein, Restzeit {:s}'.format(
                     time_utils.format_timedelta(datetime.timedelta(seconds=self.very_high_time)))
                 if self.very_high_status else 'aus'))
@@ -320,6 +332,6 @@ class DistrictHeating:
         if response:
             query_parser = DistrictHeatingQueryParser()
             query_parser.feed(response.text)
-            return True, query_parser.format_message(use_markdown=use_markdown)
+            return True, query_parser
         else:
             return False, 'Fehler bei der Fernwärmeabfrage, HTTP Status: {}'.format(response.status_code)

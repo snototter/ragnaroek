@@ -129,17 +129,21 @@ class Forecast:
 
     def format_message(self, use_markdown=True, use_emoji=True, mark_day_break=True):
         lines = list()
-        lines.append('{}Vorhersage:{}'.format(
+        lines.append('{:s}Vorhersage:{:s}'.format(
             '*' if use_markdown else '', '*' if use_markdown else ''))
-        lines.append('{:s}{:s}\n{} bis {}\u200a°'.format(
+        lines.append('{:s}{:s}\n{:s} bis {:s}{:s}°'.format(
             self._prevalent_detailed_status,
             ' ' + self._prevalent_weather_emoji if use_emoji else '',
             common.format_num('d', self._min_temp, use_markdown=use_markdown),
-            common.format_num('d', self._max_temp, use_markdown=use_markdown)))
+            common.format_num('d', self._max_temp, use_markdown=use_markdown),
+            '\u200a' if use_markdown else ''))
         for i in range(len(self._reports)):
             r = self._reports[i]
             if mark_day_break and i > 0 and r.reference_time.hour < self._reports[i-1].reference_time.hour:
-                lines.append('\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7 Morgen \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7')
+                if use_markdown:
+                    lines.append('\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7 Morgen \u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7\u00b7')
+                else:
+                    lines.append('~~~~~~~~~~ Morgen ~~~~~~~~~~')
             lines.append('{:02d}:00 {:s}'.format(r.reference_time.hour, r.teaser_message(use_markdown, use_emoji)))
         return '\n'.join(lines)
 
@@ -208,57 +212,77 @@ class WeatherReport:
         self.sunset_time = time_utils.dt_as_local(w.get_sunset_time(timeformat='date'))
 
     def teaser_message(self, use_markdown=True, use_emoji=True):
-        msg = '{:s}\u200a°{:s}'.format(
+        msg = '{:s}{:s}°{:s}'.format(
                 common.format_num('.1f', self.temperature, use_markdown),
+                '\u200a' if use_markdown else '',
                 ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '')
 
         if self.rain is not None:
-            msg += ' {:s}\u200amm'.format(
-                common.format_num('.1f', self.rain, use_markdown))
+            msg += ' {:s}{:s}mm'.format(
+                common.format_num('.1f', self.rain, use_markdown),
+                '\u200a' if use_markdown else '')
 
         if self.snow is not None:
-            msg += ' {:s}\u200amm Schnee'.format(
-                common.format_num('.1f', self.snow, use_markdown))
+            msg += ' {:s}{:s}mm Schnee'.format(
+                common.format_num('.1f', self.snow, use_markdown),
+                '\u200a' if use_markdown else '')
 
-        if self.wind is not None and self.wind['speed'] is not None:
-            msg += ' {:d}\u200akm/h{}'.format(
+        if self.wind is not None and 'speed' in self.wind and self.wind['speed'] is not None:
+            msg += ' {:d}{:s}km/h{:s}'.format(
                     int(math.ceil(self.wind['speed'])),
-                    ' {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else '')
+                    '\u200a' if use_markdown else '',
+                    ' {:s}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else '')
         return msg
 
     def format_message(self, use_markdown=True, use_emoji=True):
         lines = list()
-        lines.append('{}Wetterbericht:{}'.format(
+        lines.append('{:s}Wetterbericht:{:s}'.format(
                 '*' if use_markdown else '',
                 '*' if use_markdown else ''
             ))
-        lines.append('{:s}{:s}, {:s}\u200a°'.format(
+        lines.append('{:s}{:s}, {:s}{:s}°'.format(
                 self.detailed_status,
                 ' ' + weather_code_emoji(self.weather_code, self._reference_time) if use_emoji else '',
                 common.format_num('.1f', self.temperature, use_markdown),
+                '\u200a' if use_markdown else ''
             ))
-        windchill = int(get_windchill(self.temperature, self.wind['speed']))
-        if int(self.temperature) > windchill:
-            lines.append('Gefühlte Temperatur: {:s}\u200a°{:s}'.format(
-                    common.format_num('d', windchill, use_markdown),
-                    ' ' + temperature_emoji(windchill) if use_emoji else ''
-                ))
+        if self.wind is not None and self.wind['speed'] is not None:
+            windchill = int(get_windchill(self.temperature, self.wind['speed']))
+            if int(self.temperature) > windchill:
+                lines.append('Gefühlte Temperatur: {:s}{:s}°{:s}'.format(
+                        common.format_num('d', windchill, use_markdown),
+                        '\u200a' if use_markdown else '',
+                        ' ' + temperature_emoji(windchill) if use_emoji else ''
+                    ))
         lines.append('')  # Will be joined with a newline
 
-        lines.append('Bewölkung: {}\u200a%'.format(common.format_num('d', self.clouds, use_markdown)))
-        lines.append('Luftfeuchte: {}\u200a%'.format(common.format_num('d', self.humidity, use_markdown)))
+        lines.append('Bewölkung: {:s}{:s}%'.format(
+            common.format_num('d', self.clouds, use_markdown),
+            '\u200a' if use_markdown else ''))
+
+        lines.append('Luftfeuchte: {:s}{:s}%'.format(
+            common.format_num('d', self.humidity, use_markdown),
+            '\u200a' if use_markdown else ''))
+
         if self.atmospheric_pressure is not None:
-            lines.append('Luftdruck: {}\u200ahPa'.format(common.format_num('d', self.atmospheric_pressure, use_markdown)))
+            lines.append('Luftdruck: {:s}{:s}hPa'.format(
+                common.format_num('d', self.atmospheric_pressure, use_markdown),
+                '\u200a' if use_markdown else ''))
 
         if self.rain is not None:
-            lines.append('Niederschlag: {}\u200amm'.format(common.format_num('.1f', self.rain, use_markdown)))
+            lines.append('Niederschlag: {:s}{:s}mm'.format(
+                common.format_num('.1f', self.rain, use_markdown),
+                '\u200a' if use_markdown else ''))
 
         if self.snow is not None:
-            lines.append('Schneefall: {}\u200amm'.format(common.format_num('.1f', self.snow, use_markdown)))
+            lines.append('Schneefall: {:s}{:s}mm'.format(
+                common.format_num('.1f', self.snow, use_markdown),
+                '\u200a' if use_markdown else ''))
 
         if self.wind is not None and self.wind['speed'] is not None:
-            lines.append('Wind: {}\u200akm/h{}'.format(
+            lines.append('Wind: {:s}{:s}km/h{:s}'.format(
                     common.format_num('.1f', self.wind['speed'], use_markdown),
+                    '\u200a' if use_markdown else '',
                     ' aus {}'.format(degrees_to_compass(self.wind['direction'])) if self.wind['direction'] is not None else ''
                 ))
         lines.append('')  # Will be joined with a newline
