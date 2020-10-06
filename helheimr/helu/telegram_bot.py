@@ -683,10 +683,11 @@ class HelheimrBot:
 
     def __cmd_query_district_heating(self, update, context):
         self.__safe_chat_action(update.message.chat_id, action=telegram.ChatAction.TYPING)
-        success, msg = district_heating.DistrictHeating.instance().query_heating(use_markdown=True)
+        success, response = district_heating.DistrictHeating.instance().query_heating()
         if not success:
-            msg = ':bangbang: ' + msg
+            msg = ':bangbang: ' + response
         else:
+            msg = response.to_telegram_message(use_markdown=True)
             msg += '\n\nEinstellungen sind über /vorlauf möglich.'
         self.__safe_message_reply(update, msg, reply_markup=None)
 
