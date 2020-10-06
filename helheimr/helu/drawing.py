@@ -139,8 +139,8 @@ def __prepare_ticks(temperature_log, desired_num_ticks=10):
     # else:
     #     tick_labels.append(dt_tick.strftime('%d.%m. %H:%M'))
 
-    logging.getLogger().info('DRAW ticks start {}, end {}, time_span {}, dt_tick_start {}'.format(
-        dt_start.strftime('%d.%m %H:%M'), dt_end.strftime('%d.%m %H:%M'), time_span, dt_tick_start.strftime('%d.%m %H:%M')))
+    # logging.getLogger().info('drawing ticks start {}, end {}, time_span {}, dt_tick_start {}'.format(
+    #     dt_start.strftime('%d.%m %H:%M'), dt_end.strftime('%d.%m %H:%M'), time_span, dt_tick_start.strftime('%d.%m %H:%M')))
     return tick_values, tick_labels, dt_tick_start
 
 
@@ -179,7 +179,6 @@ def plot_temperature_curves(width_px, height_px, temperature_log,
     reverse: reverse the temperature readings (if temperature_log[0] is the most recent reading)
     name_mapping: provide a dictionary if you want to rename the curves
 
-    every_nth_tick: label every n-th tick only
     tick_time_unit: should the time difference (tick label) be stated as 'minutes' or 'hours'
     min_temperature_span: the y-axis should span at least these many degrees
     """

@@ -1,36 +1,15 @@
-# import numpy as np
-# import matplotlib
-# import matplotlib.pyplot as plt
-# from matplotlib import cm
-
-# # Pie chart, where the slices will be ordered and plotted counter-clockwise:
-# N = 6
-# labels = ['Part #{}'.format(i+1) for i in range(N)]
-# sizes = [100/N] * N
-# #explode = (0, 0.1, 0, 0)  # only "explode" the 2nd slice (i.e. 'Hogs')
-# explode = tuple([0]*N)
-
-# # try different colormaps
-# #https://matplotlib.org/3.1.1/tutorials/colors/colormaps.html
-# mapfx = [cm.Paired, cm.Set1, cm.Set2, cm.Dark2]
-# for mfx in mapfx:
-#   cs = mfx(np.arange(N))#/float(N))
-
-#   fig1, ax1 = plt.subplots()
-#   ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
-#           shadow=True, startangle=90, colors=cs)
-#   ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-#   plt.show()
-
-
 import matplotlib.pyplot as plt
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
 from helu import common, drawing, time_utils
 
+## Example data
+# The mapping madness is due to the deconz/zigbee abstraction and plotting
+# requirements:
+# * deconz sensor IDs may change irregularly (but their name stays the same, ugh)
+# * for short legends/table cells we need an abbreviation
+# * for log messages we need the full room name
 abbreviations = {
         'Schlafzimmer': 'SZ',
         'Kinderzimmer': 'KZ',
@@ -39,9 +18,10 @@ abbreviations = {
         'Büro': 'AZ'
     }
 abbreviations2displaynames = {v:k for k,v in abbreviations.items()}
+temp_log = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temperature.log')
 
-def load_demo_temperature_log():
-    lines = common.tail(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temperature.log'), lines=300)
+def load_temperature_log(filename):
+    lines = common.tail(filename, lines=300)
     if lines is None:
         return list()
     
@@ -63,9 +43,10 @@ def load_demo_temperature_log():
         temperature_readings.append((dt, temps, hs))
     return temperature_readings
 
-log = load_demo_temperature_log()
+log = load_temperature_log(temp_log)
 drawing.plot_temperature_curves(1024, 768, log,
-        return_mem=False, xkcd=True, reverse=True, name_mapping=abbreviations2displaynames,
+        return_mem=False, xkcd=True, reverse=False,
+        name_mapping=abbreviations2displaynames,
         line_alpha=0.7, grid_alpha=0.3, linewidth=3.5,
         min_temperature_span=9, smoothing_window=7,
         font_size=20, legend_columns=2,
