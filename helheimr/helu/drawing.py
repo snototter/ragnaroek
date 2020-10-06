@@ -169,7 +169,7 @@ def __prepare_curves(sensor_names, temperature_log, dt_tick_start, simplify):
             t = temperature_curves[sn]
             simplified = rdp(t, epsilon=0.01)
             # TODO remove log output
-            print('Drawing: Simplified {} from {} to {} readings.'.format(sn, len(t), len(simplified)))
+            logging.getLogger().info('Drawing: Simplified {} from {} to {} readings.'.format(sn, len(t), len(simplified)))
             temperature_curves[sn] = simplified
     return temperature_curves, was_heating
 
