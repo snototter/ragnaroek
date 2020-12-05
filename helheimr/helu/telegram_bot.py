@@ -20,7 +20,6 @@ on - :high_brightness: Heizung einschalten
 off - :snowflake: Heizung ausschalten
 pause - Heizungsprogramme pausieren
 progs - :wrench: Programme/Aufgaben auflisten
-q - :high_brightness: 1h lang heizen
 reboot - :wrench: PC neustarten
 restart - :wrench: Service neustarten
 rm - Heizungsprogramm löschen
@@ -28,6 +27,7 @@ shutdown - :wrench: PC herunterfahren
 status - Statusabfrage
 stop - :wrench: Heizungsservice beenden
 temp - Aktueller Temperaturverlauf
+uh - :high_brightness: 2h lang heizen
 update - :wrench: Repository aktualisieren
 vorlauf - :high_brightness: Fernwärmevorlauf einschalten
 wetter - :partly_sunny: Wetterbericht
@@ -231,11 +231,13 @@ class HelheimrBot:
         detail_handler = CommandHandler('d', self.__cmd_details, self._user_filter)
         self._dispatcher.add_handler(detail_handler)
 
-        quickstart_handler = CommandHandler('ah', self.__cmd_quickstart_heat, self._user_filter)
+        # Quickstart (without confirmation) for 1h
+        quickstart_handler = CommandHandler('ah', self.__cmd_quickstart_heat1h, self._user_filter)
         self._dispatcher.add_handler(quickstart_handler)
-        # For convenience, add abbreviation
-        quickstart_handler = CommandHandler('q', self.__cmd_quickstart_heat, self._user_filter)
+        # ... and for 2 hours
+        quickstart_handler = CommandHandler('uh', self.__cmd_quickstart_heat2h, self._user_filter)
         self._dispatcher.add_handler(quickstart_handler)
+        
 
         on_handler = CommandHandler('on', self.__cmd_on, self._user_filter)
         self._dispatcher.add_handler(on_handler)
@@ -406,8 +408,8 @@ class HelheimrBot:
 /details oder /d - Detaillierte Systeminformation.
 /progs - Liste aller Programme & Aufgaben.
 
-/ah
-    :thermometer: 1h lang heizen.
+/ah bzw /uh
+    :thermometer: Sofort für 1h bzw 2h lang heizen.
 
 /ein oder /heizen oder /on
     :thermometer: Heizung einschalten.
@@ -575,13 +577,14 @@ class HelheimrBot:
         self._is_modifying_heating = self.__safe_message_reply(
             update, msg, reply_markup=reply_markup)
 
-    def __cmd_quickstart_heat(self, update, context):
+    def __cmd_quickstart_heat(self, update, context, hrs):
         # Check if another user is currently sending an on/off command:
         if self._is_modifying_heating:
             self.__safe_send(
                 update.message.chat_id,
                 'Heizungsstatus wird gerade von einem anderen Chat geändert.\n\nBitte versuche es in ein paar Sekunden nochmal.')
             return
+        hrs=int(hrs)
         # Set flag to prevent other users from concurrently modifying heating
         self._is_modifying_heating = True
         # Start heating for an hour
@@ -590,13 +593,19 @@ class HelheimrBot:
                 update.message.from_user.first_name,
                 target_temperature=None,
                 temperature_hysteresis=None,
-                duration=datetime.timedelta(hours=1))
+                duration=datetime.timedelta(hours=hrs))
         # Check response and notify telegram user
         if not success:
             self.__safe_message_reply(update, ':bangbang: Fehler: ' + txt, reply_markup=None)
         else:
-            self.__safe_message_reply(update, 'Heizung wurde für 1h eingeschaltet.', reply_markup=None)
+            self.__safe_message_reply(update, f'Heizung wurde für {hrs}h eingeschaltet.', reply_markup=None)
         self._is_modifying_heating = False
+
+    def __cmd_quickstart_heat1h(self, update, context):
+        self.__cmd_quickstart_heat(update, context, 1)
+
+    def __cmd_quickstart_heat2h(self, update, context):
+        self.__cmd_quickstart_heat(update, context, 2)
 
     def __cmd_on(self, update, context):
         # Check if another user is currently sending an on/off command:
