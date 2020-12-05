@@ -44,6 +44,7 @@ def load_temperature_log(filename):
     return temperature_readings
 
 log = load_temperature_log(temp_log)
+import pdb; pdb.set_trace()
 drawing.plot_temperature_curves(1024, 768, log,
         return_mem=False, xkcd=True, reverse=False,
         name_mapping=abbreviations2displaynames,

@@ -125,6 +125,7 @@ class Scheduler(object):
         return job
 
     def _run_job(self, job):
+        #TODO FIXME error handling -> log!
         ret = job.run()
         if isinstance(ret, CancelJob) or ret is CancelJob:
             self.cancel_job(job)
