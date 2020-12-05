@@ -104,11 +104,11 @@ def cpu_info():
     num_cpu = psutil.cpu_count()
     load_avg = [x / num_cpu * 100 for x in psutil.getloadavg()]
     freq = psutil.cpu_freq()
-    temp = None
     try:
         # RaspberryPi 3B+ yields only a single entry:
         temp = psutil.sensors_temperatures()['cpu-thermal'][0].current
     except:
+        temp = None
         err = traceback.format_exc(limit=3)
         logging.getLogger().error('[Common] Cannot query RaspberryPi CPU temperature.\n' + err)
     return CpuInfo(num_cpu=num_cpu, load_avg_1=load_avg[0], load_avg_5=load_avg[1],
@@ -431,3 +431,8 @@ def check_positive_real(value):
     if fv <= 0:
         raise ValueError('{} must be > 0.0'.format(fv))
     return fv
+
+if __name__ == '__main__':
+    print('System info:')
+    print(proc_info())
+    print(cpu_info())

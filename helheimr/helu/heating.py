@@ -16,6 +16,48 @@ from . import time_utils
 from . import temperature_log
 
 
+
+def parse_heating_cmd_str(s):
+    """Parses heating command strings as received from telegram chats.
+    For example:
+    21c   ==> heat to 21 deg
+    21deg     -x-
+    30m   ==> turn on heating for 30 minutes
+    30min ==> -x-
+    0.5h      -x-
+    returns {duration: float [in h] or None,
+        temperature: float [in celsius] or None}
+    """
+    parsed = {'duration': None, 'temperature': None}
+    s = s.strip()
+    numeric = [c.isdigit() or c in [',', '.', '+', '-'] for c in s]
+    if all(numeric):
+        logging.getLogger().error(f'[Heating] Invalid heating command string: "{s}" is missing the temperature/time unit.')
+        return parsed
+    split_idx = numeric.index(False)
+    try:
+        num = float(s[:split_idx].replace(',', '.'))
+    except ValueError:
+        logging.getLogger().error(f'[Heating] Invalid heating command string: "{s}" cannot cast "{s[:split_idx]}" to number.')
+        return parsed
+    unit = s[split_idx:].lower()
+
+    # We use ragnarok with a mix of English and German, so proper
+    # localization would be overkill
+    if unit in ['c', 'celsius', 'deg', 'degree', 'degrees', 'grad']:
+        parsed['temperature'] = num
+    elif unit in ['h', 'hrs', 'hours', 'm', 'min', 'minutes', 'minuten', 'stunde', 'stunden']:
+        if unit in ['m', 'min', 'minutes', 'minuten']:
+            num /= 60.0
+        hours = int(num)
+        minutes = int((num - hours) * 60)
+        duration = datetime.timedelta(hours=hours, minutes=minutes)
+        parsed['duration'] = duration
+    else:
+        logging.getLogger().error(f'[Heating] Invalid heating command string: "{s}" contains unknown unit "{unit}".')
+    return parsed
+
+
 class HeatingRequest(Enum):
     """Heating can be turned on via manual request or via a scheduled job."""
     MANUAL = 1
@@ -489,3 +531,18 @@ class Heating:
                         broadcasting.MessageBroadcaster.instance().info(
                             '```\n' + '\n'.join(['{:.2f}° {:s}'.format(t[0],
                             'Heizung an' if t[1] else '') for t in reference_temperature_log]) + '\n```')
+
+
+if __name__ == '__main__':
+    print(parse_heating_cmd_str('21.3'))
+    print(parse_heating_cmd_str('21.3c'))
+    print(parse_heating_cmd_str('21.3Deg'))
+    print(parse_heating_cmd_str('21.3gRaD'))
+    print(parse_heating_cmd_str('-0.3H'))
+    x=parse_heating_cmd_str('-0.3H')
+    print(x['duration'].total_seconds()/60)
+    print(parse_heating_cmd_str('+-0.3H'))
+    print(parse_heating_cmd_str('21.3m'))
+    print(parse_heating_cmd_str('21.3min'))
+    print(parse_heating_cmd_str('21,3min'))
+    print(parse_heating_cmd_str('57Hz'))

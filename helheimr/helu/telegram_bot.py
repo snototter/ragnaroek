@@ -580,19 +580,15 @@ class HelheimrBot:
         duration = None
         try:
             for a in context.args:
-                if a[-1] == 'c':
-                    val = float(a[:-1].replace(',', '.'))
+                pd = heating.parse_heating_cmd_str(a)
+                pduration, ptemp = pd['duration'], pd['temperature']
+                if pduration is not None:
+                    duration = pduration
+                elif ptemp is not None:
                     if temperature is None:
-                        temperature = val
+                        temperature = ptemp
                     else:
-                        hysteresis = val
-                elif a[-1] == 'h' or (len(a) > 3 and a[-3:] == 'min'):
-                    h = float(a[:-1].replace(',', '.'))
-                    if a[-3:] == 'min':
-                        h /= 60.0
-                    hours = int(h)
-                    minutes = int((h - hours) * 60)
-                    duration = datetime.timedelta(hours=hours, minutes=minutes)
+                        hysteresis = ptemp
         except:
             self._is_modifying_heating = False
             self.__safe_send(
@@ -967,13 +963,8 @@ class HelheimrBot:
         hysteresis = 0.5
         duration = None
         for a in context.args:
-            if a[-1] == 'c':
-                val = float(a[:-1].replace(',', '.'))
-                if temperature is None:
-                    temperature = val
-                else:
-                    hysteresis = val
-            elif ':' in a:
+            if ':' in a:
+                # Scheduled start time:
                 tokens = a.split(':')
                 if len(tokens) != 2:
                     self.__safe_send(
@@ -981,11 +972,16 @@ class HelheimrBot:
                         'Fehler: Startzeit muss als HH:MM angegeben werden!')
                     return
                 at_time = '{:02d}:{:02d}'.format(int(tokens[0]), int(tokens[1]))
-            elif a[-1] == 'h':
-                h = float(a[:-1].replace(',', '.'))
-                hours = int(h)
-                minutes = int((h - hours) * 60)
-                duration = datetime.timedelta(hours=hours, minutes=minutes)
+            else:
+                pd = heating.parse_heating_cmd_str(a)
+                pduration, ptemp = pd['duration'], pd['temperature']
+                if pduration is not None:
+                    duration = pduration
+                elif ptemp is not None:    
+                    if temperature is None:
+                        temperature = ptemp
+                    else:
+                        hysteresis = ptemp
 
         if at_time is None or duration is None:
             self.__safe_send(update.message.chat_id,
