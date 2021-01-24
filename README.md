@@ -202,6 +202,8 @@ spidev==3.4
 Python EPD is incredibly slow (12-14 sec refresh), C is okay-ish (4 sec)
 Have to try binding the C EPD implementation.
 
+Get the Pi's version via cmdline:
+cat /sys/firmware/devicetree/base/model
 
 ```
 
