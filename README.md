@@ -104,7 +104,7 @@ Installation instructions on RaspberryPi 3B+:
     # Time strings can be compared lexicographically: https://unix.stackexchange.com/a/395936
     currenttime=$(date +%H:%M)
     if [[ "$currenttime" > "${wake_time}" ]] && [[ "$currenttime" < "${sleep_time}" ]]; then
-      ping -c4 ${known_ip} > /dev/null
+      ping -c4 -w 60 ${known_ip} > /dev/null
        
       if [[ $? != 0 ]]; then
         echo "Cannot reach ip ${known_ip}, rebooting!" | systemd-cat -t helheimr -p warning
